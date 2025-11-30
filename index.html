@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Realife Cafe</title>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#A58D79" />
+    <script>
+      // Immediately set the theme from localStorage to prevent FOUC (Flash of Unstyled Content)
+      try {
+        const storedData = localStorage.getItem('cafe-pos-data');
+        if (storedData) {
+          const theme = JSON.parse(storedData).theme;
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          }
+        }
+      } catch (e) {
+        console.error('Error setting initial theme from localStorage', e);
+      }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // This configures Tailwind to use the 'class' strategy for dark mode.
+      // It enables manual toggling of the theme.
+      tailwind.config = {
+        darkMode: 'class',
+      }
+    </script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+    <style>
+      @keyframes pulse-orange {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
+        50% { box-shadow: 0 0 0 4px rgba(249, 115, 22, 0); }
+      }
+      .animate-pulse-orange {
+        animation: pulse-orange 2s infinite;
+      }
+      @keyframes pulse-red {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+        50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
+      }
+      .animate-pulse-red {
+        animation: pulse-red 2s infinite;
+      }
+      @keyframes pulse-blue {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+        50% { box-shadow: 0 0 0 5px rgba(59, 130, 246, 0); }
+      }
+      .animate-pulse-blue {
+        animation: pulse-blue 2s infinite;
+      }
+      @keyframes pulse-accent {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.15); }
+        100% { transform: scale(1); }
+      }
+      .pulse-once {
+        animation: pulse-accent 0.8s ease-in-out;
+      }
+      .animate-pulse-cart {
+        animation: pulse-accent 2s infinite ease-in-out;
+      }
+      /* Basic Markdown Prose Styling */
+      .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 1rem; }
+      .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.75rem; }
+      .prose p { margin-bottom: 1rem; line-height: 1.6; }
+      .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+      .prose ul { list-style-type: disc; }
+      .prose ol { list-style-type: decimal; }
+      .prose li { margin-bottom: 0.25rem; }
+      .prose strong { font-weight: 600; }
+      .prose em { font-style: italic; }
+      /* Dark mode prose styles */
+      .dark .prose-invert h2, .dark .prose-invert h3, .dark .prose-invert p, .dark .prose-invert strong { color: white; }
+      .dark .prose-invert li { color: #d4d4d8; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.3.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            })
+            .catch(err => {
+              console.log('ServiceWorker registration failed: ', err);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>

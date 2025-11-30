@@ -1,0 +1,5 @@
+{
+  "name": "Realife Cafe",
+  "description": "A comprehensive Point-of-Sale (POS) customer-facing app for a cafe, complete with a Kitchen Display System (KDS), an admin dashboard for menu and discount management, and a reporting dashboard for business insights.",
+  "requestFramePermissions": []
+}

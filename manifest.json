@@ -1,0 +1,21 @@
+{
+  "short_name": "Realife Cafe",
+  "name": "Realife Cafe",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#A58D79",
+  "background_color": "#F5F3EF",
+  "description": "A comprehensive Point-of-Sale (POS) customer-facing app for a cafe, complete with a Kitchen Display System (KDS), an admin dashboard for menu and discount management, and a reporting dashboard for business insights."
+}
