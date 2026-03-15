@@ -8,6 +8,16 @@ const ProfileView: React.FC = () => {
   const { addToast } = useToast();
   const { currentUser, orders } = state;
   const [swipedFavouriteId, setSwipedFavouriteId] = useState<string | null>(null);
+  const [birthday, setBirthday] = useState(currentUser?.birthday || '');
+
+  const handleUpdateBirthday = () => {
+    if (!currentUser) return;
+    dispatch({ 
+      type: 'UPDATE_USER_PROFILE', 
+      payload: { userId: currentUser.id, birthday } 
+    });
+    addToast('Birthday updated successfully!', 'success');
+  };
 
   const userOrders = useMemo(() => {
     if (!currentUser) return [];
@@ -41,14 +51,44 @@ const ProfileView: React.FC = () => {
     }
   };
 
-  const hasReward = currentUser.loyaltyPoints === 0 && userOrders.length > 0;
-
   return (
     <div className="container mx-auto p-4 md:p-8 text-stone-800 dark:text-zinc-200">
       <h1 className="text-3xl font-bold mb-6 text-stone-800 dark:text-white">Welcome back, {currentUser.name}!</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Main content: History and Favourites */}
+        {/* Left Column: Profile Info */}
+        <div className="space-y-8">
+          <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold mb-4 text-stone-900 dark:text-white">Personal Information</h2>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="birthday-input" className="block text-sm font-medium text-stone-700 dark:text-zinc-300 mb-1">
+                  Your Birthday
+                </label>
+                <div className="flex gap-2">
+                  <input 
+                    id="birthday-input"
+                    type="date" 
+                    value={birthday}
+                    onChange={(e) => setBirthday(e.target.value)}
+                    className="flex-grow p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"
+                  />
+                  <button 
+                    onClick={handleUpdateBirthday}
+                    className="px-4 py-2 bg-[#A58D79] text-white rounded-md hover:bg-[#947D6A] transition-colors font-semibold text-sm"
+                  >
+                    Save
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-stone-500 dark:text-zinc-400">
+                  Set your birthday to receive a free drink on your special day!
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column (spanning 2 cols on lg): History and Favourites */}
         <div className="lg:col-span-2 space-y-8">
 
           {/* Order History */}
@@ -59,10 +99,10 @@ const ProfileView: React.FC = () => {
                 <div key={order.id} className="border-b dark:border-zinc-700 pb-4 last:border-b-0 last:pb-0">
                   <div className="flex justify-between items-center">
                     <p className="font-semibold">{new Date(order.createdAt).toLocaleString()}</p>
-                    <p className="font-bold text-lg">${order.finalTotal.toFixed(2)}</p>
+                    <p className="font-bold text-lg">${(order.finalTotal || 0).toFixed(2)}</p>
                   </div>
                   <ul className="list-disc pl-5 mt-2 text-sm text-stone-600 dark:text-zinc-400">
-                    {order.items.map(item => <li key={item.id}>{item.quantity}x {item.drink.name} {item.customName && `(${item.customName})`}</li>)}
+                    {(order.items || []).map(item => <li key={item.id}>{item.quantity || 1}x {item.drink?.name || 'Unknown Drink'} {item.customName && `(${item.customName})`}</li>)}
                   </ul>
                 </div>
               )) : <p className="text-stone-500 dark:text-zinc-400">You haven't placed any orders yet.</p>}
@@ -102,8 +142,10 @@ const ProfileView: React.FC = () => {
                              >
                                  <div className="flex justify-between items-center pointer-events-none">
                                     <div className="flex-grow overflow-hidden pr-2">
-                                        <p className="font-bold text-stone-900 dark:text-white truncate">{fav.customName || fav.drink.name}</p>
-                                        <p className="text-sm text-stone-600 dark:text-zinc-400 truncate">{Object.values(fav.selectedModifiers as {[key: string]: ModifierOption}).map(m => m.name).join(', ')}</p>
+                                        <p className="font-bold text-stone-900 dark:text-white truncate">{fav.customName || fav.drink?.name || 'Unknown Drink'}</p>
+                                        <p className="text-sm text-stone-600 dark:text-zinc-400 truncate">
+                                            {fav.selectedModifiers && Object.values(fav.selectedModifiers).map((m: any) => m?.option?.name || m?.name).filter(Boolean).join(', ')}
+                                        </p>
                                     </div>
                                     <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-stone-400 transition-transform duration-300 flex-shrink-0 ${swipedFavouriteId === fav.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
                                  </div>
@@ -114,27 +156,6 @@ const ProfileView: React.FC = () => {
             ) : (
                 <p className="text-stone-500 dark:text-zinc-400">You haven't saved any favourite drinks yet.</p>
             )}
-          </div>
-        </div>
-
-        {/* Sidebar: Loyalty */}
-        <div className="lg:col-span-1 lg:sticky lg:top-8">
-          <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md text-center">
-            <h2 className="text-xl font-bold mb-4 text-stone-900 dark:text-white">Your Loyalty Status</h2>
-            <p className="text-6xl font-bold text-stone-700 dark:text-zinc-300">
-                {currentUser.loyaltyPoints}
-                <span className="text-2xl text-stone-500 dark:text-zinc-400">/5</span>
-            </p>
-            <p className="text-stone-600 dark:text-zinc-400 -mt-2">Points</p>
-            <div className="w-full bg-stone-200 dark:bg-zinc-700 rounded-full h-2.5 mt-4">
-                <div className="bg-green-500 h-2.5 rounded-full" style={{width: `${(currentUser.loyaltyPoints/5) * 100}%`}}></div>
-            </div>
-            <p className="mt-4 text-sm text-stone-600 dark:text-zinc-300">
-                {hasReward
-                    ? "You have a free drink! It will be applied to your next order." 
-                    : `You're ${5 - currentUser.loyaltyPoints} point${5 - currentUser.loyaltyPoints > 1 ? 's' : ''} away from a free drink!`
-                }
-            </p>
           </div>
         </div>
       </div>

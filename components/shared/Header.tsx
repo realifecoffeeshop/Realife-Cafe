@@ -11,6 +11,19 @@ interface HeaderProps {
   onMenuLinkClick: (section: string) => void;
 }
 
+const NavButton: React.FC<{ view: View; currentView: View; setView: (view: View) => void; children: React.ReactNode }> = ({ view, currentView, setView, children }) => (
+  <button
+    onClick={() => setView(view)}
+    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+      currentView === view
+        ? 'bg-stone-200 text-stone-900 dark:bg-zinc-700 dark:text-white'
+        : 'text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700'
+    }`}
+  >
+    {children}
+  </button>
+);
+
 const Header: React.FC<HeaderProps> = ({ currentView, setView, onLoginClick, onMenuLinkClick }) => {
   const { state, dispatch } = useContext(AppContext);
   const { currentUser, theme } = state;
@@ -25,19 +38,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLoginClick, onM
     const newTheme = theme === 'light' ? 'dark' : 'light';
     dispatch({ type: 'SET_THEME', payload: newTheme });
   };
-
-  const NavButton: React.FC<{ view: View; children: React.ReactNode }> = ({ view, children }) => (
-    <button
-      onClick={() => setView(view)}
-      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-        currentView === view
-          ? 'bg-stone-200 text-stone-900 dark:bg-zinc-700 dark:text-white'
-          : 'text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700'
-      }`}
-    >
-      {children}
-    </button>
-  );
 
   return (
     <header className="bg-white dark:bg-zinc-800 text-stone-800 dark:text-zinc-200 shadow-sm border-b border-stone-200 dark:border-zinc-700">
@@ -55,13 +55,15 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLoginClick, onM
             <Logo />
         </div>
         <div className="hidden md:flex items-center space-x-2">
-            <NavButton view={View.CUSTOMER}>Customer View</NavButton>
-            <NavButton view={View.GEMINI}>Ask Gemini</NavButton>
+            <NavButton view={View.CUSTOMER} currentView={currentView} setView={setView}>Customer View</NavButton>
             {(currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN) && (
-                <NavButton view={View.KDS}>KDS</NavButton>
+                <>
+                    <NavButton view={View.KDS} currentView={currentView} setView={setView}>KDS</NavButton>
+                    <NavButton view={View.BIRTHDAYS} currentView={currentView} setView={setView}>Birthdays</NavButton>
+                </>
             )}
             {currentUser?.role === UserRole.ADMIN && (
-                <NavButton view={View.ADMIN}>Admin</NavButton>
+                <NavButton view={View.ADMIN} currentView={currentView} setView={setView}>Admin</NavButton>
             )}
         </div>
         <div className="flex items-center space-x-4">
@@ -79,7 +81,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLoginClick, onM
           <div className="border-l border-stone-300 dark:border-zinc-600 h-6"></div>
           {currentUser ? (
             <>
-              <NavButton view={View.PROFILE}>Profile</NavButton>
+              <NavButton view={View.PROFILE} currentView={currentView} setView={setView}>Profile</NavButton>
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 text-sm font-medium text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700 rounded-md transition-colors"

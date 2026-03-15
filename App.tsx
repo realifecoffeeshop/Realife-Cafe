@@ -1,18 +1,25 @@
-import React, { useState, useContext, useEffect, ReactNode } from 'react';
+import React, { useState, useContext, useEffect, ReactNode, Suspense, lazy } from 'react';
 import { AppProvider, AppContext } from './context/AppContext';
 import { ToastProvider } from './context/ToastContext';
 import { View, UserRole } from './types';
 import Header from './components/shared/Header';
 import CustomerView from './components/customer/CustomerView';
-import KDSView from './components/kds/KDSView';
-import AdminView from './components/admin/AdminView';
-import ProfileView from './components/customer/ProfileView';
 import LoginModal from './components/customer/LoginModal';
 import Feedback from './components/shared/Feedback';
 import Modal from './components/shared/Modal';
 import KnowledgeBaseModal from './components/admin/KnowledgeBaseModal';
 import { isFirebaseConfigured } from './firebase/config';
-import GeminiView from './components/gemini/GeminiView';
+
+import KDSView from './components/kds/KDSView';
+const AdminView = lazy(() => import('./components/admin/AdminView'));
+const ProfileView = lazy(() => import('./components/customer/ProfileView'));
+const BirthdaysView = lazy(() => import('./components/shared/BirthdaysView'));
+
+const LoadingSpinner = () => (
+    <div className="flex items-center justify-center p-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#A58D79]"></div>
+    </div>
+);
 
 const FirebaseWarningBanner: React.FC = () => (
     <div className="bg-yellow-100 dark:bg-yellow-900 border-b-2 border-yellow-400 dark:border-yellow-600 p-3 text-center text-sm text-yellow-800 dark:text-yellow-200" role="alert">
@@ -70,7 +77,7 @@ const AppContent: React.FC = () => {
 
   const handleSetView = (view: View) => {
     // If user is not logged in, force login for protected views
-    if (!currentUser && (view === View.ADMIN || view === View.KDS || view === View.PROFILE)) {
+    if (!currentUser && (view === View.ADMIN || view === View.KDS || view === View.PROFILE || view === View.BIRTHDAYS)) {
         setIsLoginModalOpen(true);
         return;
     }
@@ -130,15 +137,15 @@ const AppContent: React.FC = () => {
         return currentUser?.role === UserRole.ADMIN ? <AdminView /> : <AccessDenied />;
       case View.PROFILE:
         return currentUser ? <ProfileView /> : <AccessDenied />;
-      case View.GEMINI:
-        return <GeminiView />;
+      case View.BIRTHDAYS:
+        return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? <BirthdaysView /> : <AccessDenied />;
       default:
         return <CustomerView />;
     }
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F5F3EF] dark:bg-zinc-900 transition-colors duration-300">
+    <div className="flex flex-col min-h-full bg-[#F5F3EF] dark:bg-zinc-900 transition-colors duration-300">
       {!isFirebaseConfigured && <FirebaseWarningBanner />}
       {permissionError && (
           <FirebasePermissionErrorBanner 
@@ -153,7 +160,9 @@ const AppContent: React.FC = () => {
         onMenuLinkClick={handleMenuLinkClick}
       />
       <main className="flex-grow">
-        {renderCurrentView()}
+        <Suspense fallback={<LoadingSpinner />}>
+            {renderCurrentView()}
+        </Suspense>
       </main>
       <Feedback />
       <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />

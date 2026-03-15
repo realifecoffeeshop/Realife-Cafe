@@ -1,16 +1,20 @@
 
-import React, { useState, useContext, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useContext, useMemo, useEffect, useCallback, Suspense, lazy, memo } from 'react';
 import { AppContext } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
-import { Drink, CartItem, PaymentMethod, Discount, UserRole, Order, ModifierOption } from '../../types';
+import { Drink, CartItem, PaymentMethod, Discount, UserRole, Order, ModifierOption, Category, SelectedModifier } from '../../types';
 import DrinkCard from './DrinkCard';
-import OrderModal from './OrderModal';
-import CartFlyout from './CartFlyout';
+import DetailedDrinkCard from './DetailedDrinkCard';
+import MenuSkeleton from './MenuSkeleton';
+import Logo from '../shared/Logo';
+
+const OrderModal = lazy(() => import('./OrderModal'));
+const CartFlyout = lazy(() => import('./CartFlyout'));
+const TutorialGuide = lazy(() => import('./TutorialGuide'));
+const TutorialStep = lazy(() => import('./TutorialStep'));
+
 import { addOrder } from '../../firebase/firestoreService';
 import { COFFEE_JOKES } from '../../constants';
-import TutorialGuide from './TutorialGuide';
-import TutorialStep from './TutorialStep';
-import Logo from '../shared/Logo';
 
 const getWeekNumber = (d: Date): number => {
     d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -21,6 +25,92 @@ const getWeekNumber = (d: Date): number => {
     return weekNo;
 };
 
+
+const CategoryButton: React.FC<{ 
+    id: string; 
+    name: string; 
+    imageUrl?: string;
+    isSelected: boolean; 
+    onClick: (id: string) => void 
+}> = memo(({ id, name, imageUrl, isSelected, onClick }) => (
+    <button
+        onClick={() => onClick(id)}
+        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-300 border ${
+            isSelected
+            ? 'bg-[#A58D79] text-white border-[#A58D79] shadow-md transform scale-105'
+            : 'bg-white dark:bg-zinc-800 text-stone-600 dark:text-zinc-300 border-stone-200 dark:border-zinc-700 hover:border-[#A58D79] hover:bg-stone-50 dark:hover:bg-zinc-700'
+        }`}
+    >
+        {imageUrl && (
+            <img src={imageUrl} alt="" className="w-6 h-6 rounded-md object-cover" />
+        )}
+        {name}
+    </button>
+));
+
+const MenuControls: React.FC<{
+    searchTerm: string;
+    setSearchTerm: (val: string) => void;
+    selectedCategory: string;
+    setSelectedCategory: (val: string) => void;
+    visibleCategories: Category[];
+    viewMode: 'compact' | 'detailed';
+    setViewMode: (mode: 'compact' | 'detailed') => void;
+}> = memo(({ searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, visibleCategories, viewMode, setViewMode }) => (
+    <div className="space-y-6">
+        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+            <h2 className="text-3xl font-bold text-stone-800 dark:text-white">Our Menu</h2>
+            <div className="flex items-center gap-4">
+                <div className="flex bg-white dark:bg-zinc-800 rounded-lg p-1 border border-stone-200 dark:border-zinc-700 shadow-sm">
+                    <button
+                        onClick={() => setViewMode('compact')}
+                        className={`p-2 rounded-md transition-all ${viewMode === 'compact' ? 'bg-stone-100 dark:bg-zinc-700 text-[#A58D79] dark:text-white shadow-inner' : 'text-stone-400 hover:text-stone-600 dark:hover:text-zinc-300'}`}
+                        title="Compact View"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={() => setViewMode('detailed')}
+                        className={`p-2 rounded-md transition-all ${viewMode === 'detailed' ? 'bg-stone-100 dark:bg-zinc-700 text-[#A58D79] dark:text-white shadow-inner' : 'text-stone-400 hover:text-stone-600 dark:hover:text-zinc-300'}`}
+                        title="Detailed View"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+                <input 
+                    type="text"
+                    placeholder="Search for a drink..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white w-full md:w-64"
+                    aria-label="Search menu"
+                />
+            </div>
+        </div>
+        <div id="menu-categories" className="flex flex-wrap items-center gap-2">
+            <CategoryButton 
+                id="all" 
+                name="All" 
+                    isSelected={selectedCategory === 'all'} 
+                onClick={setSelectedCategory} 
+            />
+            {visibleCategories.map((cat) => (
+                <CategoryButton 
+                    key={cat.id}
+                    id={cat.id}
+                    name={cat.name}
+                    imageUrl={cat.imageUrl}
+                    isSelected={selectedCategory === cat.id}
+                    onClick={setSelectedCategory}
+                />
+            ))}
+        </div>
+    </div>
+));
 
 const CustomerView: React.FC = () => {
   const { state, dispatch, firebaseUser } = useContext(AppContext);
@@ -36,6 +126,7 @@ const CustomerView: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [editingCartItem, setEditingCartItem] = useState<CartItem | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
   const [pickupOption, setPickupOption] = useState<'now' | 'later'>('now');
   const [pickupDate, setPickupDate] = useState(new Date().toISOString().split('T')[0]);
   const [pickupTime, setPickupTime] = useState('09:00');
@@ -43,6 +134,27 @@ const CustomerView: React.FC = () => {
   const [tutorialStep, setTutorialStep] = useState(0);
   const [isFirstLogin, setIsFirstLogin] = useState(false);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isBirthday = useMemo(() => {
+    if (!currentUser?.birthday) return false;
+    const bday = new Date(currentUser.birthday);
+    const today = new Date();
+    return bday.getMonth() === today.getMonth() && bday.getDate() === today.getDate();
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (isBirthday && cart.length > 0 && !appliedDiscount) {
+      const birthdayDiscount: Discount = {
+        id: 'birthday-free-drink',
+        code: 'BIRTHDAY_FREE',
+        type: 'percentage',
+        value: 100
+      };
+      setAppliedDiscount(birthdayDiscount);
+      addToast("Happy Birthday! Your order is on us today! 🎂", "success");
+    }
+  }, [isBirthday, cart.length, appliedDiscount, addToast]);
 
 
   useEffect(() => {
@@ -129,14 +241,44 @@ const CustomerView: React.FC = () => {
     }
     setSelectedDrink(drink);
   }, [isTutorialActive, tutorialStep, tutorialSteps]);
+
+  const handleQuickAdd = useCallback((drink: Drink) => {
+    const initialSelections: { [groupId: string]: SelectedModifier[] } = {};
+    drink.modifierGroups.forEach(groupId => {
+      const group = state.modifierGroups.find(g => g.id === groupId);
+      if (group && group.options.length > 0) {
+        initialSelections[groupId] = [{ option: group.options[0], quantity: 1 }];
+      }
+    });
+
+    const basePrice = typeof drink.basePrice === 'number' && !isNaN(drink.basePrice) ? drink.basePrice : 0;
+    const modifiersPrice = Object.values(initialSelections).reduce((sum, mods) => {
+        return sum + mods.reduce((modSum, sm) => {
+            const price = typeof sm.option.price === 'number' && !isNaN(sm.option.price) ? sm.option.price : 0;
+            return modSum + (price * sm.quantity);
+        }, 0);
+    }, 0);
+    const finalPrice = basePrice + modifiersPrice;
+
+    const newCartItem: CartItem = {
+      id: `cart-item-${Date.now()}`,
+      drink,
+      quantity: 1,
+      selectedModifiers: initialSelections,
+      finalPrice,
+    };
+
+    dispatch({ type: 'ADD_ITEM_TO_CART', payload: newCartItem });
+    addToast(`${drink.name} added to cart!`, 'success');
+  }, [state.modifierGroups, dispatch, addToast]);
   
-  const handleEditCartItem = (item: CartItem) => {
+  const handleEditCartItem = useCallback((item: CartItem) => {
       setEditingCartItem(item);
       setSelectedDrink(item.drink);
       setIsCartOpen(false); // Close cart to open the order modal
-  };
+  }, []);
 
-  const handleSaveCartItem = (item: CartItem) => {
+  const handleSaveCartItem = useCallback((item: CartItem) => {
     if (editingCartItem) {
         // Update existing item
         dispatch({ type: 'UPDATE_CART_ITEM', payload: { ...item, id: editingCartItem.id } });
@@ -154,34 +296,19 @@ const CustomerView: React.FC = () => {
     // Reset editing state
     setSelectedDrink(null);
     setEditingCartItem(null);
-  };
+  }, [editingCartItem, dispatch, isTutorialActive, tutorialStep, tutorialSteps]);
 
 
-  const removeFromCart = (itemId: string) => {
+  const removeFromCart = useCallback((itemId: string) => {
     dispatch({ type: 'REMOVE_ITEM_FROM_CART', payload: itemId });
-  };
+  }, [dispatch]);
   
-  const hasLoyaltyReward = useMemo(() => {
-    if (currentUser) {
-        return currentUser.loyaltyPoints === 0 && cart.length > 0 && currentUser.name.toLowerCase() === customerName.toLowerCase();
-    }
-    const guestLoyalty = state.loyaltyData[customerName.toLowerCase()];
-    return guestLoyalty && guestLoyalty.drinkCount === 0 && cart.length > 0;
-  }, [customerName, currentUser, state.loyaltyData, cart.length]);
-
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.finalPrice, 0), [cart]);
 
   const cartItemCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
 
   const finalTotal = useMemo(() => {
     let total = subtotal;
-    let loyaltyDiscount = 0;
-
-    if (hasLoyaltyReward && cart.length > 0) {
-        const cheapestItem = cart.reduce((cheapest, item) => (item.finalPrice/item.quantity < cheapest.finalPrice/cheapest.quantity ? item : cheapest));
-        loyaltyDiscount = cheapestItem.finalPrice / cheapestItem.quantity;
-        total -= loyaltyDiscount;
-    }
     
     if (appliedDiscount) {
       if (appliedDiscount.type === 'percentage') {
@@ -191,9 +318,9 @@ const CustomerView: React.FC = () => {
       }
     }
     return Math.max(0, total);
-  }, [subtotal, appliedDiscount, hasLoyaltyReward, cart]);
+  }, [subtotal, appliedDiscount]);
 
-  const handleApplyDiscount = () => {
+  const handleApplyDiscount = useCallback(() => {
     const discount = state.discounts.find(d => d.code.toLowerCase() === discountCode.toLowerCase());
     if (discount) {
       setAppliedDiscount(discount);
@@ -204,9 +331,11 @@ const CustomerView: React.FC = () => {
       setError('Invalid discount code.');
       addToast('Invalid or expired discount code.', 'error');
     }
-  };
+  }, [state.discounts, discountCode, addToast]);
 
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = useCallback(async () => {
+    if (isSubmitting) return;
+
     if (cart.length === 0) {
       addToast('Your cart is empty. Please add items to your order first.', 'error');
       return;
@@ -222,6 +351,7 @@ const CustomerView: React.FC = () => {
         return;
     }
     
+    setIsSubmitting(true);
     let orderCustomerName = customerName.trim();
     
     let pickupTimestamp: number | undefined = undefined;
@@ -234,13 +364,20 @@ const CustomerView: React.FC = () => {
         if (pickupTimestamp < Date.now()) {
             setError('Please select a pickup time in the future.');
             addToast('Please select a pickup time in the future.', 'error');
+            setIsSubmitting(false);
             return;
         }
     }
 
     const totalCost = cart.reduce((sum, item) => {
-        const modifiersCost = Object.values(item.selectedModifiers).reduce((modSum: number, mod: ModifierOption) => modSum + (mod.cost || 0), 0);
-        const itemCost = (item.drink.baseCost + modifiersCost) * item.quantity;
+        const modifiersCost = Object.values(item.selectedModifiers || {}).reduce((modSum: number, mods: SelectedModifier[]) => {
+            return modSum + mods.reduce((innerSum, sm) => {
+                const cost = typeof sm.option.cost === 'number' && !isNaN(sm.option.cost) ? sm.option.cost : 0;
+                return innerSum + (cost * sm.quantity);
+            }, 0);
+        }, 0);
+        const baseCost = typeof item.drink.baseCost === 'number' && !isNaN(item.drink.baseCost) ? item.drink.baseCost : 0;
+        const itemCost = (baseCost + modifiersCost) * item.quantity;
         return sum + itemCost;
     }, 0);
 
@@ -291,8 +428,10 @@ const CustomerView: React.FC = () => {
         console.error("Failed to place order:", err);
         setError('There was a problem placing your order. Please try again.');
         addToast('Could not place order. Please check connection and security rules.', 'error');
+    } finally {
+        setIsSubmitting(false);
     }
-  };
+  }, [isSubmitting, cart, customerName, firebaseUser, pickupOption, pickupTime, pickupDate, currentUser, subtotal, appliedDiscount, finalTotal, paymentMethod, dispatch, addToast]);
   
   const visibleCategories = useMemo(() => {
     const categoriesWithDrinks = new Set<string>();
@@ -329,60 +468,56 @@ const CustomerView: React.FC = () => {
   const currentStepConfig = isTutorialActive ? tutorialSteps[tutorialStep] : null;
 
   return (
-    <div className="bg-[#F5F3EF] dark:bg-zinc-900 text-stone-800 dark:text-zinc-200 transition-colors duration-300">
-        <div className="container mx-auto p-4 md:p-8">
+    <div className="bg-[#F5F3EF] dark:bg-zinc-900 text-stone-800 dark:text-zinc-200 transition-colors duration-300 min-h-screen w-full">
+        <div className="w-full px-4 md:px-8 py-4 md:py-8">
             <div className="text-center mb-8">
                 <h1 id="customer-view-heading" className="text-4xl md:text-5xl font-bold text-stone-900 dark:text-zinc-100 tracking-tight">Welcome to Realife Cafe</h1>
                 <p className="mt-3 text-lg text-stone-600 dark:text-zinc-300">Your weekly dose of happiness, one cup at a time.</p>
             </div>
-            <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
-                <h2 className="text-3xl font-bold text-stone-800 dark:text-white">Our Menu</h2>
-                <div className="flex items-center gap-4">
-                    <input 
-                        type="text"
-                        placeholder="Search for a drink..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white w-full md:w-64"
-                        aria-label="Search menu"
-                    />
-                </div>
-            </div>
-             <div className="mb-6 p-4 bg-white dark:bg-zinc-800 border-l-4 border-amber-500 text-stone-800 dark:text-zinc-200 rounded-r-lg shadow">
+
+            <MenuControls 
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
+                visibleCategories={visibleCategories}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+            />
+
+             <div className="my-6 p-4 bg-white dark:bg-zinc-800 border-l-4 border-amber-500 text-stone-800 dark:text-zinc-200 rounded-r-lg shadow">
                 <p className="font-semibold">Weekly Coffee Joke:</p>
                 <p className="italic">"{weeklyJoke}"</p>
               </div>
-            <div id="menu-categories" className="flex flex-wrap items-center gap-2 mb-6">
-                <button
-                    onClick={() => setSelectedCategory('all')}
-                    className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
-                        selectedCategory === 'all'
-                        ? 'bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800'
-                        : 'bg-white dark:bg-zinc-700 hover:bg-stone-100 dark:hover:bg-zinc-600'
-                    }`}
-                >
-                    All
-                </button>
-                {visibleCategories.map((cat) => (
-                    <button
-                        key={cat.id}
-                        onClick={() => setSelectedCategory(cat.id)}
-                        className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
-                            selectedCategory === cat.id
-                            ? 'bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800'
-                            : 'bg-white dark:bg-zinc-700 hover:bg-stone-100 dark:hover:bg-zinc-600'
-                        }`}
-                    >
-                        {cat.name}
-                    </button>
-                ))}
-            </div>
-            <div id="menu-grid" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
-            {filteredDrinks.map((drink, index) => (
-                <div key={drink.id} className={index === 0 ? 'first-drink-card' : ''}>
-                    <DrinkCard drink={drink} onSelect={handleSelectDrink} />
-                </div>
-            ))}
+            
+            <div id="menu-grid">
+                {state.drinks.length === 0 ? (
+                    <MenuSkeleton />
+                ) : (
+                    <div className={viewMode === 'compact' 
+                        ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4"
+                        : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                    }>
+                        {filteredDrinks.map((drink, index) => (
+                            <div key={drink.id} className={index === 0 ? 'first-drink-card' : ''}>
+                                {viewMode === 'compact' ? (
+                                    <DrinkCard 
+                                        drink={drink} 
+                                        onSelect={handleSelectDrink} 
+                                        onQuickAdd={handleQuickAdd}
+                                        priority={index < 6}
+                                    />
+                                ) : (
+                                    <DetailedDrinkCard 
+                                        drink={drink} 
+                                        onSelect={handleSelectDrink} 
+                                        onQuickAdd={handleQuickAdd}
+                                    />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
 
@@ -401,52 +536,58 @@ const CustomerView: React.FC = () => {
             )}
         </button>
         
-        <CartFlyout
-            isOpen={isCartOpen}
-            onClose={() => setIsCartOpen(false)}
-            cart={cart}
-            subtotal={subtotal}
-            finalTotal={finalTotal}
-            appliedDiscount={appliedDiscount}
-            hasLoyaltyReward={hasLoyaltyReward}
-            customerName={customerName}
-            onCustomerNameChange={setCustomerName}
-            discountCode={discountCode}
-            onDiscountCodeChange={setDiscountCode}
-            onApplyDiscount={handleApplyDiscount}
-            paymentMethod={paymentMethod}
-            onPaymentMethodChange={setPaymentMethod}
-            error={error}
-            onPlaceOrder={handlePlaceOrder}
-            onRemoveItem={removeFromCart}
-            onEditItem={handleEditCartItem}
-            isLoggedIn={!!currentUser}
-            pickupOption={pickupOption}
-            onPickupOptionChange={setPickupOption}
-            pickupDate={pickupDate}
-            onPickupDateChange={setPickupDate}
-            pickupTimeValue={pickupTime}
-            onPickupTimeChange={setPickupTime}
-        />
-
-        <OrderModal
-            isOpen={!!selectedDrink}
-            drink={selectedDrink}
-            onClose={handleModalClose}
-            onSaveItem={handleSaveCartItem}
-            cartItemToEdit={editingCartItem}
-        />
-
-        <TutorialGuide isPulsing={isFirstLogin && !isTutorialActive} onClick={startTutorial} />
-        {isTutorialActive && currentStepConfig && (
-            <TutorialStep
-                key={tutorialStep}
-                step={currentStepConfig}
-                isLastStep={tutorialStep === tutorialSteps.length - 1}
-                onNext={!currentStepConfig.waitForAction ? () => setTutorialStep(prev => prev + 1) : () => {}}
-                onExit={() => exitTutorial(false)}
+        <Suspense fallback={null}>
+            <CartFlyout
+                isOpen={isCartOpen}
+                onClose={() => setIsCartOpen(false)}
+                cart={cart}
+                subtotal={subtotal}
+                finalTotal={finalTotal}
+                appliedDiscount={appliedDiscount}
+                customerName={customerName}
+                onCustomerNameChange={setCustomerName}
+                discountCode={discountCode}
+                onDiscountCodeChange={setDiscountCode}
+                onApplyDiscount={handleApplyDiscount}
+                paymentMethod={paymentMethod}
+                onPaymentMethodChange={setPaymentMethod}
+                error={error}
+                onPlaceOrder={handlePlaceOrder}
+                isSubmitting={isSubmitting}
+                onRemoveItem={removeFromCart}
+                onEditItem={handleEditCartItem}
+                isLoggedIn={!!currentUser}
+                pickupOption={pickupOption}
+                onPickupOptionChange={setPickupOption}
+                pickupDate={pickupDate}
+                onPickupDateChange={setPickupDate}
+                pickupTimeValue={pickupTime}
+                onPickupTimeChange={setPickupTime}
             />
-        )}
+        </Suspense>
+
+        <Suspense fallback={null}>
+            <OrderModal
+                isOpen={!!selectedDrink}
+                drink={selectedDrink}
+                onClose={handleModalClose}
+                onSaveItem={handleSaveCartItem}
+                cartItemToEdit={editingCartItem}
+            />
+        </Suspense>
+
+        <Suspense fallback={null}>
+            <TutorialGuide isPulsing={isFirstLogin && !isTutorialActive} onClick={startTutorial} />
+            {isTutorialActive && currentStepConfig && (
+                <TutorialStep
+                    key={tutorialStep}
+                    step={currentStepConfig}
+                    isLastStep={tutorialStep === tutorialSteps.length - 1}
+                    onNext={!currentStepConfig.waitForAction ? () => setTutorialStep(prev => prev + 1) : () => {}}
+                    onExit={() => exitTutorial(false)}
+                />
+            )}
+        </Suspense>
         
         {/* Fullscreen Trigger Modal */}
         {showFullscreenPrompt && (

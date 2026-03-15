@@ -1,7 +1,7 @@
 import React, { createContext, useReducer, useEffect, ReactNode, Dispatch, useState, useRef } from 'react';
 import { AppState, Action, Order, User, UserRole, Feedback, Category, KnowledgeArticle, TutorialStep } from '../types';
 import { INITIAL_DISCOUNTS, INITIAL_KNOWLEDGE_BASE, INITIAL_TUTORIAL_STEPS } from '../constants';
-import { updateOrder, onOrdersUpdate, onMenuUpdate, saveMenu, seedInitialMenu, saveTutorialSteps, seedInitialTutorialSteps, getTutorialSteps } from '../firebase/firestoreService';
+import { updateOrder, deleteOrder, onOrdersUpdate, onMenuUpdate, saveMenu, seedInitialMenu, saveTutorialSteps, seedInitialTutorialSteps, getTutorialSteps, onUsersUpdate, updateUser, saveUser, seedInitialUsers, isPermissionError } from '../firebase/firestoreService';
 import { database, auth, isFirebaseConfigured } from '../firebase/config';
 import { useToast } from './ToastContext';
 
@@ -11,11 +11,10 @@ const initialState: AppState = {
   modifierGroups: [],
   orders: [],
   discounts: INITIAL_DISCOUNTS,
-  loyaltyData: {},
   users: [
-      { id: 'admin-user', name: 'admin', role: UserRole.ADMIN, favourites: [], loyaltyPoints: 0 },
-      { id: 'kitchen-user', name: 'kitchen', role: UserRole.KITCHEN, favourites: [], loyaltyPoints: 0 },
-      { id: 'jp1-admin-user', name: 'JP1', role: UserRole.ADMIN, favourites: [], loyaltyPoints: 0 },
+      { id: 'admin-user', name: 'admin', role: UserRole.ADMIN, favourites: [] },
+      { id: 'kitchen-user', name: 'kitchen', role: UserRole.KITCHEN, favourites: [] },
+      { id: 'jp1-admin-user', name: 'JP1', role: UserRole.ADMIN, favourites: [] },
   ],
   currentUser: null,
   feedback: [],
@@ -26,6 +25,8 @@ const initialState: AppState = {
   isKnowledgeModalOpen: false,
   activeKnowledgeArticleId: null,
   permissionError: null,
+  isMenuLoaded: false,
+  isTutorialLoaded: false,
 };
 
 // Basic sanitiser to strip HTML tags. In a real app, use a robust library like DOMPurify.
@@ -42,6 +43,12 @@ const appReducer = (state: AppState, action: Action): AppState => {
       return { ...state, permissionError: action.payload };
     case 'SET_ORDERS':
         return { ...state, orders: action.payload };
+    case 'SET_USERS': {
+        const updatedCurrentUser = state.currentUser 
+            ? action.payload.find(u => u.id === state.currentUser?.id) || state.currentUser 
+            : null;
+        return { ...state, users: action.payload, currentUser: updatedCurrentUser };
+    }
     case '_HYDRATE_STATE_FROM_STORAGE': {
         try {
             const localData = localStorage.getItem('cafe-pos-data');
@@ -51,7 +58,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
                 return {
                     ...state,
                     discounts: parsed.discounts ?? state.discounts,
-                    loyaltyData: parsed.loyaltyData ?? state.loyaltyData,
                     users: parsed.users ?? state.users,
                     feedback: parsed.feedback ?? state.feedback,
                     theme: parsed.theme ?? state.theme,
@@ -68,20 +74,25 @@ const appReducer = (state: AppState, action: Action): AppState => {
     case 'REGISTER': {
       const existingUser = state.users.find(c => c.name.toLowerCase() === action.payload.name.toLowerCase());
       if (existingUser) {
-        return state;
+        return { ...state, currentUser: existingUser };
       }
+      
+      // Auto-promote the first 'admin' registration to Administrator
+      const isInitialAdmin = action.payload.name.toLowerCase() === 'admin';
+      
       const newUser: User = {
         name: action.payload.name,
-        id: `user-${Date.now()}`,
-        role: UserRole.CUSTOMER,
+        id: action.payload.userId,
+        role: isInitialAdmin ? UserRole.ADMIN : UserRole.CUSTOMER,
         favourites: [],
-        loyaltyPoints: 0,
         hasCompletedTutorial: false,
       };
-      const newUsers = [...state.users, newUser];
+      
+      saveUser(newUser).catch(err => console.error("Failed to save new user to Firebase:", err));
+
       return {
         ...state,
-        users: newUsers,
+        users: [...state.users, newUser],
         currentUser: newUser,
       };
     }
@@ -96,7 +107,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
             id: `guest-${Date.now()}`,
             role: UserRole.CUSTOMER,
             favourites: [],
-            loyaltyPoints: 0
         };
         return { ...state, currentUser: guestUser };
       }
@@ -108,10 +118,18 @@ const appReducer = (state: AppState, action: Action): AppState => {
     }
     case 'ADD_FAVOURITE': {
       if (!state.currentUser) return state;
+      const updatedFavourites = [...state.currentUser.favourites, action.payload];
       const updatedUser = {
         ...state.currentUser,
-        favourites: [...state.currentUser.favourites, action.payload]
+        favourites: updatedFavourites
       };
+      
+      // Update Firebase
+      if (!state.currentUser.id.startsWith('guest-')) {
+          updateUser(state.currentUser.id, { favourites: updatedFavourites })
+            .catch(err => console.error("Failed to add favourite in Firebase:", err));
+      }
+
       return {
         ...state,
         currentUser: updatedUser,
@@ -120,10 +138,18 @@ const appReducer = (state: AppState, action: Action): AppState => {
     }
     case 'REMOVE_FAVOURITE': {
        if (!state.currentUser) return state;
+       const updatedFavourites = state.currentUser.favourites.filter(fav => fav.id !== action.payload);
        const updatedUser = {
            ...state.currentUser,
-           favourites: state.currentUser.favourites.filter(fav => fav.id !== action.payload)
+           favourites: updatedFavourites
        };
+
+       // Update Firebase
+       if (!state.currentUser.id.startsWith('guest-')) {
+           updateUser(state.currentUser.id, { favourites: updatedFavourites })
+             .catch(err => console.error("Failed to remove favourite in Firebase:", err));
+       }
+
        return {
            ...state,
            currentUser: updatedUser,
@@ -138,27 +164,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
       // FIX: `console.assert` expects a boolean condition. Explicitly convert the string to a boolean.
       console.assert(!!action.payload.customerId, "PLACE_ORDER action dispatched without a customerId.");
 
-      const totalDrinksInOrder = state.cart.reduce((sum, item) => sum + item.quantity, 0);
-
       let newState = { ...state };
-      
-      // Update loyalty points
-      if (state.currentUser && !state.currentUser.id.startsWith('guest-')) {
-          const registeredUser = state.users.find(u => u.id === state.currentUser?.id);
-          if (registeredUser) {
-              const currentPoints = registeredUser.loyaltyPoints;
-              const pointsEarned = totalDrinksInOrder;
-              const updatedUser = { ...registeredUser, loyaltyPoints: (currentPoints + pointsEarned) % 5 };
-              newState.currentUser = updatedUser;
-              newState.users = state.users.map(c => c.id === updatedUser.id ? updatedUser : c);
-          }
-      } else { // Guest user loyalty
-        const customerName = action.payload.customerName.toLowerCase();
-        const currentLoyalty = state.loyaltyData[customerName] || { drinkCount: 0 };
-        const updatedDrinkCount = currentLoyalty.drinkCount + totalDrinksInOrder;
-        newState.loyaltyData = { ...state.loyaltyData, [customerName]: { drinkCount: updatedDrinkCount % 5 } };
-      }
-        
       newState.cart = [];
       
       return newState;
@@ -194,9 +200,26 @@ const appReducer = (state: AppState, action: Action): AppState => {
         
         return state;
     }
+    case 'MERGE_ORDERS': {
+        const { orderIds, mergeId } = action.payload;
+        orderIds.forEach(id => {
+            updateOrder(id, { mergeId })
+                .catch(err => console.error(`Failed to merge order ${id}:`, err));
+        });
+        return state;
+    }
+    case 'UNMERGE_ORDER': {
+        updateOrder(action.payload, { mergeId: undefined })
+            .catch(err => console.error(`Failed to unmerge order ${action.payload}:`, err));
+        return state;
+    }
     case 'COMPLETE_ORDER':
       updateOrder(action.payload, { status: 'completed', completedAt: Date.now() })
         .catch(err => console.error("Failed to complete order:", err));
+      return state;
+    case 'DELETE_ORDER':
+      deleteOrder(action.payload)
+        .catch(err => console.error("Failed to delete order:", err));
       return state;
     case 'REQUEUE_ORDER':
       updateOrder(action.payload, { status: 'pending', completedAt: undefined })
@@ -207,11 +230,13 @@ const appReducer = (state: AppState, action: Action): AppState => {
         .catch(err => console.error("Failed to activate scheduled order:", err));
       return state;
     case 'ADD_DRINK':
-      return { ...state, drinks: [...state.drinks, action.payload] };
+      const newDrink = { ...action.payload, imageUrl: action.payload.imageUrl || "" };
+      return { ...state, drinks: [...state.drinks, newDrink] };
     case 'UPDATE_DRINK':
+      const updatedDrink = { ...action.payload, imageUrl: action.payload.imageUrl || "" };
       return {
         ...state,
-        drinks: state.drinks.map(d => (d.id === action.payload.id ? action.payload : d)),
+        drinks: state.drinks.map(d => (d.id === action.payload.id ? updatedDrink : d)),
       };
     case 'DELETE_DRINK':
       return {
@@ -275,6 +300,34 @@ const appReducer = (state: AppState, action: Action): AppState => {
                 user.id === action.payload.userId ? { ...user, role: action.payload.role } : user
             ),
         };
+    case 'UPDATE_USER_PROFILE': {
+        const { userId, name, birthday } = action.payload;
+        
+        updateUser(userId, { 
+            ...(name && { name }), 
+            ...(birthday !== undefined && { birthday }) 
+        }).catch(err => console.error("Failed to update user profile in Firebase:", err));
+
+        const updatedUsers = state.users.map(user => {
+            if (user.id === userId) {
+                return { 
+                    ...user, 
+                    ...(name && { name }), 
+                    ...(birthday !== undefined && { birthday }) 
+                };
+            }
+            return user;
+        });
+        const updatedCurrentUser = state.currentUser?.id === userId 
+            ? updatedUsers.find(u => u.id === userId) || null 
+            : state.currentUser;
+        
+        return {
+            ...state,
+            users: updatedUsers,
+            currentUser: updatedCurrentUser,
+        };
+    }
     case 'SUBMIT_FEEDBACK': {
         const newFeedback: Feedback = {
             ...action.payload,
@@ -319,9 +372,11 @@ const appReducer = (state: AppState, action: Action): AppState => {
             drinks: (action.payload.drinks || []).map(drink => ({
                 ...drink,
                 modifierGroups: drink.modifierGroups || [],
+                imageUrl: drink.imageUrl || "", // Ensure it's never undefined or null
             })),
             categories: action.payload.categories || [],
             modifierGroups: action.payload.modifierGroups || [],
+            isMenuLoaded: true, // New flag to track initial load
         };
     case 'ADD_KB_ARTICLE': {
         const newArticle: KnowledgeArticle = {
@@ -353,9 +408,9 @@ const appReducer = (state: AppState, action: Action): AppState => {
             activeKnowledgeArticleId: null,
         };
     case 'SET_TUTORIAL_STEPS':
-        return { ...state, tutorialSteps: action.payload };
+        return { ...state, tutorialSteps: action.payload, isTutorialLoaded: true };
     case 'UPDATE_TUTORIAL_STEPS':
-        return { ...state, tutorialSteps: action.payload };
+        return { ...state, tutorialSteps: action.payload, isTutorialLoaded: true };
     default:
       return state;
   }
@@ -370,7 +425,7 @@ const AppContext = createContext<{ state: AppState; dispatch: Dispatch<Action>; 
 
 const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { addToast } = useToast();
-  const isMounted = useRef(false);
+  const isTutorialLoadedRef = useRef(false);
 
   const [state, dispatch] = useReducer(appReducer, initialState, (initial) => {
     try {
@@ -410,10 +465,8 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     if (isFirebaseConfigured && auth) {
       const signIn = async () => {
         try {
-          // @ts-ignore
-          const authInstance = window.firebase.auth();
-          if (!authInstance.currentUser) {
-            await authInstance.signInAnonymously();
+          if (!auth.currentUser) {
+            await auth.signInAnonymously();
           }
         } catch (error: any) {
           console.error("Anonymous sign-in failed", error);
@@ -426,8 +479,7 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         }
       };
       signIn();
-      // @ts-ignore
-      const unsubscribe = window.firebase.auth().onAuthStateChanged((user) => {
+      const unsubscribe = auth.onAuthStateChanged((user) => {
         setFirebaseUser(user);
       });
       return () => unsubscribe();
@@ -436,110 +488,116 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   
   // Destructure for explicit dependency arrays
   const { drinks, categories, modifierGroups, tutorialSteps, ...nonMenuState } = state;
-  const { discounts, loyaltyData, users, currentUser, feedback, theme } = nonMenuState;
+  const { discounts, users, currentUser, feedback, theme } = nonMenuState;
 
   // Effect for persisting non-menu and non-order data to localStorage
   useEffect(() => {
-    const stateToSave = { discounts, loyaltyData, users: users.filter(u => !u.id.startsWith('guest-')), currentUser, feedback, theme };
-    localStorage.setItem('cafe-pos-data', JSON.stringify(stateToSave));
-  }, [discounts, loyaltyData, users, currentUser, feedback, theme]);
+    const timeoutId = setTimeout(() => {
+      const stateToSave = { discounts, users: users.filter(u => !u.id.startsWith('guest-')), currentUser, feedback, theme };
+      localStorage.setItem('cafe-pos-data', JSON.stringify(stateToSave));
+    }, 1000); // Debounce by 1 second
+    
+    return () => clearTimeout(timeoutId);
+  }, [discounts, users, currentUser, feedback, theme]);
 
   // Effect to listen for real-time updates from Firebase
   useEffect(() => {
     if (database && firebaseUser) {
-        const unsubscribeOrders = onOrdersUpdate((orders: Order[]) => {
-            dispatch({ type: 'SET_ORDERS', payload: orders });
-        });
-        
         let unsubscribeMenu: (() => void) | undefined;
+        let unsubscribeOrders: (() => void) | undefined;
+        let unsubscribeUsers: (() => void) | undefined;
 
         const setupListeners = async () => {
-            try {
-                await seedInitialMenu();
-            } catch (error: any) {
-                if (error.message.toLowerCase().includes('permission_denied')) {
-                    dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase write permission denied for '/menu'. Please update your Realtime Database security rules.` });
+            // Seeding data (requires write permission, which is auth != null)
+            // We only seed if the user is an ADMIN to prevent multiple clients trying to seed at once
+            const isAdmin = state.currentUser?.role === UserRole.ADMIN;
+            
+            if (isAdmin) {
+                try {
+                    await seedInitialMenu();
+                } catch (error: any) {
+                    const errorStr = String(error).toLowerCase();
+                    if (errorStr.includes('permission_denied')) {
+                        dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase write permission denied for '/menu'.` });
+                    }
                 }
-            }
-            try {
-                await seedInitialTutorialSteps();
-            } catch (error: any) {
-                if (error.message.toLowerCase().includes('permission_denied')) {
-                    dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase write permission denied for '/tutorialSteps'. Please update your Realtime Database security rules.` });
+                try {
+                    await seedInitialTutorialSteps();
+                } catch (error: any) {
+                    const errorStr = String(error).toLowerCase();
+                    if (errorStr.includes('permission_denied')) {
+                        dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase write permission denied for '/tutorialSteps'.` });
+                    }
+                }
+                try {
+                    await seedInitialUsers(initialState.users);
+                } catch (error: any) {
+                    if (isPermissionError(error)) {
+                        dispatch({ 
+                            type: 'SET_PERMISSION_ERROR', 
+                            payload: `Firebase Permission Denied. Your database rules are likely set to private. Please update your Realtime Database rules to allow read/write access.` 
+                        });
+                    }
                 }
             }
 
+            // Listeners (respecting auth != null rules)
             unsubscribeMenu = onMenuUpdate(
-                (menu) => { // success callback
+                (menu) => {
                     dispatch({ type: 'SET_MENU_DATA', payload: menu });
-                    isMounted.current = true;
                 }, 
-                (error) => { // error callback
+                (error) => {
                     if (error.message.toLowerCase().includes('permission_denied')) {
-                         dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/menu'. Please update your Realtime Database security rules.` });
+                         dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/menu'.` });
                     }
                 }
             );
 
-            // OPTIMIZATION: Fetch tutorial steps once instead of listening for changes.
-            try {
-                const fetchedSteps = await getTutorialSteps();
-                dispatch({ type: 'SET_TUTORIAL_STEPS', payload: fetchedSteps });
-            } catch (error: any) {
-                 if (error.message.toLowerCase().includes('permission_denied')) {
-                    dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/tutorialSteps'. Please update your Realtime Database security rules.` });
+            // Only listen to ALL orders if user is Staff or Admin
+            const isStaff = state.currentUser?.role === UserRole.ADMIN || state.currentUser?.role === UserRole.KITCHEN;
+            
+            if (isStaff) {
+                unsubscribeOrders = onOrdersUpdate(
+                    (orders: Order[]) => {
+                        dispatch({ type: 'SET_ORDERS', payload: orders });
+                    },
+                    (error: any) => {
+                        if (error.message?.toLowerCase().includes('permission_denied')) {
+                            dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/orders'.` });
+                        }
+                    }
+                );
+
+                // OPTIMIZATION: Only fetch users for ADMIN. KDS (KITCHEN) doesn't need them.
+                if (isAdmin) {
+                    unsubscribeUsers = onUsersUpdate(
+                        (users: User[]) => {
+                            dispatch({ type: 'SET_USERS', payload: users });
+                        },
+                        (error: any) => {
+                            if (error.message?.toLowerCase().includes('permission_denied')) {
+                                dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/users'.` });
+                            }
+                        }
+                    );
                 }
+            } else if (state.currentUser) {
+                // For customers, we could implement a filtered listener here 
+                // but for now we just stop the global "All Orders" sync
+                console.log("Customer detected: Skipping global order/user sync for performance.");
             }
         };
 
         setupListeners();
 
         return () => {
-            unsubscribeOrders();
+            if (unsubscribeOrders) unsubscribeOrders();
+            if (unsubscribeUsers) unsubscribeUsers();
             if (unsubscribeMenu) unsubscribeMenu();
         };
     }
-  }, [firebaseUser]);
+  }, [firebaseUser, state.currentUser?.role]);
 
-
-  // Effect to save menu changes back to Firebase
-  useEffect(() => {
-    // Only save after the initial data has been loaded to prevent overwriting db with empty initial state
-    if (isMounted.current) {
-        const persistMenu = async () => {
-            try {
-                await saveMenu({ drinks, categories, modifierGroups });
-            } catch (error: any) {
-                console.error("Failed to save menu changes:", error);
-                if (error.message.toLowerCase().includes('permission_denied')) {
-                    dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase write permission denied for '/menu'. Please update your Realtime Database security rules.` });
-                } else {
-                    addToast('Failed to save menu changes to the database.', 'error');
-                }
-            }
-        };
-        persistMenu();
-    }
-  }, [drinks, categories, modifierGroups, addToast]);
-
-  // Effect to save tutorial changes back to Firebase
-  useEffect(() => {
-    if (isMounted.current) {
-        const persistTutorial = async () => {
-            try {
-                await saveTutorialSteps(tutorialSteps);
-            } catch (error: any) {
-                console.error("Failed to save tutorial changes:", error);
-                if (error.message.toLowerCase().includes('permission_denied')) {
-                    dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase write permission denied for '/tutorialSteps'. Please update your Realtime Database security rules.` });
-                } else {
-                    addToast('Failed to save tutorial changes to the database.', 'error');
-                }
-            }
-        };
-        persistTutorial();
-    }
-  }, [tutorialSteps, addToast]);
 
   // Cross-tab sync for non-order/non-menu data
   useEffect(() => {
@@ -553,6 +611,20 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
+
+
+  // Effect to fetch tutorial steps once
+  useEffect(() => {
+    if (firebaseUser) {
+        getTutorialSteps()
+            .then(steps => dispatch({ type: 'SET_TUTORIAL_STEPS', payload: steps }))
+            .catch(error => {
+                if (error.message?.toLowerCase().includes('permission_denied')) {
+                    dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/tutorialSteps'.` });
+                }
+            });
+    }
+  }, [firebaseUser]);
 
 
   return <AppContext.Provider value={{ state, dispatch, firebaseUser }}>{children}</AppContext.Provider>;

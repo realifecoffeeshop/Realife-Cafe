@@ -3,6 +3,7 @@ import { AppContext } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
 import { TutorialStep } from '../../types';
 import Modal from '../shared/Modal';
+import { saveTutorialSteps } from '../../firebase/firestoreService';
 
 // Sub-component for the form modal
 const TutorialStepForm: React.FC<{
@@ -80,9 +81,14 @@ const TutorialManagement: React.FC = () => {
   
   const hasChanges = JSON.stringify(steps) !== JSON.stringify(state.tutorialSteps);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     dispatch({ type: 'UPDATE_TUTORIAL_STEPS', payload: steps });
-    addToast('Tutorial changes published!', 'success');
+    try {
+        await saveTutorialSteps(steps);
+        addToast('Tutorial changes published!', 'success');
+    } catch (error) {
+        addToast('Failed to save tutorial changes to database.', 'error');
+    }
   };
   
   const handleReset = () => {

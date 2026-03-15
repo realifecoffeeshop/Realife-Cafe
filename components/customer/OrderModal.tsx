@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Drink, ModifierGroup, ModifierOption, CartItem } from '../../types';
+import { Drink, ModifierGroup, ModifierOption, CartItem, SelectedModifier } from '../../types';
 import { AppContext } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../shared/Modal';
@@ -17,7 +17,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
   const { addToast } = useToast();
   const { currentUser } = state;
   const [quantity, setQuantity] = useState(1);
-  const [selectedModifiers, setSelectedModifiers] = useState<{ [groupId: string]: ModifierOption }>({});
+  const [selectedModifiers, setSelectedModifiers] = useState<{ [groupId: string]: SelectedModifier[] }>({});
   const [totalPrice, setTotalPrice] = useState(0);
   const [customName, setCustomName] = useState('');
 
@@ -26,16 +26,22 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
     if (activeDrink) {
       if (cartItemToEdit) {
         // Populate from existing item
-        setSelectedModifiers(cartItemToEdit.selectedModifiers);
+        setSelectedModifiers(cartItemToEdit.selectedModifiers || {});
         setQuantity(cartItemToEdit.quantity);
         setCustomName(cartItemToEdit.customName || '');
       } else {
         // Populate with defaults for a new item
-        const initialSelections: { [groupId: string]: ModifierOption } = {};
+        const initialSelections: { [groupId: string]: SelectedModifier[] } = {};
         activeDrink.modifierGroups.forEach(groupId => {
           const group = state.modifierGroups.find(g => g.id === groupId);
-          if (group && group.options.length > 0) {
-            initialSelections[groupId] = group.options[0];
+          if (group) {
+            if (group.isRequired) {
+              // If required, use defaultOptionId or the first option
+              const defaultOption = group.options.find(o => o.id === group.defaultOptionId) || group.options[0];
+              if (defaultOption) {
+                initialSelections[groupId] = [{ option: defaultOption, quantity: 1 }];
+              }
+            }
           }
         });
         setSelectedModifiers(initialSelections);
@@ -49,9 +55,13 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
   useEffect(() => {
     const activeDrink = cartItemToEdit?.drink || drink;
     if (activeDrink) {
-      let price = activeDrink.basePrice;
-      Object.values(selectedModifiers).forEach((mod: ModifierOption) => {
-        price += mod.price;
+      let price = typeof activeDrink.basePrice === 'number' && !isNaN(activeDrink.basePrice) ? activeDrink.basePrice : 0;
+      Object.values(selectedModifiers || {}).forEach((mods: SelectedModifier[]) => {
+        mods.forEach(sm => {
+          if (!sm.option) return;
+          const modPrice = typeof sm.option.price === 'number' && !isNaN(sm.option.price) ? sm.option.price : 0;
+          price += modPrice * sm.quantity;
+        });
       });
       setTotalPrice(price * quantity);
     }
@@ -63,7 +73,65 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
   const modalTitle = `Customise ${customName.trim() ? `${customName.trim()} (${activeDrink.name})` : activeDrink.name}`;
 
   const handleModifierChange = (groupId: string, option: ModifierOption) => {
-    setSelectedModifiers(prev => ({ ...prev, [groupId]: option }));
+    const group = state.modifierGroups.find(g => g.id === groupId);
+    if (!group) return;
+
+    const currentGroupSelections = selectedModifiers[groupId] || [];
+    const existingSelectionIndex = currentGroupSelections.findIndex(s => s.option.id === option.id);
+
+    if (existingSelectionIndex > -1) {
+      // Already selected
+      if (group.allowMultiple) {
+        // In multi-select, clicking again unselects it (unless required and it's the only one?)
+        // Actually, usually clicking again unselects.
+        if (group.isRequired && currentGroupSelections.length === 1) {
+          // Don't unselect if it's the only one in a required group
+          return;
+        }
+        setSelectedModifiers(prev => ({
+          ...prev,
+          [groupId]: currentGroupSelections.filter(s => s.option.id !== option.id)
+        }));
+      } else {
+        // In single-select, clicking the same one again
+        if (!group.isRequired) {
+          // Unselect if not required
+          setSelectedModifiers(prev => {
+            const next = { ...prev };
+            delete next[groupId];
+            return next;
+          });
+        }
+        // If required, do nothing (must pick another)
+      }
+    } else {
+      // Not selected
+      const newSelection: SelectedModifier = { option, quantity: 1 };
+      if (group.allowMultiple) {
+        setSelectedModifiers(prev => ({
+          ...prev,
+          [groupId]: [...currentGroupSelections, newSelection]
+        }));
+      } else {
+        setSelectedModifiers(prev => ({
+          ...prev,
+          [groupId]: [newSelection]
+        }));
+      }
+    }
+  };
+
+  const handleModifierQuantityChange = (groupId: string, optionId: string, delta: number) => {
+    setSelectedModifiers(prev => {
+      const currentGroupSelections = prev[groupId] || [];
+      const updatedSelections = currentGroupSelections.map(s => {
+        if (s.option.id === optionId) {
+          return { ...s, quantity: Math.max(1, s.quantity + delta) };
+        }
+        return s;
+      });
+      return { ...prev, [groupId]: updatedSelections };
+    });
   };
   
   const trimmedCustomName = customName.trim();
@@ -95,21 +163,52 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
         <div id="modifiers-section" className="space-y-6">
           {drinkModifierGroups.map(group => (
             <div key={group.id}>
-              <h4 className="font-semibold mb-2">{group.name}</h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold">{group.name}</h4>
+                {group.isRequired ? (
+                  <span className="text-xs bg-stone-200 dark:bg-zinc-700 px-2 py-0.5 rounded text-stone-600 dark:text-zinc-400">Required</span>
+                ) : (
+                  <span className="text-xs text-stone-400 dark:text-zinc-500 italic">Optional</span>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2">
-                {group.options.map(option => (
-                  <button
-                    key={option.id}
-                    onClick={() => handleModifierChange(group.id, option)}
-                    className={`px-4 py-2 text-sm rounded-full border transition-colors ${
-                      selectedModifiers[group.id]?.id === option.id
-                        ? 'bg-[#A58D79] text-white border-[#A58D79] dark:bg-zinc-100 dark:text-zinc-800 dark:border-zinc-100'
-                        : 'bg-stone-100 dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 hover:bg-stone-200 dark:hover:bg-zinc-600'
-                    }`}
-                  >
-                    {option.name} {option.price > 0 && `(+$${option.price.toFixed(2)})`}
-                  </button>
-                ))}
+                {group.options.map(option => {
+                  const selection = (selectedModifiers[group.id] || []).find(s => s.option.id === option.id);
+                  const isSelected = !!selection;
+                  
+                  return (
+                    <div key={option.id} className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleModifierChange(group.id, option)}
+                        className={`px-4 py-2 text-sm rounded-full border transition-colors ${
+                          isSelected
+                            ? 'bg-[#A58D79] text-white border-[#A58D79] dark:bg-zinc-100 dark:text-zinc-800 dark:border-zinc-100'
+                            : 'bg-stone-100 dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 hover:bg-stone-200 dark:hover:bg-zinc-600'
+                        }`}
+                      >
+                        {option.name} {option.price > 0 && `(+$${option.price.toFixed(2)})`}
+                      </button>
+                      
+                      {isSelected && group.allowQuantity && (
+                        <div className="flex items-center space-x-2 bg-stone-100 dark:bg-zinc-800 rounded-full px-2 py-1 border border-stone-200 dark:border-zinc-700">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleModifierQuantityChange(group.id, option.id, -1); }}
+                            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-600 dark:text-zinc-400"
+                          >
+                            -
+                          </button>
+                          <span className="text-xs font-bold min-w-[1rem] text-center">{selection.quantity}</span>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleModifierQuantityChange(group.id, option.id, 1); }}
+                            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-600 dark:text-zinc-400"
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}

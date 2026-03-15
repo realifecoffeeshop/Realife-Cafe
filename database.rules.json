@@ -1,0 +1,12 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "orders": {
+      ".indexOn": ["createdAt", "status"]
+    },
+    "drinks": {
+      ".indexOn": ["category"]
+    }
+  }
+}

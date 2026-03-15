@@ -1,8 +1,9 @@
 
-import React, { useContext, useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useContext, useState, useMemo, useEffect, useCallback, memo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { AppContext } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
-import { Drink, ModifierOption, Order } from '../../types';
+import { Drink, ModifierOption, Order, SelectedModifier } from '../../types';
 import OrderTicket from './OrderTicket';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import Modal from '../shared/Modal';
@@ -15,17 +16,17 @@ const filterOrders = (orders: Order[], query: string): Order[] => {
     if (!query.trim()) return orders;
     const lowerCaseQuery = query.toLowerCase();
     return orders.filter(order => {
-        const matchesCustomer = order.customerName.toLowerCase().includes(lowerCaseQuery);
-        const matchesId = order.id.toLowerCase().includes(lowerCaseQuery);
-        const matchesDrink = order.items.some(item => 
-            item.drink.name.toLowerCase().includes(lowerCaseQuery)
+        const matchesCustomer = (order.customerName || '').toLowerCase().includes(lowerCaseQuery);
+        const matchesId = (order.id || '').toLowerCase().includes(lowerCaseQuery);
+        const matchesDrink = (order.items || []).some(item => 
+            (item.drink?.name || '').toLowerCase().includes(lowerCaseQuery)
         );
         return matchesCustomer || matchesId || matchesDrink;
     });
 };
 
 
-const PaymentTicket: React.FC<{ order: Order; onVerify: (id: string) => void; }> = ({ order, onVerify }) => {
+const PaymentTicket = memo(({ order, onVerify, onDelete }: { order: Order; onVerify: (id: string) => void; onDelete: (id: string) => void; }) => {
   const [timeElapsed, setTimeElapsed] = useState('');
 
   useEffect(() => {
@@ -50,16 +51,37 @@ const PaymentTicket: React.FC<{ order: Order; onVerify: (id: string) => void; }>
   }
 
   return (
-    <div 
-        className={`bg-white dark:bg-zinc-800 rounded-lg shadow-md flex flex-col h-full border-4 ${ticketBorderClass()}`}
+    <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`bg-white dark:bg-zinc-800 rounded-lg shadow-md flex flex-col border-4 group relative ${ticketBorderClass()}`}
         role="article"
         aria-labelledby={`order-heading-${order.id}`}
     >
-      <header className="p-3 bg-stone-100 dark:bg-zinc-700 rounded-t-lg">
+      {/* Delete Button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(order.id);
+        }}
+        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-red-600"
+        title="Delete Order"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <header className="p-3 bg-stone-100 dark:bg-zinc-700 rounded-t-lg sticky top-0 z-20 shadow-sm">
         <div className="flex justify-between items-start">
             <div id={`order-heading-${order.id}`}>
               <h3 className="font-bold text-xl text-stone-900 dark:text-white truncate">{order.customerName}</h3>
-              <p className="text-xs text-stone-500 dark:text-zinc-400">ID: #{order.id.slice(-6)}</p>
+              <div className="flex items-center space-x-2 mt-1">
+                <p className="text-xs text-stone-500 dark:text-zinc-400">ID: #{order.id.slice(-6)}</p>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
+                  Unpaid
+                </span>
+              </div>
             </div>
             <span className="px-3 py-1 text-sm font-bold rounded-full bg-blue-500 text-white">
               {timeElapsed}
@@ -67,10 +89,10 @@ const PaymentTicket: React.FC<{ order: Order; onVerify: (id: string) => void; }>
         </div>
         <div className="mt-2 text-center bg-blue-100 dark:bg-blue-900/50 p-1 rounded-md">
             <p className="text-sm font-bold text-blue-800 dark:text-blue-200">
-                Total: ${order.finalTotal.toFixed(2)}
+                Total: ${(order.finalTotal || 0).toFixed(2)}
             </p>
         </div>
-        {order.pickupTime && (
+        {order.pickupTime && !isNaN(new Date(order.pickupTime).getTime()) && (
             <div className="mt-2 text-center bg-zinc-200 dark:bg-zinc-600 p-1 rounded-md">
                 <p className="text-xs font-bold text-stone-800 dark:text-white">
                     Scheduled Pickup: {new Date(order.pickupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -81,11 +103,11 @@ const PaymentTicket: React.FC<{ order: Order; onVerify: (id: string) => void; }>
       <div className="p-4 space-y-3 flex-grow overflow-y-auto">
         {order.items.map(item => (
           <div key={item.id} className="text-sm">
-            <p className="font-semibold text-base text-stone-800 dark:text-zinc-200">{item.quantity}x {item.drink.name}</p>
+            <p className="font-semibold text-base text-stone-800 dark:text-zinc-200">{item.quantity}x {item.drink?.name || 'Unknown Drink'}</p>
             {item.customName && <p className="pl-4 font-medium text-stone-700 dark:text-zinc-300">- {item.customName}</p>}
             <ul className="pl-4 list-disc list-inside text-stone-600 dark:text-zinc-400">
-              {Object.values(item.selectedModifiers).map((mod: ModifierOption) => (
-                <li key={mod.id}>{mod.name}</li>
+              {Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => (
+                <li key={sm.option?.id || Math.random()}>{sm.quantity > 1 ? `${sm.quantity}x ` : ''}{sm.option?.name || 'Unknown'}</li>
               ))}
             </ul>
           </div>
@@ -100,16 +122,82 @@ const PaymentTicket: React.FC<{ order: Order; onVerify: (id: string) => void; }>
           Verify Payment & Send to Kitchen
         </button>
       </footer>
-    </div>
+    </motion.div>
   );
-};
+});
+PaymentTicket.displayName = 'PaymentTicket';
+
+const TabButton: React.FC<{
+  tabId: 'payment-required' | 'pending' | 'scheduled' | 'history';
+  count: number;
+  children: React.ReactNode;
+  panelId: string;
+  activeTab: string;
+  onTabChange: (tab: any) => void;
+}> = ({ tabId, count, children, panelId, activeTab, onTabChange }) => (
+  <button
+    role="tab"
+    id={`tab-${tabId}`}
+    aria-controls={panelId}
+    aria-selected={activeTab === tabId}
+    onClick={() => onTabChange(tabId)}
+    className={`px-4 md:px-6 py-2 text-base md:text-lg font-semibold rounded-t-md transition-colors border-b-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 dark:focus:ring-offset-zinc-900 flex-shrink-0 ${
+      activeTab === tabId
+        ? 'bg-white text-stone-700 border-stone-600 dark:bg-zinc-800 dark:text-white dark:border-white'
+        : 'text-stone-500 hover:text-stone-800 dark:hover:text-zinc-200 border-transparent'
+    }`}
+  >
+    {children} ({count})
+  </button>
+);
+
+const ViewModeToggle: React.FC<{
+  kdsViewMode: 'order' | 'item' | 'type';
+  onModeChange: (mode: 'order' | 'item' | 'type') => void;
+}> = ({ kdsViewMode, onModeChange }) => (
+  <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
+    <div className="flex-1">
+      <h2 id="view-mode-label" className="sr-only">KDS View Mode</h2>
+      <div role="radiogroup" aria-labelledby="view-mode-label" className="flex items-center bg-stone-200 dark:bg-zinc-700 rounded-lg p-1 max-w-sm">
+        <button
+          role="radio"
+          aria-checked={kdsViewMode === 'order'}
+          onClick={() => onModeChange('order')}
+          className={`px-4 py-1 text-sm font-semibold rounded-md flex-1 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 dark:focus:ring-offset-zinc-700 ${kdsViewMode === 'order' ? 'bg-white text-stone-800 shadow dark:bg-zinc-600 dark:text-white' : 'text-stone-600 dark:text-zinc-300'}`}
+        >
+          By Order
+        </button>
+        <button
+          role="radio"
+          aria-checked={kdsViewMode === 'item'}
+          onClick={() => onModeChange('item')}
+          className={`px-4 py-1 text-sm font-semibold rounded-md flex-1 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 dark:focus:ring-offset-zinc-700 ${kdsViewMode === 'item' ? 'bg-white text-stone-800 shadow dark:bg-zinc-600 dark:text-white' : 'text-stone-600 dark:text-zinc-300'}`}
+        >
+          By Item
+        </button>
+        <button
+          role="radio"
+          aria-checked={kdsViewMode === 'type'}
+          onClick={() => onModeChange('type')}
+          className={`px-4 py-1 text-sm font-semibold rounded-md flex-1 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 dark:focus:ring-offset-zinc-700 ${kdsViewMode === 'type' ? 'bg-white text-stone-800 shadow dark:bg-zinc-600 dark:text-white' : 'text-stone-600 dark:text-zinc-300'}`}
+        >
+          By Type
+        </button>
+      </div>
+    </div>
+  </div>
+);
 
 const KDSView: React.FC = () => {
   const { state, dispatch } = useContext(AppContext);
   const { addToast } = useToast();
   const [requeueCandidate, setRequeueCandidate] = useState<string | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<string | null>(null);
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  const [isMergeMode, setIsMergeMode] = useState(false);
   const [kdsViewMode, setKdsViewMode] = useState<'order' | 'item' | 'type'>('order');
   const [searchQuery, setSearchQuery] = useState('');
+  const [scrollDirection, setScrollDirection] = useState<'vertical' | 'horizontal'>('vertical');
 
   const paymentRequiredOrdersUnfiltered = useMemo(() =>
     state.orders.filter(o => o.status === 'payment-required'),
@@ -172,20 +260,20 @@ const KDSView: React.FC = () => {
   const aggregatedItems = useMemo((): AggregatedItem[] => {
     const itemsMap: Map<string, {
         drink: Drink;
-        selectedModifiers: { [key: string]: ModifierOption };
+        selectedModifiers: { [key: string]: SelectedModifier[] };
         quantity: number;
         orders: Map<string, { name: string; quantity: number }>;
     }> = new Map();
 
     pendingOrdersBase.forEach(order => {
         order.items.forEach(item => {
-            const modifierIds = Object.values(item.selectedModifiers).map((mod: ModifierOption) => mod.id).sort().join('_');
-            const key = `${item.drink.id}_${modifierIds}`;
+            const modifierIds = Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => `${sm.option?.id || 'unknown'}:${sm.quantity}`).sort().join('_');
+            const key = `${item.drink?.id || 'unknown'}_${modifierIds}`;
 
             if (!itemsMap.has(key)) {
                 itemsMap.set(key, {
                     drink: item.drink,
-                    selectedModifiers: item.selectedModifiers,
+                    selectedModifiers: item.selectedModifiers || {},
                     quantity: 0,
                     orders: new Map(),
                 });
@@ -223,29 +311,38 @@ const KDSView: React.FC = () => {
           drink: Drink;
           totalQuantity: number;
           variations: Map<string, {
-              selectedModifiers: { [key: string]: ModifierOption };
+              selectedModifiers: { [key: string]: SelectedModifier[] };
               quantity: number;
           }>;
+          sourceOrders: Map<string, { id: string, customerName: string, quantity: number }>;
       }> = new Map();
 
       pendingOrdersBase.forEach(order => {
           order.items.forEach(item => {
-              const typeKey = item.drink.id;
+              const typeKey = item.drink?.id || 'unknown';
               if (!typeMap.has(typeKey)) {
-                  typeMap.set(typeKey, { drink: item.drink, totalQuantity: 0, variations: new Map() });
+                  typeMap.set(typeKey, { drink: item.drink || { id: 'unknown', name: 'Unknown Drink', price: 0, category: 'Uncategorized', description: '', image: '', modifiers: [] }, totalQuantity: 0, variations: new Map(), sourceOrders: new Map() });
               }
               const aggByType = typeMap.get(typeKey)!;
-              aggByType.totalQuantity += item.quantity;
-              const variationKey = Object.values(item.selectedModifiers).map((mod: ModifierOption) => mod.id).sort().join('_');
-              const variation = aggByType.variations.get(variationKey) || { selectedModifiers: item.selectedModifiers, quantity: 0 };
-              variation.quantity += item.quantity;
+              aggByType.totalQuantity += item.quantity || 0;
+              
+              // Track source orders
+              const sourceKey = order.id || 'unknown';
+              const existingSource = aggByType.sourceOrders.get(sourceKey) || { id: order.id || 'unknown', customerName: order.customerName || 'Unknown', quantity: 0 };
+              existingSource.quantity += item.quantity || 0;
+              aggByType.sourceOrders.set(sourceKey, existingSource);
+
+              const variationKey = Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => `${sm.option?.id || 'unknown'}:${sm.quantity}`).sort().join('_');
+              const variation = aggByType.variations.get(variationKey) || { selectedModifiers: item.selectedModifiers || {}, quantity: 0 };
+              variation.quantity += item.quantity || 0;
               aggByType.variations.set(variationKey, variation);
           });
       });
 
       let finalResult = Array.from(typeMap.values()).map(agg => ({
           ...agg,
-          variations: Array.from(agg.variations.values()).sort((a,b) => b.quantity - a.quantity)
+          variations: Array.from(agg.variations.values()).sort((a,b) => b.quantity - a.quantity),
+          sourceOrders: Array.from(agg.sourceOrders.values()).sort((a,b) => b.quantity - a.quantity)
       }));
       
       if (searchQuery.trim()) {
@@ -272,6 +369,29 @@ const KDSView: React.FC = () => {
       dispatch({ type: 'VERIFY_PAYMENT', payload: id });
   }, [dispatch]);
 
+  const handleGroupOrders = () => {
+    if (selectedOrders.length < 2) {
+        addToast('Please select at least 2 orders to group', 'error');
+        return;
+    }
+    const mergeId = `group-${Date.now()}`;
+    dispatch({ type: 'MERGE_ORDERS', payload: { orderIds: selectedOrders, mergeId } });
+    setSelectedOrders([]);
+    setIsMergeMode(false);
+    addToast('Orders grouped successfully', 'success');
+  };
+
+  const handleUngroupOrder = (id: string) => {
+    dispatch({ type: 'UNMERGE_ORDER', payload: id });
+    addToast('Order ungrouped', 'success');
+  };
+
+  const toggleOrderSelection = (id: string) => {
+    setSelectedOrders(prev => 
+        prev.includes(id) ? prev.filter(oid => oid !== id) : [...prev, id]
+    );
+  };
+
   const confirmRequeue = () => {
     if (requeueCandidate) {
         dispatch({ type: 'REQUEUE_ORDER', payload: requeueCandidate });
@@ -279,79 +399,173 @@ const KDSView: React.FC = () => {
     }
   };
 
-  const TabButton: React.FC<{tabId: 'payment-required' | 'pending' | 'scheduled' | 'history', count: number, children: React.ReactNode, panelId: string}> = ({tabId, count, children, panelId}) => (
-      <button 
-        role="tab"
-        id={`tab-${tabId}`}
-        aria-controls={panelId}
-        aria-selected={activeTab === tabId}
-        onClick={() => setActiveTab(tabId)} 
-        className={`px-6 py-2 text-lg font-semibold rounded-t-md transition-colors border-b-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 dark:focus:ring-offset-zinc-900 ${
-          activeTab === tabId 
-            ? 'bg-white text-stone-700 border-stone-600 dark:bg-zinc-800 dark:text-white dark:border-white' 
-            : 'text-stone-500 hover:text-stone-800 dark:hover:text-zinc-200 border-transparent'
-        }`}
-      >
-          {children} ({count})
-      </button>
-  );
+  const confirmDelete = () => {
+    if (deleteCandidate) {
+        dispatch({ type: 'DELETE_ORDER', payload: deleteCandidate });
+        setDeleteCandidate(null);
+        addToast('Order deleted successfully', 'success');
+    }
+  };
 
-  const ViewModeToggle: React.FC = () => (
-      <>
-          <h2 id="view-mode-label" className="sr-only">KDS View Mode</h2>
-          <div role="radiogroup" aria-labelledby="view-mode-label" className="flex items-center bg-stone-200 dark:bg-zinc-700 rounded-lg p-1 mb-6 max-w-sm mx-auto md:mx-0">
-              <button 
-                role="radio"
-                aria-checked={kdsViewMode === 'order'}
-                onClick={() => setKdsViewMode('order')}
-                className={`px-4 py-1 text-sm font-semibold rounded-md flex-1 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 dark:focus:ring-offset-zinc-700 ${kdsViewMode === 'order' ? 'bg-white text-stone-800 shadow dark:bg-zinc-600 dark:text-white' : 'text-stone-600 dark:text-zinc-300'}`}
-              >
-                By Order
-              </button>
-              <button 
-                role="radio"
-                aria-checked={kdsViewMode === 'item'}
-                onClick={() => setKdsViewMode('item')}
-                className={`px-4 py-1 text-sm font-semibold rounded-md flex-1 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 dark:focus:ring-offset-zinc-700 ${kdsViewMode === 'item' ? 'bg-white text-stone-800 shadow dark:bg-zinc-600 dark:text-white' : 'text-stone-600 dark:text-zinc-300'}`}
-              >
-                By Item
-              </button>
-              <button 
-                role="radio"
-                aria-checked={kdsViewMode === 'type'}
-                onClick={() => setKdsViewMode('type')}
-                className={`px-4 py-1 text-sm font-semibold rounded-md flex-1 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 dark:focus:ring-offset-zinc-700 ${kdsViewMode === 'type' ? 'bg-white text-stone-800 shadow dark:bg-zinc-600 dark:text-white' : 'text-stone-600 dark:text-zinc-300'}`}
-              >
-                By Type
-              </button>
-          </div>
-      </>
-  );
+  const containerClasses = scrollDirection === 'vertical' 
+    ? 'columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4' 
+    : 'flex flex-row gap-4 overflow-x-auto pb-4 items-start scrollbar-thin scrollbar-thumb-stone-300 dark:scrollbar-thumb-zinc-600';
+
+  const ticketWrapperClasses = scrollDirection === 'horizontal' ? 'w-80 flex-shrink-0' : 'break-inside-avoid mb-4';
 
   const renderPendingContent = () => {
     switch(kdsViewMode) {
         case 'order':
-            return pendingOrders.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {pendingOrders.map(order => (
-                        <OrderTicket key={order.id} order={order} onComplete={handleCompleteOrder} onToggleItem={handleToggleItemCompletion} />
-                    ))}
+            // Group orders by mergeId
+            const mergedGroups: { [key: string]: Order[] } = {};
+            const standaloneOrders: Order[] = [];
+
+            pendingOrders.forEach(order => {
+                if (order.mergeId) {
+                    if (!mergedGroups[order.mergeId]) mergedGroups[order.mergeId] = [];
+                    mergedGroups[order.mergeId].push(order);
+                } else {
+                    standaloneOrders.push(order);
+                }
+            });
+
+            return (
+                <div className="space-y-8">
+                    {/* Group Mode Controls */}
+                    <div className="flex items-center justify-between bg-white dark:bg-zinc-800 p-4 rounded-lg shadow-sm border border-stone-200 dark:border-zinc-700">
+                        <div className="flex items-center space-x-4">
+                            <button 
+                                onClick={() => {
+                                    setIsMergeMode(!isMergeMode);
+                                    setSelectedOrders([]);
+                                }}
+                                className={`px-4 py-2 rounded-md font-bold transition-all ${isMergeMode ? 'bg-stone-200 text-stone-800 dark:bg-zinc-700 dark:text-white' : 'bg-purple-600 text-white hover:bg-purple-700'}`}
+                            >
+                                {isMergeMode ? 'Cancel Grouping' : 'Group Tickets'}
+                            </button>
+                            {isMergeMode && (
+                                <span className="text-sm font-medium text-stone-600 dark:text-zinc-400">
+                                    {selectedOrders.length} orders selected
+                                </span>
+                            )}
+                        </div>
+                        {isMergeMode && (
+                            <button 
+                                onClick={handleGroupOrders}
+                                disabled={selectedOrders.length < 2}
+                                className="px-6 py-2 bg-purple-600 text-white rounded-md font-bold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                Confirm Group
+                            </button>
+                        )}
+                    </div>
+
+                    <div className={containerClasses}>
+                        <AnimatePresence mode="popLayout">
+                            {/* Standalone Orders */}
+                            {standaloneOrders.map(order => (
+                                <motion.div 
+                                    key={order.id} 
+                                    layout
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.9 }}
+                                    className={ticketWrapperClasses}
+                                >
+                                    <OrderTicket 
+                                        order={order} 
+                                        onComplete={handleCompleteOrder} 
+                                        onDelete={setDeleteCandidate} 
+                                        onToggleItem={handleToggleItemCompletion}
+                                        isSelected={selectedOrders.includes(order.id)}
+                                        onSelect={isMergeMode ? toggleOrderSelection : undefined}
+                                        onUnmerge={handleUngroupOrder}
+                                    />
+                                </motion.div>
+                            ))}
+
+                            {/* Grouped Orders (Rendered as Combined Tickets) */}
+                            {Object.entries(mergedGroups).map(([mergeId, orders]) => {
+                                // Create a virtual combined order for the ticket
+                                const combinedOrder: Order = {
+                                    id: mergeId,
+                                    customerId: 'grouped',
+                                    customerName: orders.map(o => o.customerName).join(' + '),
+                                    items: orders.flatMap(o => o.items),
+                                    status: orders[0].status,
+                                    createdAt: Math.min(...orders.map(o => o.createdAt)),
+                                    total: orders.reduce((sum, o) => sum + o.total, 0),
+                                    totalCost: orders.reduce((sum, o) => sum + o.totalCost, 0),
+                                    finalTotal: orders.reduce((sum, o) => sum + o.finalTotal, 0),
+                                    discountApplied: null,
+                                    paymentMethod: orders[0].paymentMethod,
+                                    mergeId: mergeId,
+                                };
+
+                                return (
+                                    <motion.div 
+                                        key={mergeId} 
+                                        layout
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.9 }}
+                                        className={`${ticketWrapperClasses} border-2 border-dashed border-purple-400 dark:border-purple-600 rounded-xl p-1 bg-purple-50/30 dark:bg-purple-900/10`}
+                                    >
+                                        <OrderTicket 
+                                            order={combinedOrder} 
+                                            onComplete={(id) => {
+                                                // Complete all orders in the group
+                                                orders.forEach(o => handleCompleteOrder(o.id));
+                                            }} 
+                                            onDelete={(id) => {
+                                                // For grouped tickets, we might want to delete individually or as a group.
+                                                // For now, let's just allow deleting the whole group if they click delete on the combined ticket.
+                                                orders.forEach(o => setDeleteCandidate(o.id));
+                                            }} 
+                                            onToggleItem={(combinedId, itemId) => {
+                                                // Find which original order this item belongs to
+                                                const originalOrder = orders.find(o => o.items.some(i => i.id === itemId));
+                                                if (originalOrder) {
+                                                    handleToggleItemCompletion(originalOrder.id, itemId);
+                                                }
+                                            }}
+                                            onUnmerge={(id) => {
+                                                // Ungroup all orders in this group
+                                                orders.forEach(o => handleUngroupOrder(o.id));
+                                            }}
+                                        />
+                                        <div className="px-3 py-1 text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase text-center">
+                                            Combined Group Ticket
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                        </AnimatePresence>
+                    </div>
                 </div>
-            ) : null;
+            );
         case 'item':
             return aggregatedItems.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {aggregatedItems.map(item => (
-                        <GroupedItemCard key={`${item.drink.id}-${Object.values(item.selectedModifiers).map((m: ModifierOption) => m.id).join('-')}`} item={item} />
-                    ))}
+                <div className={containerClasses}>
+                    <AnimatePresence mode="popLayout">
+                        {aggregatedItems.map(item => (
+                            <div key={`${item.drink?.id || 'unknown'}-${Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => `${sm.option?.id || 'unknown'}:${sm.quantity}`).join('-')}`} className={ticketWrapperClasses}>
+                                <GroupedItemCard item={item} />
+                            </div>
+                        ))}
+                    </AnimatePresence>
                 </div>
             ) : null;
         case 'type':
             return aggregatedByType.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {aggregatedByType.map(item => (
-                        <GroupedByTypeCard key={item.drink.id} item={item} />
-                    ))}
+                <div className={containerClasses}>
+                    <AnimatePresence mode="popLayout">
+                        {aggregatedByType.map(item => (
+                            <div key={item.drink.id} className={ticketWrapperClasses}>
+                                <GroupedByTypeCard item={item} />
+                            </div>
+                        ))}
+                    </AnimatePresence>
                 </div>
             ) : null;
         default:
@@ -366,7 +580,7 @@ const KDSView: React.FC = () => {
   );
 
   return (
-    <div className="p-4 md:p-6 bg-[#F5F3EF] dark:bg-zinc-900 min-h-screen">
+    <div className="p-4 md:p-6 bg-[#F5F3EF] dark:bg-zinc-900 min-h-full">
       <h1 className="text-3xl font-bold mb-4 text-stone-800 dark:text-white">Kitchen Display Screen</h1>
 
       <div className="mb-6 flex flex-col md:flex-row gap-4 justify-between">
@@ -387,25 +601,29 @@ const KDSView: React.FC = () => {
         </div>
       </div>
       
-      <div role="tablist" aria-label="Order views" className="flex space-x-2 border-b border-stone-300 dark:border-zinc-700 mb-6">
-        <TabButton tabId="payment-required" count={paymentRequiredOrders.length} panelId="tabpanel-payment-required">Payment Required</TabButton>
-        <TabButton tabId="pending" count={pendingOrders.length} panelId="tabpanel-pending">Pending</TabButton>
-        <TabButton tabId="scheduled" count={scheduledOrders.length} panelId="tabpanel-scheduled">Scheduled</TabButton>
-        <TabButton tabId="history" count={completedOrders.length} panelId="tabpanel-history">History</TabButton>
+      <div role="tablist" aria-label="Order views" className="flex space-x-2 border-b border-stone-300 dark:border-zinc-700 mb-6 overflow-x-auto scrollbar-hide whitespace-nowrap -mx-4 px-4 md:mx-0 md:px-0">
+        <TabButton tabId="payment-required" count={paymentRequiredOrders.length} panelId="tabpanel-payment-required" activeTab={activeTab} onTabChange={setActiveTab}>Payment Required</TabButton>
+        <TabButton tabId="pending" count={pendingOrders.length} panelId="tabpanel-pending" activeTab={activeTab} onTabChange={setActiveTab}>Pending</TabButton>
+        <TabButton tabId="scheduled" count={scheduledOrders.length} panelId="tabpanel-scheduled" activeTab={activeTab} onTabChange={setActiveTab}>Scheduled</TabButton>
+        <TabButton tabId="history" count={completedOrders.length} panelId="tabpanel-history" activeTab={activeTab} onTabChange={setActiveTab}>History</TabButton>
       </div>
       
       <div id="tabpanel-payment-required" role="tabpanel" aria-labelledby="tab-payment-required" hidden={activeTab !== 'payment-required'}>
         {paymentRequiredOrders.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {paymentRequiredOrders.map(order => (
-                    <PaymentTicket key={order.id} order={order} onVerify={handleVerifyPayment} />
-                ))}
+            <div className={containerClasses}>
+                <AnimatePresence mode="popLayout">
+                    {paymentRequiredOrders.map(order => (
+                        <div key={order.id} className={ticketWrapperClasses}>
+                            <PaymentTicket order={order} onVerify={handleVerifyPayment} onDelete={setDeleteCandidate} />
+                        </div>
+                    ))}
+                </AnimatePresence>
             </div>
         ) : renderEmptyState('No orders awaiting payment.')}
       </div>
 
       <div id="tabpanel-pending" role="tabpanel" aria-labelledby="tab-pending" hidden={activeTab !== 'pending'}>
-            <ViewModeToggle />
+            <ViewModeToggle kdsViewMode={kdsViewMode} onModeChange={setKdsViewMode} />
             {pendingOrdersBase.length > 0 ? renderPendingContent() : renderEmptyState('No pending orders. Great job!')}
             {pendingOrdersBase.length > 0 && pendingOrders.length === 0 && aggregatedItems.length === 0 && aggregatedByType.length === 0 && renderEmptyState('')}
       </div>
@@ -419,33 +637,40 @@ const KDSView: React.FC = () => {
                         <th scope="col" className="px-6 py-3">Pickup Time</th>
                         <th scope="col" className="px-6 py-3">Items</th>
                         <th scope="col" className="px-6 py-3">Total</th>
-                        <th scope="col" className="px-6 py-3">Actions</th>
+                        <th scope="col" className="px-6 py-3 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {scheduledOrders.map(order => (
                         <tr key={order.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
-                            <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{order.customerName}</td>
-                            <td className="px-6 py-4">{new Date(order.pickupTime!).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                            <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{order.customerName || 'Unknown'}</td>
+                            <td className="px-6 py-4">{order.pickupTime && !isNaN(new Date(order.pickupTime).getTime()) ? new Date(order.pickupTime).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}</td>
                             <td className="px-6 py-4 align-top">
                                 <ul className="space-y-2">
-                                    {order.items.map(item => (
+                                    {(order.items || []).map(item => (
                                         <li key={item.id}>
                                             <div className="font-semibold text-stone-900 dark:text-white">
-                                                {item.quantity}x {item.drink.name}
+                                                {item.quantity}x {item.drink?.name || 'Unknown Drink'}
                                             </div>
                                         </li>
                                     ))}
                                 </ul>
                             </td>
-                            <td className="px-6 py-4">${order.finalTotal.toFixed(2)}</td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4">${(order.finalTotal || 0).toFixed(2)}</td>
+                            <td className="px-6 py-4 text-right space-x-3">
                                 <button 
                                     onClick={() => handleCompleteOrder(order.id)} 
-                                    className="text-green-600 hover:underline font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-zinc-800 rounded"
-                                    aria-label={`Complete scheduled order for ${order.customerName}`}
+                                    className="text-green-600 hover:text-green-800 dark:hover:text-green-400 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-zinc-800 rounded"
+                                    aria-label={`Complete scheduled order for ${order.customerName || 'Unknown'}`}
                                 >
                                     Complete
+                                </button>
+                                <button 
+                                    onClick={() => setDeleteCandidate(order.id)} 
+                                    className="text-red-600 hover:text-red-800 dark:hover:text-red-400 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-zinc-800 rounded"
+                                    aria-label={`Delete scheduled order for ${order.customerName || 'Unknown'}`}
+                                >
+                                    Delete
                                 </button>
                             </td>
                         </tr>
@@ -469,37 +694,46 @@ const KDSView: React.FC = () => {
                         <th scope="col" className="px-6 py-3">Completed At</th>
                         <th scope="col" className="px-6 py-3">Items</th>
                         <th scope="col" className="px-6 py-3">Total</th>
-                        <th scope="col" className="px-6 py-3">Actions</th>
+                        <th scope="col" className="px-6 py-3 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {completedOrders.map(order => (
                         <tr key={order.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
-                            <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{order.customerName}</td>
-                            <td className="px-6 py-4">{new Date(order.completedAt!).toLocaleString()}</td>
+                            <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{order.customerName || 'Unknown'}</td>
+                            <td className="px-6 py-4">{order.completedAt ? new Date(order.completedAt).toLocaleString() : 'N/A'}</td>
                             <td className="px-6 py-4 align-top">
                                 <ul className="space-y-2">
-                                    {order.items.map(item => (
+                                    {(order.items || []).map(item => (
                                         <li key={item.id}>
                                             <div className="font-semibold text-stone-900 dark:text-white">
-                                                {item.quantity}x {item.drink.name}
+                                                {item.quantity}x {item.drink?.name || 'Unknown Drink'}
                                                 {item.customName && <span className="font-normal text-stone-600 dark:text-zinc-400"> ({item.customName})</span>}
                                             </div>
                                             <div className="text-xs text-stone-500 dark:text-zinc-400 pl-2">
-                                                {Object.values(item.selectedModifiers).map((mod: ModifierOption) => mod.name).join(', ')}
+                                                {Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => 
+                                                    sm.quantity > 1 ? `${sm.quantity}x ${sm.option?.name || 'Unknown'}` : (sm.option?.name || 'Unknown')
+                                                ).join(', ')}
                                             </div>
                                         </li>
                                     ))}
                                 </ul>
                             </td>
-                            <td className="px-6 py-4">${order.finalTotal.toFixed(2)}</td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4">${(order.finalTotal || 0).toFixed(2)}</td>
+                            <td className="px-6 py-4 text-right space-x-3">
                                 <button 
                                     onClick={() => setRequeueCandidate(order.id)} 
-                                    className="text-stone-700 dark:text-zinc-300 hover:underline font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 dark:focus:ring-offset-zinc-800 rounded"
-                                    aria-label={`Re-queue order for ${order.customerName}, completed at ${new Date(order.completedAt!).toLocaleString()}`}
+                                    className="text-stone-700 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-white font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 dark:focus:ring-offset-zinc-800 rounded"
+                                    aria-label={`Re-queue order for ${order.customerName || 'Unknown'}, completed at ${order.completedAt ? new Date(order.completedAt).toLocaleString() : 'N/A'}`}
                                 >
                                     Re-queue
+                                </button>
+                                <button 
+                                    onClick={() => setDeleteCandidate(order.id)} 
+                                    className="text-red-600 hover:text-red-800 dark:hover:text-red-400 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-zinc-800 rounded"
+                                    aria-label={`Delete completed order for ${order.customerName || 'Unknown'}`}
+                                >
+                                    Delete
                                 </button>
                             </td>
                         </tr>
@@ -521,6 +755,16 @@ const KDSView: React.FC = () => {
         title="Re-queue Order"
         message="Are you sure you want to move this completed order back to the pending queue?"
         confirmButtonText="Yes, Re-queue"
+      />
+
+      <ConfirmationModal
+        isOpen={!!deleteCandidate}
+        onClose={() => setDeleteCandidate(null)}
+        onConfirm={confirmDelete}
+        title="Delete Order"
+        message="Are you sure you want to permanently delete this order? This action cannot be undone."
+        confirmButtonText="Delete"
+        variant="danger"
       />
     </div>
   );

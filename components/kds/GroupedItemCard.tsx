@@ -1,9 +1,10 @@
 import React, { memo } from 'react';
-import { Drink, ModifierOption } from '../../types';
+import { motion } from 'motion/react';
+import { Drink, ModifierOption, SelectedModifier } from '../../types';
 
 export interface AggregatedItem {
     drink: Drink;
-    selectedModifiers: { [key: string]: ModifierOption };
+    selectedModifiers: { [key: string]: SelectedModifier[] };
     quantity: number;
     orders: { id: string; name: string; quantity: number }[];
 }
@@ -14,18 +15,22 @@ interface GroupedItemCardProps {
 
 const GroupedItemCard: React.FC<GroupedItemCardProps> = ({ item }) => {
   return (
-    <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-md p-4 flex flex-col h-full">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white dark:bg-zinc-800 rounded-lg shadow-md p-4 flex flex-col"
+    >
       <div className="flex items-start justify-between">
-        <h3 className="font-bold text-lg text-stone-900 dark:text-white">{item.drink.name}</h3>
+        <h3 className="font-bold text-lg text-stone-900 dark:text-white">{item.drink?.name || 'Unknown Drink'}</h3>
         <span className="bg-zinc-700 text-white font-bold text-xl rounded-full flex items-center justify-center h-10 w-10 flex-shrink-0">
           {item.quantity}
         </span>
       </div>
       <div className="mt-2 flex-grow">
-        {Object.keys(item.selectedModifiers).length > 0 ? (
+        {Object.keys(item.selectedModifiers || {}).length > 0 ? (
              <ul className="pl-1 list-disc list-inside text-stone-600 dark:text-zinc-400 text-sm space-y-1">
-                {Object.values(item.selectedModifiers).map((mod: ModifierOption) => (
-                    <li key={mod.id}>{mod.name}</li>
+                {Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => (
+                    <li key={sm.option?.id || Math.random()}>{sm.quantity > 1 ? `${sm.quantity}x ` : ''}{sm.option?.name || 'Unknown'}</li>
                 ))}
             </ul>
         ) : (
@@ -43,7 +48,7 @@ const GroupedItemCard: React.FC<GroupedItemCardProps> = ({ item }) => {
             ))}
         </ul>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

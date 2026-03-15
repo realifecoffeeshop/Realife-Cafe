@@ -1,6 +1,6 @@
 
 import React, { useContext } from 'react';
-import { CartItem, PaymentMethod, Discount, ModifierOption } from '../../types';
+import { CartItem, PaymentMethod, Discount, ModifierOption, SelectedModifier } from '../../types';
 import { AppContext } from '../../context/AppContext';
 
 interface CartFlyoutProps {
@@ -10,7 +10,6 @@ interface CartFlyoutProps {
     subtotal: number;
     finalTotal: number;
     appliedDiscount: Discount | null;
-    hasLoyaltyReward: boolean;
     customerName: string;
     onCustomerNameChange: (name: string) => void;
     discountCode: string;
@@ -20,6 +19,7 @@ interface CartFlyoutProps {
     onPaymentMethodChange: (method: PaymentMethod) => void;
     error: string;
     onPlaceOrder: () => void;
+    isSubmitting: boolean;
     onRemoveItem: (id: string) => void;
     onEditItem: (item: CartItem) => void;
     isLoggedIn: boolean;
@@ -38,7 +38,6 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
     subtotal,
     finalTotal,
     appliedDiscount,
-    hasLoyaltyReward,
     customerName,
     onCustomerNameChange,
     discountCode,
@@ -48,6 +47,7 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
     onPaymentMethodChange,
     error,
     onPlaceOrder,
+    isSubmitting,
     onRemoveItem,
     onEditItem,
     isLoggedIn,
@@ -112,11 +112,13 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                                     <div className="flex justify-between items-start">
                                         <div className="flex-grow pr-4">
                                             <p className="font-bold text-lg text-stone-800 dark:text-white">
-                                                {item.quantity}x {item.drink.name}
+                                                {item.quantity}x {item.drink?.name || 'Unknown Drink'}
                                             </p>
                                             {item.customName && <p className="text-sm font-medium text-stone-600 dark:text-zinc-300 italic">"{item.customName}"</p>}
                                             <div className="text-xs text-stone-500 dark:text-zinc-400 mt-1 leading-relaxed">
-                                                {Object.values(item.selectedModifiers).map((m: ModifierOption) => m.name).join(', ')}
+                                                {Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => 
+                                                    sm.quantity > 1 ? `${sm.quantity}x ${sm.option?.name || 'Unknown'}` : (sm.option?.name || 'Unknown')
+                                                ).join(', ')}
                                             </div>
                                         </div>
                                         <span className="font-bold text-lg text-stone-800 dark:text-white">${item.finalPrice.toFixed(2)}</span>
@@ -158,16 +160,9 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                             <span>${subtotal.toFixed(2)}</span>
                         </div>
 
-                        {hasLoyaltyReward && (
-                            <div className="flex justify-between text-green-700 dark:text-green-500 font-semibold">
-                                <span>Loyalty Reward (1 Free Drink)</span>
-                                <span>- ${(subtotal - finalTotal).toFixed(2)}</span>
-                            </div>
-                        )}
-
                         {appliedDiscount && (
                             <div className="flex justify-between text-green-700 dark:text-green-500 font-semibold">
-                                <span>Discount ({appliedDiscount.code})</span>
+                                <span>{appliedDiscount.id === 'birthday-free-drink' ? '🎂 Birthday Gift' : `Discount (${appliedDiscount.code})`}</span>
                                 <span>- ${ (subtotal - (appliedDiscount.type === 'percentage' ? subtotal * (1 - appliedDiscount.value/100) : subtotal - appliedDiscount.value) ).toFixed(2) }</span>
                             </div>
                         )}
@@ -225,7 +220,6 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                             <div className="space-y-2">
                                 <label htmlFor="customerName-input" className="block text-sm font-medium text-stone-700 dark:text-zinc-300">Group Order Name (Required)</label>
                                 <input id="customerName-input" type="text" value={customerName} onChange={e => onCustomerNameChange(e.target.value)} placeholder="e.g., Office Morning Run" className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white" disabled={isLoggedIn}/>
-                                {hasLoyaltyReward && <p className="text-sm text-green-700 dark:text-green-500">Loyalty Reward Applied! Your next drink is on us.</p>}
                             </div>
 
                             <div className="flex space-x-2">
@@ -243,8 +237,23 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
 
                         {error && <p className="text-red-500 text-sm">{error}</p>}
 
-                        <button id="place-order-button" onClick={onPlaceOrder} className="w-full mt-4 bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 py-3 rounded-lg font-bold hover:bg-[#947D6A] dark:hover:bg-zinc-200 transition-colors text-lg">
-                            {pickupOption === 'later' ? 'Schedule Order' : 'Place Order'}
+                        <button 
+                            id="place-order-button" 
+                            onClick={onPlaceOrder} 
+                            disabled={isSubmitting}
+                            className={`w-full mt-4 bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 py-3 rounded-lg font-bold hover:bg-[#947D6A] dark:hover:bg-zinc-200 transition-colors text-lg flex items-center justify-center ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white dark:text-zinc-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Processing...
+                                </>
+                            ) : (
+                                pickupOption === 'later' ? 'Schedule Order' : 'Place Order'
+                            )}
                         </button>
                     </footer>
                 )}

@@ -4,6 +4,7 @@ import { AppContext } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
 import { Drink, ModifierGroup, ModifierOption, Category } from '../../types';
 import Modal from '../shared/Modal';
+import { saveMenu } from '../../firebase/firestoreService';
 
 // A sub-component for the Modifier Group form to keep the main component cleaner
 const ModifierGroupForm: React.FC<{
@@ -12,12 +13,21 @@ const ModifierGroupForm: React.FC<{
     onClose: () => void;
 }> = ({ group, onSave, onClose }) => {
     const [name, setName] = useState(group.name);
-    const [options, setOptions] = useState<ModifierOption[]>(group.options.map(o => ({...o})));
+    const [options, setOptions] = useState<ModifierOption[]>((group.options || []).map(o => ({...o})));
+    const [isRequired, setIsRequired] = useState(group.isRequired || false);
+    const [allowQuantity, setAllowQuantity] = useState(group.allowQuantity || false);
+    const [allowMultiple, setAllowMultiple] = useState(group.allowMultiple || false);
+    const [defaultOptionId, setDefaultOptionId] = useState(group.defaultOptionId || '');
     const { addToast } = useToast();
 
     const handleOptionChange = (index: number, field: keyof ModifierOption, value: string | number) => {
         const newOptions = [...options];
-        (newOptions[index] as any)[field] = field === 'name' ? value : parseFloat(value as string);
+        if (field === 'name') {
+            newOptions[index].name = value as string;
+        } else {
+            const parsed = parseFloat(value as string);
+            (newOptions[index] as any)[field] = isNaN(parsed) ? 0 : parsed;
+        }
         setOptions(newOptions);
     };
 
@@ -43,7 +53,15 @@ const ModifierGroupForm: React.FC<{
         
         // Trim names before saving
         const cleanedOptions = options.map(opt => ({ ...opt, name: opt.name.trim() }));
-        onSave({ ...group, name: name.trim(), options: cleanedOptions });
+        onSave({ 
+            ...group, 
+            name: name.trim(), 
+            options: cleanedOptions,
+            isRequired,
+            allowQuantity,
+            allowMultiple,
+            defaultOptionId: isRequired ? defaultOptionId : undefined
+        });
     };
 
     return (
@@ -52,6 +70,55 @@ const ModifierGroupForm: React.FC<{
                 <label className="block mb-1 font-medium">Group Name</label>
                 <input value={name} onChange={(e) => setName(e.target.value)} required className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"/>
             </div>
+            
+            <div className="flex flex-wrap gap-4">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                    <input 
+                        type="checkbox" 
+                        checked={isRequired} 
+                        onChange={(e) => setIsRequired(e.target.checked)}
+                        className="h-4 w-4 rounded border-stone-300 text-[#A58D79] focus:ring-[#A58D79]"
+                    />
+                    <span className="font-medium">Required</span>
+                </label>
+
+                <label className="flex items-center space-x-2 cursor-pointer">
+                    <input 
+                        type="checkbox" 
+                        checked={allowQuantity} 
+                        onChange={(e) => setAllowQuantity(e.target.checked)}
+                        className="h-4 w-4 rounded border-stone-300 text-[#A58D79] focus:ring-[#A58D79]"
+                    />
+                    <span className="font-medium">Allow Quantity Selector</span>
+                </label>
+
+                <label className="flex items-center space-x-2 cursor-pointer">
+                    <input 
+                        type="checkbox" 
+                        checked={allowMultiple} 
+                        onChange={(e) => setAllowMultiple(e.target.checked)}
+                        className="h-4 w-4 rounded border-stone-300 text-[#A58D79] focus:ring-[#A58D79]"
+                    />
+                    <span className="font-medium">Allow Multiple Selection</span>
+                </label>
+            </div>
+
+            {isRequired && (
+                <div>
+                    <label className="block mb-1 font-medium text-sm">Default Option (Pre-selected)</label>
+                    <select 
+                        value={defaultOptionId} 
+                        onChange={(e) => setDefaultOptionId(e.target.value)}
+                        className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"
+                    >
+                        <option value="">Select a default...</option>
+                        {options.map(opt => (
+                            <option key={opt.id} value={opt.id}>{opt.name || 'Unnamed Option'}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
             <div>
                 <h4 className="font-medium mb-2">Options</h4>
                 <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
@@ -117,7 +184,12 @@ const MenuManagement: React.FC = () => {
                 .map(o => o.value);
             setDrinkFormState(prev => prev ? { ...prev, [name]: selectedOptions } : null);
         } else {
-            setDrinkFormState(prev => prev ? { ...prev, [name]: type === 'number' ? parseFloat(value) : value } : null);
+            let finalValue: string | number = value;
+            if (type === 'number') {
+                const parsed = parseFloat(value);
+                finalValue = isNaN(parsed) ? 0 : parsed;
+            }
+            setDrinkFormState(prev => prev ? { ...prev, [name]: finalValue } : null);
         }
     };
     
@@ -125,14 +197,58 @@ const MenuManagement: React.FC = () => {
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => {
-                setDrinkFormState(prev => prev ? { ...prev, imageUrl: reader.result as string } : null);
+            reader.onloadend = async () => {
+                const base64 = reader.result as string;
+                // Compress image to avoid "Write too large" errors in Firebase
+                try {
+                    const compressed = await compressImage(base64);
+                    setDrinkFormState(prev => prev ? { ...prev, imageUrl: compressed } : null);
+                } catch (error) {
+                    console.error("Image compression failed:", error);
+                    setDrinkFormState(prev => prev ? { ...prev, imageUrl: base64 } : null);
+                }
             };
             reader.readAsDataURL(file);
         }
     };
 
-    const handleSaveDrink = (e: React.FormEvent<HTMLFormElement>) => {
+    // Helper to compress base64 images
+    const compressImage = (base64Str: string, maxWidth = 600, maxHeight = 600, quality = 0.6): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.src = base64Str;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    reject(new Error('Could not get canvas context'));
+                    return;
+                }
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = (err) => reject(err);
+        });
+    };
+
+    const handleSaveDrink = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!drinkFormState || !drinkFormState.name || !drinkFormState.name.trim()) {
             addToast('Drink name cannot be empty.', 'error');
@@ -148,37 +264,72 @@ const MenuManagement: React.FC = () => {
             imageUrl: drinkFormState.imageUrl || '',
             modifierGroups: drinkFormState.modifierGroups || [],
         };
+
+        // Optimistic update
         dispatch({ type: editingDrink?.id ? 'UPDATE_DRINK' : 'ADD_DRINK', payload: drink });
-        addToast(`Drink '${drink.name}' saved successfully!`, 'success');
+        
+        try {
+            const updatedDrinks = editingDrink?.id 
+                ? state.drinks.map(d => d.id === editingDrink.id ? drink : d)
+                : [...state.drinks, drink];
+            await saveMenu({ drinks: updatedDrinks, categories: state.categories, modifierGroups: state.modifierGroups });
+            addToast(`Drink '${drink.name}' saved successfully!`, 'success');
+        } catch (error) {
+            console.error("Failed to save drink to Firebase:", error);
+            addToast('Failed to save to database.', 'error');
+        }
+        
         setEditingDrink(null);
     }
     
-    const handleDeleteDrink = (id: string) => {
+    const handleDeleteDrink = async (id: string) => {
         if(window.confirm('Are you sure you want to delete this drink?')) {
             dispatch({ type: 'DELETE_DRINK', payload: id });
-            addToast('Drink deleted.', 'success');
+            try {
+                const updatedDrinks = state.drinks.filter(d => d.id !== id);
+                await saveMenu({ drinks: updatedDrinks, categories: state.categories, modifierGroups: state.modifierGroups });
+                addToast('Drink deleted.', 'success');
+            } catch (error) {
+                addToast('Failed to delete from database.', 'error');
+            }
         }
     }
 
-    const handleSaveModifierGroup = (group: ModifierGroup) => {
-        const actionType = group.id.startsWith('new-group-') ? 'ADD_MODIFIER_GROUP' : 'UPDATE_MODIFIER_GROUP';
+    const handleSaveModifierGroup = async (group: ModifierGroup) => {
+        const isNew = group.id.startsWith('new-group-');
+        const actionType = isNew ? 'ADD_MODIFIER_GROUP' : 'UPDATE_MODIFIER_GROUP';
         const payload = { ...group };
-        if (actionType === 'ADD_MODIFIER_GROUP') {
+        if (isNew) {
             payload.id = `mod-group-${Date.now()}`;
         }
         dispatch({ type: actionType, payload });
-        addToast(`Modifier group '${group.name}' saved successfully!`, 'success');
+
+        try {
+            const updatedGroups = isNew 
+                ? [...state.modifierGroups, payload]
+                : state.modifierGroups.map(g => g.id === payload.id ? payload : g);
+            await saveMenu({ drinks: state.drinks, categories: state.categories, modifierGroups: updatedGroups });
+            addToast(`Modifier group '${group.name}' saved successfully!`, 'success');
+        } catch (error) {
+            addToast('Failed to save modifier group to database.', 'error');
+        }
         setEditingModifierGroup(null);
     };
-    
-    const handleDeleteModifierGroup = (id: string) => {
+
+    const handleDeleteModifierGroup = async (id: string) => {
         if (window.confirm('Are you sure you want to delete this modifier group? This might affect drinks using it.')) {
             dispatch({ type: 'DELETE_MODIFIER_GROUP', payload: id });
-            addToast('Modifier group deleted.', 'success');
+            try {
+                const updatedGroups = state.modifierGroups.filter(g => g.id !== id);
+                await saveMenu({ drinks: state.drinks, categories: state.categories, modifierGroups: updatedGroups });
+                addToast('Modifier group deleted.', 'success');
+            } catch (error) {
+                addToast('Failed to delete from database.', 'error');
+            }
         }
     };
     
-    const handleSaveCategory = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSaveCategory = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const trimmedName = categoryName.trim();
         if (!trimmedName) {
@@ -189,23 +340,42 @@ const MenuManagement: React.FC = () => {
         if (editingCategory?.id) {
             // Update
             dispatch({ type: 'UPDATE_CATEGORY', payload: { id: editingCategory.id, name: trimmedName } });
-            addToast(`Category '${trimmedName}' updated.`, 'success');
+            try {
+                const updatedCategories = state.categories.map(c => c.id === editingCategory.id ? { ...c, name: trimmedName } : c);
+                await saveMenu({ drinks: state.drinks, categories: updatedCategories, modifierGroups: state.modifierGroups });
+                addToast(`Category '${trimmedName}' updated.`, 'success');
+            } catch (error) {
+                addToast('Failed to update category in database.', 'error');
+            }
         } else {
             // Add
-            dispatch({ type: 'ADD_CATEGORY', payload: { name: trimmedName } });
-            addToast(`Category '${trimmedName}' added.`, 'success');
+            const newCategory = { id: `cat-${Date.now()}`, name: trimmedName };
+            dispatch({ type: 'ADD_CATEGORY', payload: newCategory });
+            try {
+                const updatedCategories = [...state.categories, newCategory];
+                await saveMenu({ drinks: state.drinks, categories: updatedCategories, modifierGroups: state.modifierGroups });
+                addToast(`Category '${trimmedName}' added.`, 'success');
+            } catch (error) {
+                addToast('Failed to add category to database.', 'error');
+            }
         }
         setEditingCategory(null);
     };
 
-    const handleDeleteCategory = (id: string) => {
+    const handleDeleteCategory = async (id: string) => {
         if (id === 'cat-4') {
              addToast("Cannot delete the default 'Uncategorised' category.", 'error');
              return;
         }
         if (window.confirm('Are you sure you want to delete this category? Drinks in it will be moved to "Uncategorised".')) {
             dispatch({ type: 'DELETE_CATEGORY', payload: id });
-            addToast('Category deleted.', 'success');
+            try {
+                const updatedCategories = state.categories.filter(c => c.id !== id);
+                await saveMenu({ drinks: state.drinks, categories: updatedCategories, modifierGroups: state.modifierGroups });
+                addToast('Category deleted.', 'success');
+            } catch (error) {
+                addToast('Failed to delete category from database.', 'error');
+            }
         }
     };
     
@@ -229,7 +399,7 @@ const MenuManagement: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {state.categories.map(cat => (
+                            {(state.categories || []).map(cat => (
                                 <tr key={cat.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
                                     <td className="px-6 py-4 font-medium text-stone-900 dark:text-white">{cat.name}</td>
                                     <td className="px-6 py-4 space-x-2">
@@ -266,8 +436,8 @@ const MenuManagement: React.FC = () => {
                         </thead>
                         {/* Table body */}
                         <tbody>
-                            {state.drinks.map(drink => {
-                                const categoryName = state.categories.find(c => c.id === drink.category)?.name || 'N/A';
+                            {(state.drinks || []).map(drink => {
+                                const categoryName = (state.categories || []).find(c => c.id === drink.category)?.name || 'N/A';
                                 return (
                                 <tr key={drink.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
                                     <td className="px-6 py-4">
@@ -281,8 +451,8 @@ const MenuManagement: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{drink.name}</td>
                                     <td className="px-6 py-4">{categoryName}</td>
-                                    <td className="px-6 py-4">${drink.basePrice.toFixed(2)}</td>
-                                    <td className="px-6 py-4">${drink.baseCost.toFixed(2)}</td>
+                                    <td className="px-6 py-4">${(drink.basePrice || 0).toFixed(2)}</td>
+                                    <td className="px-6 py-4">${(drink.baseCost || 0).toFixed(2)}</td>
                                     <td className="px-6 py-4 space-x-2">
                                         <button onClick={() => setEditingDrink(drink)} className="text-stone-700 dark:text-zinc-300 hover:underline">Edit</button>
                                         <button onClick={() => handleDeleteDrink(drink.id)} className="text-red-600 hover:underline">Delete</button>
@@ -298,7 +468,7 @@ const MenuManagement: React.FC = () => {
             <div>
                  <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold text-stone-900 dark:text-white">Modifier Groups</h2>
-                    <button onClick={() => setEditingModifierGroup({id: `new-group-${Date.now()}`, name: '', options: []})} className="bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 px-4 py-2 rounded-md hover:bg-[#947D6A] dark:hover:bg-zinc-200">Add Group</button>
+                    <button onClick={() => setEditingModifierGroup({id: `new-group-${Date.now()}`, name: '', options: [], isRequired: false})} className="bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 px-4 py-2 rounded-md hover:bg-[#947D6A] dark:hover:bg-zinc-200">Add Group</button>
                 </div>
                  <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-md overflow-x-auto">
                     <table className="w-full text-sm text-left text-stone-500 dark:text-zinc-400">
@@ -306,16 +476,24 @@ const MenuManagement: React.FC = () => {
                         <thead className="text-xs text-stone-700 dark:text-zinc-300 uppercase bg-stone-100 dark:bg-zinc-700">
                             <tr>
                                 <th scope="col" className="px-6 py-3">Name</th>
+                                <th scope="col" className="px-6 py-3">Required</th>
                                 <th scope="col" className="px-6 py-3">Options</th>
                                 <th scope="col" className="px-6 py-3">Actions</th>
                             </tr>
                         </thead>
                         {/* Table body */}
                         <tbody>
-                            {state.modifierGroups.map(group => (
+                            {(state.modifierGroups || []).map(group => (
                                 <tr key={group.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
                                     <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{group.name}</td>
-                                    <td className="px-6 py-4">{group.options.map(o => o.name).join(', ')}</td>
+                                    <td className="px-6 py-4">
+                                        {group.isRequired ? (
+                                            <span className="text-green-600 font-semibold">Yes</span>
+                                        ) : (
+                                            <span className="text-stone-400 italic">Optional</span>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4">{(group.options || []).map(o => o.name).join(', ')}</td>
                                     <td className="px-6 py-4 space-x-2">
                                         <button onClick={() => setEditingModifierGroup(group)} className="text-stone-700 dark:text-zinc-300 hover:underline">Edit</button>
                                         <button onClick={() => handleDeleteModifierGroup(group.id)} className="text-red-600 hover:underline">Delete</button>
@@ -436,7 +614,13 @@ const MenuManagement: React.FC = () => {
 
             {/* Modifier Group Edit/Add Modal */}
             <Modal isOpen={!!editingModifierGroup} onClose={() => setEditingModifierGroup(null)} title={editingModifierGroup?.id.startsWith('new-group-') ? 'Add Modifier Group' : 'Edit Modifier Group'} helpArticleId="kb-8">
-                {editingModifierGroup && <ModifierGroupForm group={editingModifierGroup} onSave={handleSaveModifierGroup} onClose={() => setEditingModifierGroup(null)} />}
+                {editingModifierGroup && (
+                    <ModifierGroupForm 
+                        group={editingModifierGroup} 
+                        onSave={handleSaveModifierGroup} 
+                        onClose={() => setEditingModifierGroup(null)} 
+                    />
+                )}
             </Modal>
         </div>
     );

@@ -2,10 +2,10 @@
 import { Drink, ModifierGroup, ModifierOption, Discount, Category, KnowledgeArticle, TutorialStep } from './types';
 
 export const INITIAL_CATEGORIES: Category[] = [
-    { id: 'cat-1', name: 'Hot Drinks' },
-    { id: 'cat-2', name: 'Iced Drinks' },
-    { id: 'cat-3', name: 'Teas' },
-    { id: 'cat-4', name: 'Other' },
+    { id: 'cat-1', name: 'Hot Drinks', imageUrl: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=100&q=50' },
+    { id: 'cat-2', name: 'Iced Drinks', imageUrl: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=100&q=50' },
+    { id: 'cat-3', name: 'Teas', imageUrl: 'https://images.unsplash.com/photo-1573326140384-031e6ab9b48f?auto=format&fit=crop&w=100&q=50' },
+    { id: 'cat-4', name: 'Other', imageUrl: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=100&q=50' },
     { id: 'cat-5', name: 'Uncategorised' }, // Fallback category
 ];
 
@@ -21,23 +21,28 @@ export const INITIAL_MODIFIERS: ModifierGroup[] = [
       { id: 'mod-1-5', name: 'Oat', price: 0.75, cost: 0.25 },
       { id: 'mod-1-6', name: 'Lactose Free', price: 0.75, cost: 0.25 },
     ],
+    isRequired: true,
+    defaultOptionId: 'mod-1-1',
   },
   {
     id: 'mod-group-2',
     name: 'Sweetness',
     options: [
-      { id: 'mod-2-1', name: '1 Sugar', price: 0.0, cost: 0.05 },
-      { id: 'mod-2-2', name: '2 Sugars', price: 0.0, cost: 0.1 },
+      { id: 'mod-2-1', name: 'Sugar', price: 0.0, cost: 0.05 },
       { id: 'mod-2-3', name: 'Vanilla Syrup', price: 0.5, cost: 0.15 },
     ],
+    isRequired: false,
+    allowQuantity: true,
+    allowMultiple: true,
   },
   {
     id: 'mod-group-3',
     name: 'Espresso',
     options: [
-      { id: 'mod-3-1', name: 'Double Shot', price: 0.5, cost: 0.4 },
-      { id: 'mod-3-2', name: 'Triple Shot', price: 1.0, cost: 0.8 },
+      { id: 'mod-3-1', name: 'Extra Shot', price: 0.5, cost: 0.4 },
     ],
+    isRequired: false,
+    allowQuantity: true,
   },
   {
     id: 'mod-group-4',
@@ -46,6 +51,7 @@ export const INITIAL_MODIFIERS: ModifierGroup[] = [
       { id: 'mod-4-1', name: 'Extra Milk Chocolate', price: 0.5, cost: 0.2 },
       { id: 'mod-4-2', name: 'Extra White Chocolate', price: 0.5, cost: 0.2 },
     ],
+    isRequired: false,
   },
   {
     id: 'mod-group-5',
@@ -54,10 +60,11 @@ export const INITIAL_MODIFIERS: ModifierGroup[] = [
       { id: 'mod-5-1', name: 'In', price: 0.0, cost: 0.1 },
       { id: 'mod-5-2', name: 'Out', price: 0.0, cost: 0.0 },
     ],
+    isRequired: false,
   },
 ];
 
-const IMG_PARAMS = '?auto=format&fit=crop&w=500&q=60';
+const IMG_PARAMS = '?auto=format&fit=crop&w=400&q=50';
 
 export const INITIAL_DRINKS: Drink[] = [
   // Hot Drinks
@@ -337,7 +344,7 @@ export const INITIAL_KNOWLEDGE_BASE: KnowledgeArticle[] = [
     id: 'kb-2',
     title: 'Shopping Cart & Checkout',
     category: 'Customer View',
-    content: 'The cart flyout shows all items in the current order. Here, customers can provide their name, apply discount codes, and choose a pickup time (now or later). The system automatically applies loyalty rewards if available. The "Pay it Forward" feature lets them leave a nice message for the next customer.',
+    content: 'The cart flyout shows all items in the current order. Here, customers can provide their name, apply discount codes, and choose a pickup time (now or later). The "Pay it Forward" feature lets them leave a nice message for the next customer.',
     imageUrl: 'https://images.unsplash.com/photo-1583394833446-ac868007a8a2' + IMG_PARAMS,
   },
   {
@@ -394,8 +401,8 @@ export const INITIAL_KNOWLEDGE_BASE: KnowledgeArticle[] = [
     title: 'Accounts & Login',
     category: 'Customer View',
     content: `### Registered Users vs. Guests
-**Registered Users** can save favourite drinks, track loyalty points, and have their name pre-filled for orders. All data is saved to their account.
-**Guests** can place orders, but favourites and loyalty points are tied to the name they enter and are only saved on the current device.
+**Registered Users** can save favourite drinks and have their name pre-filled for orders. All data is saved to their account.
+**Guests** can place orders, but favourites are tied to the name they enter and are only saved on the current device.
 
 ### Logging In
 Enter an existing registered name to log in and access your saved profile.

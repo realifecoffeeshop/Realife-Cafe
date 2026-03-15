@@ -5,7 +5,7 @@ export enum View {
   KDS = 'KDS',
   ADMIN = 'ADMIN',
   PROFILE = 'PROFILE',
-  GEMINI = 'GEMINI',
+  BIRTHDAYS = 'BIRTHDAYS',
 }
 
 export enum AdminView {
@@ -16,6 +16,7 @@ export enum AdminView {
   FEEDBACK = 'FEEDBACK',
   TUTORIALS = 'TUTORIALS',
   QR_CODE = 'QR_CODE',
+  ORDER_HISTORY = 'ORDER_HISTORY',
 }
 
 export enum UserRole {
@@ -41,11 +42,16 @@ export interface ModifierGroup {
   id:string;
   name: string;
   options: ModifierOption[];
+  isRequired: boolean;
+  defaultOptionId?: string;
+  allowQuantity?: boolean;
+  allowMultiple?: boolean;
 }
 
 export interface Category {
     id: string;
     name: string;
+    imageUrl?: string;
 }
 
 export interface Drink {
@@ -59,11 +65,16 @@ export interface Drink {
   description?: string;
 }
 
+export interface SelectedModifier {
+  option: ModifierOption;
+  quantity: number;
+}
+
 export interface CartItem {
   id: string;
   drink: Drink;
   quantity: number;
-  selectedModifiers: { [groupId: string]: ModifierOption };
+  selectedModifiers: { [groupId: string]: SelectedModifier[] };
   finalPrice: number;
   customName?: string;
   isCompleted?: boolean;
@@ -83,6 +94,7 @@ export interface Order {
   createdAt: number;
   completedAt?: number;
   pickupTime?: number;
+  mergeId?: string;
 }
 
 export interface Discount {
@@ -92,19 +104,13 @@ export interface Discount {
   value: number;
 }
 
-export interface LoyaltyData {
-  [customerName: string]: {
-    drinkCount: number;
-  };
-}
-
 export interface User {
     id: string;
     name: string;
     role: UserRole;
     favourites: CartItem[];
-    loyaltyPoints: number;
     hasCompletedTutorial?: boolean;
+    birthday?: string; // ISO date string YYYY-MM-DD
 }
 
 export interface Feedback {
@@ -137,7 +143,6 @@ export interface AppState {
   modifierGroups: ModifierGroup[];
   orders: Order[];
   discounts: Discount[];
-  loyaltyData: LoyaltyData;
   users: User[];
   currentUser: User | null;
   feedback: Feedback[];
@@ -148,11 +153,14 @@ export interface AppState {
   isKnowledgeModalOpen: boolean;
   activeKnowledgeArticleId: string | null;
   permissionError: string | null;
+  isMenuLoaded: boolean;
+  isTutorialLoaded: boolean;
 }
 
 export type Action =
   | { type: '_HYDRATE_STATE_FROM_STORAGE' }
   | { type: 'SET_ORDERS', payload: Order[] }
+  | { type: 'SET_USERS', payload: User[] }
   | { type: 'PLACE_ORDER'; payload: { 
         customerName: string;
         customerId: string;
@@ -163,10 +171,13 @@ export type Action =
         pickupTime?: number;
     } }
   | { type: 'COMPLETE_ORDER'; payload: string } // order id
+  | { type: 'DELETE_ORDER'; payload: string } // order id
   | { type: 'REQUEUE_ORDER'; payload: string } // order id
   | { type: 'ACTIVATE_SCHEDULED_ORDER'; payload: string } // order id
   | { type: 'TOGGLE_ORDER_ITEM_COMPLETION'; payload: { orderId: string; itemId: string } }
   | { type: 'VERIFY_PAYMENT'; payload: string } // order id
+  | { type: 'MERGE_ORDERS'; payload: { orderIds: string[]; mergeId: string } }
+  | { type: 'UNMERGE_ORDER'; payload: string } // order id
   | { type: 'ADD_DRINK'; payload: Drink }
   | { type: 'UPDATE_DRINK'; payload: Drink }
   | { type: 'DELETE_DRINK'; payload: string } // drink id
@@ -175,12 +186,13 @@ export type Action =
   | { type: 'DELETE_MODIFIER_GROUP'; payload: string } // group id
   | { type: 'ADD_DISCOUNT'; payload: Discount }
   | { type: 'DELETE_DISCOUNT'; payload: string } // discount id
-  | { type: 'REGISTER'; payload: { name: string } }
+  | { type: 'REGISTER'; payload: { name: string; userId: string } }
   | { type: 'LOGIN'; payload: { name: string } }
   | { type: 'LOGOUT' }
   | { type: 'ADD_FAVOURITE'; payload: CartItem }
   | { type: 'REMOVE_FAVOURITE'; payload: string } // cart item id
   | { type: 'UPDATE_USER_ROLE'; payload: { userId: string; role: UserRole } }
+  | { type: 'UPDATE_USER_PROFILE'; payload: { userId: string; name?: string; birthday?: string } }
   | { type: 'SUBMIT_FEEDBACK'; payload: { rating: number; message: string } }
   | { type: 'COMPLETE_TUTORIAL' }
   | { type: 'SET_THEME', payload: 'light' | 'dark' }

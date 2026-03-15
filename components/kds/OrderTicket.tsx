@@ -1,14 +1,19 @@
 
 import React, { useState, useEffect, memo } from 'react';
-import { Order, ModifierOption } from '../../types';
+import { motion } from 'motion/react';
+import { Order, ModifierOption, SelectedModifier } from '../../types';
 
 interface OrderTicketProps {
   order: Order;
   onComplete: (id: string) => void;
+  onDelete: (id: string) => void;
   onToggleItem: (orderId: string, itemId: string) => void;
+  isSelected?: boolean;
+  onSelect?: (id: string) => void;
+  onUnmerge?: (id: string) => void;
 }
 
-const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onToggleItem }) => {
+const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, onToggleItem, isSelected, onSelect, onUnmerge }) => {
   const [timeElapsed, setTimeElapsed] = useState('');
 
   useEffect(() => {
@@ -44,27 +49,89 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onToggleIt
       return 'border-transparent';
   }
 
+  const getStatusLabel = (status: string) => {
+    switch(status) {
+      case 'payment-required': return 'Unpaid';
+      case 'pending': return 'Pending';
+      case 'scheduled': return 'Scheduled';
+      case 'completed': return 'Completed';
+      default: return status;
+    }
+  };
+
   return (
     <div 
-        className={`bg-white dark:bg-zinc-800 rounded-lg shadow-md flex flex-col h-full border-4 ${ticketBorderClass()}`}
+        className={`bg-white dark:bg-zinc-800 rounded-lg shadow-md flex flex-col border-4 transition-all hover:shadow-lg cursor-pointer group relative ${ticketBorderClass()} ${isSelected ? 'ring-4 ring-blue-500 ring-offset-2 dark:ring-offset-zinc-900' : ''}`}
         role="article"
         aria-labelledby={`order-heading-${order.id}`}
+        onClick={() => onSelect ? onSelect(order.id) : onComplete(order.id)}
     >
+      {/* Selection Checkbox (Visible when onSelect is provided) */}
+      {onSelect && (
+        <div className="absolute top-2 left-2 z-10">
+          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${isSelected ? 'bg-blue-500 border-blue-500' : 'bg-white/50 border-stone-300 dark:border-zinc-500'}`}>
+            {isSelected && (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Delete Button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(order.id);
+        }}
+        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-red-600"
+        title="Delete Order"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
       <header 
-          className={`p-3 bg-stone-100 dark:bg-zinc-700 rounded-t-lg ${allItemsCompleted ? 'cursor-pointer' : ''}`}
-          onClick={() => allItemsCompleted && onComplete(order.id)}
-          title={allItemsCompleted ? "Click to complete entire order" : "Complete all items to enable"}
+          className={`p-3 bg-stone-100 dark:bg-zinc-700 rounded-t-lg sticky top-0 z-20 shadow-sm`}
       >
         <div className="flex justify-between items-start">
             <div id={`order-heading-${order.id}`}>
               <h3 className="font-bold text-xl text-stone-900 dark:text-white truncate">{order.customerName}</h3>
-              <p className="text-xs text-stone-500 dark:text-zinc-400">ID: #{order.id.slice(-6)}</p>
+              <div className="flex items-center space-x-2 mt-1">
+                <p className="text-xs text-stone-500 dark:text-zinc-400">ID: #{order.id.slice(-6)}</p>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-200 dark:bg-zinc-600 text-stone-600 dark:text-zinc-300 font-bold uppercase tracking-wider">
+                  {getStatusLabel(order.status)}
+                </span>
+                {order.mergeId && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 font-bold uppercase tracking-wider flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
+                    </svg>
+                    Grouped
+                  </span>
+                )}
+              </div>
             </div>
-            <span className={`px-3 py-1 text-sm font-bold rounded-full ${timeColourClass()}`}>
-              {timeElapsed}
-            </span>
+            <div className="flex flex-col items-end">
+              <span className={`px-3 py-1 text-sm font-bold rounded-full ${timeColourClass()}`}>
+                {timeElapsed}
+              </span>
+              {order.mergeId && onUnmerge && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUnmerge(order.id);
+                  }}
+                  className="mt-1 text-[10px] text-purple-600 dark:text-purple-400 hover:underline font-bold uppercase"
+                >
+                  Ungroup
+                </button>
+              )}
+            </div>
         </div>
-        {order.pickupTime && (
+        {order.pickupTime && !isNaN(new Date(order.pickupTime).getTime()) && (
             <div className="mt-2 text-center bg-zinc-200 dark:bg-zinc-600 p-1 rounded-md">
                 <p className="text-xs font-bold text-stone-800 dark:text-white">
                     Pickup at: {new Date(order.pickupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -76,35 +143,55 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onToggleIt
         {order.items.map(item => {
             const isComplete = !!item.isCompleted;
             return (
-              <div 
+              <motion.div 
                 key={item.id} 
-                className={`text-sm p-1 -m-1 rounded-md transition-all duration-200 cursor-pointer hover:bg-stone-100 dark:hover:bg-zinc-700/50 ${isComplete ? 'line-through text-stone-400 dark:text-zinc-500 opacity-70' : ''}`}
-                onClick={() => onToggleItem(order.id, item.id)}
+                layout
+                initial={false}
+                animate={{ 
+                  opacity: isComplete ? 0.6 : 1,
+                  scale: isComplete ? 0.98 : 1,
+                  x: isComplete ? 4 : 0
+                }}
+                className={`text-sm p-1 -m-1 rounded-md transition-colors duration-200 cursor-pointer hover:bg-stone-100 dark:hover:bg-zinc-700/50 ${isComplete ? 'line-through text-stone-400 dark:text-zinc-500' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleItem(order.id, item.id);
+                }}
                 role="button"
                 tabIndex={0}
                 aria-pressed={isComplete}
-                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onToggleItem(order.id, item.id)}
-                aria-label={`${isComplete ? 'Mark as incomplete' : 'Mark as complete'}: ${item.quantity}x ${item.drink.name}`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.stopPropagation();
+                    onToggleItem(order.id, item.id);
+                  }
+                }}
+                aria-label={`${isComplete ? 'Mark as incomplete' : 'Mark as complete'}: ${item.quantity}x ${item.drink?.name || 'Unknown Drink'}`}
               >
-                <p className={`font-semibold text-base ${isComplete ? '' : 'text-stone-800 dark:text-zinc-200'}`}>{item.quantity}x {item.drink.name}</p>
+                <p className={`font-semibold text-base ${isComplete ? '' : 'text-stone-800 dark:text-zinc-200'}`}>{item.quantity}x {item.drink?.name || 'Unknown Drink'}</p>
                 {item.customName && <p className={`pl-4 font-medium ${isComplete ? '' : 'text-stone-700 dark:text-zinc-300'}`}>- {item.customName}</p>}
                 <ul className={`pl-4 list-disc list-inside ${isComplete ? '' : 'text-stone-600 dark:text-zinc-400'}`}>
-                  {Object.values(item.selectedModifiers).map((mod: ModifierOption) => (
-                    <li key={mod.id}>{mod.name}</li>
+                  {Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => (
+                    <li key={sm.option?.id || Math.random()}>{sm.quantity > 1 ? `${sm.quantity}x ` : ''}{sm.option?.name || 'Unknown'}</li>
                   ))}
                 </ul>
-              </div>
+              </motion.div>
             )
         })}
       </div>
       <footer className="p-3 border-t dark:border-zinc-700">
+        <div className="text-center text-[10px] text-stone-400 dark:text-zinc-500 mb-2 uppercase tracking-widest font-bold">
+          Click ticket to complete
+        </div>
         <button
-          onClick={() => onComplete(order.id)}
-          disabled={!allItemsCompleted}
-          className="w-full py-2 rounded-md font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-800 bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 disabled:bg-stone-400 disabled:dark:bg-zinc-600 disabled:cursor-not-allowed disabled:hover:bg-stone-400"
+          onClick={(e) => {
+            e.stopPropagation();
+            onComplete(order.id);
+          }}
+          className={`w-full py-2 rounded-md font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-800 ${allItemsCompleted ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500' : 'bg-stone-200 dark:bg-zinc-700 text-stone-600 dark:text-zinc-300 hover:bg-stone-300 dark:hover:bg-zinc-600'}`}
           aria-label={!allItemsCompleted ? `Cannot complete order for ${order.customerName} yet` : `Complete order for ${order.customerName}`}
         >
-          {allItemsCompleted ? 'Complete Order' : 'Waiting for items...'}
+          {allItemsCompleted ? 'Complete Order' : 'Force Complete'}
         </button>
       </footer>
     </div>

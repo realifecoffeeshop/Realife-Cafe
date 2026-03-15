@@ -1,3 +1,7 @@
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import 'firebase/compat/database';
+
 // The configuration object for your Firebase project.
 const firebaseConfig = {
   apiKey: "AIzaSyCpi0lyH3Ltzv14_Kj2ZrUoaPe7oEYu964",
@@ -17,26 +21,19 @@ const firebaseConfig = {
  */
 export const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY" && firebaseConfig.apiKey !== "";
 
-let database: any;
-let auth: any;
+let database: firebase.database.Database | undefined;
+let auth: firebase.auth.Auth | undefined;
 
 if (isFirebaseConfigured) {
   try {
-    // @ts-ignore
-    if (window.firebase) {
-      // Initialize the app if it hasn't been already
-      // @ts-ignore
-      const app = window.firebase.apps.length
-        // @ts-ignore
-        ? window.firebase.app()
-        // @ts-ignore
-        : window.firebase.initializeApp(firebaseConfig);
-      // Get a reference to the Realtime Database service
-      database = app.database();
-      auth = app.auth();
-    } else {
-      console.error("Firebase SDK not loaded. Real-time features will be disabled.");
-    }
+    // Initialize the app if it hasn't been already
+    const app = firebase.apps.length
+      ? firebase.app()
+      : firebase.initializeApp(firebaseConfig);
+    
+    // Get a reference to the Realtime Database service
+    database = app.database();
+    auth = app.auth();
   } catch (error) {
     console.error("Firebase initialization error. Please check your firebaseConfig object in firebase/config.ts.", error);
   }

@@ -31,7 +31,7 @@ const PermissionsManagement: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {users.map(user => (
+                            {(users || []).map(user => (
                                 <tr key={user.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
                                     <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{user.name}</td>
                                     <td className="px-6 py-4">{user.role}</td>

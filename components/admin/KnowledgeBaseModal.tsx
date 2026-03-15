@@ -61,7 +61,7 @@ const KnowledgeBaseModal: React.FC<{ isOpen: boolean; onClose: () => void }> = (
       }, 300); // Delay to allow closing animation
     } else if (activeKnowledgeArticleId) {
         // If modal is opened with a specific article ID, view it directly
-        const articleToView = knowledgeBase.find(a => a.id === activeKnowledgeArticleId);
+        const articleToView = (knowledgeBase || []).find(a => a.id === activeKnowledgeArticleId);
         if (articleToView) {
             setSelectedArticle(articleToView);
             setView('view');
@@ -75,10 +75,10 @@ const KnowledgeBaseModal: React.FC<{ isOpen: boolean; onClose: () => void }> = (
 
   const filteredArticles = useMemo(() => {
     if (!searchTerm.trim()) {
-      return state.knowledgeBase;
+      return state.knowledgeBase || [];
     }
     const lowercasedTerm = searchTerm.toLowerCase();
-    return state.knowledgeBase.filter(
+    return (state.knowledgeBase || []).filter(
       article =>
         article.title.toLowerCase().includes(lowercasedTerm) ||
         article.content.toLowerCase().includes(lowercasedTerm) ||
@@ -115,11 +115,50 @@ const KnowledgeBaseModal: React.FC<{ isOpen: boolean; onClose: () => void }> = (
     const file = e.target.files?.[0];
     if (file) {
         const reader = new FileReader();
-        reader.onloadend = () => {
-            setArticleForm(prev => ({ ...prev, imageUrl: reader.result as string }));
+        reader.onloadend = async () => {
+            const base64 = reader.result as string;
+            try {
+                // Use a helper or inline compression to avoid large writes
+                const compressed = await compressImage(base64);
+                setArticleForm(prev => ({ ...prev, imageUrl: compressed }));
+            } catch (error) {
+                console.error("KB Image compression failed:", error);
+                setArticleForm(prev => ({ ...prev, imageUrl: base64 }));
+            }
         };
         reader.readAsDataURL(file);
     }
+  };
+
+  // Helper to compress base64 images
+  const compressImage = (base64Str: string, maxWidth = 800, maxHeight = 800, quality = 0.6): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.src = base64Str;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+                if (width > maxWidth) {
+                    height *= maxWidth / width;
+                    width = maxWidth;
+                }
+            } else {
+                if (height > maxHeight) {
+                    width *= maxHeight / height;
+                    height = maxHeight;
+                }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+    });
   };
 
   const handleSave = () => {

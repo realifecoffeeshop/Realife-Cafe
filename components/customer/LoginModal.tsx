@@ -9,7 +9,7 @@ interface LoginModalProps {
 }
 
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
-    const { state, dispatch } = useContext(AppContext);
+    const { state, dispatch, firebaseUser } = useContext(AppContext);
     const { addToast } = useToast();
     const [viewMode, setViewMode] = useState<'login' | 'register'>('login');
     const [name, setName] = useState('');
@@ -45,12 +45,17 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             return;
         }
 
+        if (!firebaseUser) {
+            addToast('Connecting to security service... Please try again in a moment.', 'info');
+            return;
+        }
+
         const existingUser = state.users.find(c => c.name.toLowerCase() === trimmedName.toLowerCase());
         if (existingUser) {
             addToast('A user with this name already exists. Please log in.', 'error');
             return;
         }
-        dispatch({ type: 'REGISTER', payload: { name: trimmedName } });
+        dispatch({ type: 'REGISTER', payload: { name: trimmedName, userId: firebaseUser.uid } });
         addToast(`Account created for ${trimmedName}! Welcome!`, 'success');
         onClose();
     };

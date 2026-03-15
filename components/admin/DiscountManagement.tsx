@@ -65,7 +65,7 @@ const DiscountManagement: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {state.discounts.map(discount => (
+                            {(state.discounts || []).map(discount => (
                                 <tr key={discount.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
                                     <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{discount.code}</td>
                                     <td className="px-6 py-4 capitalize">{discount.type}</td>

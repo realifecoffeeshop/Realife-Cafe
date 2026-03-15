@@ -15,7 +15,7 @@ const FeedbackView: React.FC = () => {
     const { state } = useContext(AppContext);
     
     const sortedFeedback = useMemo(() => {
-        return [...state.feedback].sort((a, b) => b.createdAt - a.createdAt);
+        return [...(state.feedback || [])].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     }, [state.feedback]);
 
     return (
