@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import Modal from './Modal';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
 
 const Star: React.FC<{ filled: boolean; onClick: () => void; onMouseEnter: () => void; onMouseLeave: () => void; }> = ({ filled, onClick, onMouseEnter, onMouseLeave }) => (
@@ -20,7 +20,7 @@ const Star: React.FC<{ filled: boolean; onClick: () => void; onMouseEnter: () =>
 
 
 const Feedback: React.FC = () => {
-    const { dispatch } = useContext(AppContext);
+    const { dispatch } = useApp();
     const { addToast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
     const [rating, setRating] = useState(0);

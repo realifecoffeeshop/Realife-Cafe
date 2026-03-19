@@ -1,10 +1,10 @@
 import React, { useContext, useState, useMemo } from 'react';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { User } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
 
 const BirthdaysView: React.FC = () => {
-    const { state } = useContext(AppContext);
+    const { state } = useApp();
     const { users } = state;
     const [currentDate, setCurrentDate] = useState(new Date());
 

@@ -1,6 +1,6 @@
 
 import React, { useState, useContext, useEffect } from 'react';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
 import { Drink, ModifierGroup, ModifierOption, Category } from '../../types';
 import Modal from '../shared/Modal';
@@ -12,7 +12,7 @@ const ModifierGroupForm: React.FC<{
     onSave: (group: ModifierGroup) => void;
     onClose: () => void;
 }> = ({ group, onSave, onClose }) => {
-    const [name, setName] = useState(group.name);
+    const [name, setName] = useState(group.name || '');
     const [options, setOptions] = useState<ModifierOption[]>((group.options || []).map(o => ({...o})));
     const [isRequired, setIsRequired] = useState(group.isRequired || false);
     const [allowQuantity, setAllowQuantity] = useState(group.allowQuantity || false);
@@ -143,7 +143,7 @@ const ModifierGroupForm: React.FC<{
 
 
 const MenuManagement: React.FC = () => {
-    const { state, dispatch } = useContext(AppContext);
+    const { state, dispatch } = useApp();
     const { addToast } = useToast();
     const [editingDrink, setEditingDrink] = useState<Partial<Drink> | null>(null);
     const [drinkFormState, setDrinkFormState] = useState<Partial<Drink> | null>(null);
@@ -176,7 +176,7 @@ const MenuManagement: React.FC = () => {
         }
     }, [editingCategory]);
 
-    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
         if (e.target.tagName === 'SELECT' && name === 'modifierGroups') {
             const selectedOptions = Array.from((e.target as HTMLSelectElement).options)
@@ -262,6 +262,7 @@ const MenuManagement: React.FC = () => {
             basePrice: drinkFormState.basePrice || 0,
             baseCost: drinkFormState.baseCost || 0,
             imageUrl: drinkFormState.imageUrl || '',
+            description: drinkFormState.description || '',
             modifierGroups: drinkFormState.modifierGroups || [],
         };
 
@@ -399,9 +400,9 @@ const MenuManagement: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {(state.categories || []).map(cat => (
+                            {(state.categories || []).filter(c => c && c.id).map(cat => (
                                 <tr key={cat.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
-                                    <td className="px-6 py-4 font-medium text-stone-900 dark:text-white">{cat.name}</td>
+                                    <td className="px-6 py-4 font-medium text-stone-900 dark:text-white">{cat.name || 'Unnamed'}</td>
                                     <td className="px-6 py-4 space-x-2">
                                         <button onClick={() => setEditingCategory(cat)} className="text-stone-700 dark:text-zinc-300 hover:underline">Edit</button>
                                         {cat.id !== 'cat-4' && ( // Prevent deleting "Uncategorised"
@@ -442,14 +443,14 @@ const MenuManagement: React.FC = () => {
                                 <tr key={drink.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
                                     <td className="px-6 py-4">
                                         {drink.imageUrl ? (
-                                            <img src={drink.imageUrl} alt={drink.name} className="w-10 h-10 rounded-md object-cover" />
+                                            <img src={drink.imageUrl} alt={drink.name || 'Drink'} className="w-10 h-10 rounded-md object-cover" />
                                         ) : (
                                             <div className="w-10 h-10 rounded-md bg-stone-200 dark:bg-zinc-700 flex items-center justify-center">
                                                 <svg className="w-6 h-6 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                             </div>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{drink.name}</td>
+                                    <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{drink.name || 'Unnamed Drink'}</td>
                                     <td className="px-6 py-4">{categoryName}</td>
                                     <td className="px-6 py-4">${(drink.basePrice || 0).toFixed(2)}</td>
                                     <td className="px-6 py-4">${(drink.baseCost || 0).toFixed(2)}</td>
@@ -485,7 +486,7 @@ const MenuManagement: React.FC = () => {
                         <tbody>
                             {(state.modifierGroups || []).map(group => (
                                 <tr key={group.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
-                                    <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{group.name}</td>
+                                    <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{group?.name || 'Unnamed Group'}</td>
                                     <td className="px-6 py-4">
                                         {group.isRequired ? (
                                             <span className="text-green-600 font-semibold">Yes</span>
@@ -493,7 +494,7 @@ const MenuManagement: React.FC = () => {
                                             <span className="text-stone-400 italic">Optional</span>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4">{(group.options || []).map(o => o.name).join(', ')}</td>
+                                    <td className="px-6 py-4">{(group.options || []).map(o => o?.name || 'Unknown').join(', ')}</td>
                                     <td className="px-6 py-4 space-x-2">
                                         <button onClick={() => setEditingModifierGroup(group)} className="text-stone-700 dark:text-zinc-300 hover:underline">Edit</button>
                                         <button onClick={() => handleDeleteModifierGroup(group.id)} className="text-red-600 hover:underline">Delete</button>
@@ -582,6 +583,18 @@ const MenuManagement: React.FC = () => {
                                     <span className="text-stone-500 dark:text-zinc-400 text-sm">No Image</span>
                                 </div>
                              )}
+                        </div>
+
+                        <div>
+                            <label className="block mb-1 font-medium">Description</label>
+                            <textarea 
+                                name="description" 
+                                value={drinkFormState.description || ''} 
+                                onChange={handleFormChange} 
+                                rows={3}
+                                className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"
+                                placeholder="Enter product description..."
+                            />
                         </div>
 
                         <div>

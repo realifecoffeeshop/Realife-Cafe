@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "Order": {
+      "title": "Order",
+      "description": "Represents a customer order",
+      "type": "object",
+      "properties": {
+        "customerName": { "type": "string" },
+        "customerId": { "type": "string" },
+        "total": { "type": "number" },
+        "totalCost": { "type": "number" },
+        "finalTotal": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "status": { "type": "string", "enum": ["payment-required", "pending", "scheduled", "completed"] },
+        "createdAt": { "type": "number" },
+        "completedAt": { "type": "number" },
+        "pickupTime": { "type": "number" },
+        "mergeId": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "quantity": { "type": "number" },
+              "finalPrice": { "type": "number" },
+              "isCompleted": { "type": "boolean" },
+              "customName": { "type": "string" },
+              "drink": { "$ref": "Drink" }
+            }
+          }
+        }
+      },
+      "required": ["customerName", "total", "status", "createdAt", "items"]
+    },
+    "Drink": {
+      "title": "Drink",
+      "description": "Represents a menu item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "basePrice": { "type": "number" },
+        "baseCost": { "type": "number" },
+        "modifierGroups": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "name", "category", "basePrice"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Represents a system user or customer",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "kitchen", "customer"] },
+        "favourites": { "type": "array", "items": { "$ref": "Drink" } },
+        "hasCompletedTutorial": { "type": "boolean" },
+        "birthday": { "type": "string" }
+      },
+      "required": ["name", "role"]
+    }
+  },
+  "firestore": {
+    "/orders": { "schema": "Order", "description": "Collection of all orders" },
+    "/menu": { "schema": "object", "description": "Menu configuration including drinks, categories, and modifier groups" },
+    "/users": { "schema": "User", "description": "User profiles and preferences" },
+    "/tutorialSteps": { "schema": "array", "description": "Tutorial content" }
+  }
+}

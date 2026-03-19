@@ -1,7 +1,7 @@
 
 import React, { useContext, useState, useMemo, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
 import { Drink, ModifierOption, Order, SelectedModifier } from '../../types';
 import OrderTicket from './OrderTicket';
@@ -9,6 +9,7 @@ import ConfirmationModal from '../shared/ConfirmationModal';
 import Modal from '../shared/Modal';
 import GroupedItemCard, { AggregatedItem } from './GroupedItemCard';
 import GroupedByTypeCard, { AggregatedByType } from './GroupedByTypeCard';
+import CustomerDirectory from './CustomerDirectory';
 
 const PREPARATION_LEAD_TIME = 15 * 60 * 1000; // 15 minutes in milliseconds
 
@@ -31,7 +32,8 @@ const PaymentTicket = memo(({ order, onVerify, onDelete }: { order: Order; onVer
 
   useEffect(() => {
     const updateTimer = () => {
-      const seconds = Math.floor((Date.now() - order.createdAt) / 1000);
+      const createdAt = order.createdAt || Date.now();
+      const seconds = Math.floor((Date.now() - createdAt) / 1000);
       const minutes = Math.floor(seconds / 60);
       const remainingSeconds = seconds % 60;
       setTimeElapsed(`${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`);
@@ -42,7 +44,10 @@ const PaymentTicket = memo(({ order, onVerify, onDelete }: { order: Order; onVer
     return () => clearInterval(interval);
   }, [order.createdAt]);
   
-  const getMinutesWaiting = () => Math.floor((Date.now() - order.createdAt) / 60000);
+  const getMinutesWaiting = () => {
+      const createdAt = order.createdAt || Date.now();
+      return Math.floor((Date.now() - createdAt) / 60000);
+  };
 
   const ticketBorderClass = () => {
       const minutes = getMinutesWaiting();
@@ -77,7 +82,7 @@ const PaymentTicket = memo(({ order, onVerify, onDelete }: { order: Order; onVer
             <div id={`order-heading-${order.id}`}>
               <h3 className="font-bold text-xl text-stone-900 dark:text-white truncate">{order.customerName}</h3>
               <div className="flex items-center space-x-2 mt-1">
-                <p className="text-xs text-stone-500 dark:text-zinc-400">ID: #{order.id.slice(-6)}</p>
+                <p className="text-xs text-stone-500 dark:text-zinc-400">ID: #{(order.id || '').slice(-6)}</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
                   Unpaid
                 </span>
@@ -106,7 +111,7 @@ const PaymentTicket = memo(({ order, onVerify, onDelete }: { order: Order; onVer
             <p className="font-semibold text-base text-stone-800 dark:text-zinc-200">{item.quantity}x {item.drink?.name || 'Unknown Drink'}</p>
             {item.customName && <p className="pl-4 font-medium text-stone-700 dark:text-zinc-300">- {item.customName}</p>}
             <ul className="pl-4 list-disc list-inside text-stone-600 dark:text-zinc-400">
-              {Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => (
+              {Object.values(item.selectedModifiers || {}).flatMap(mods => mods || []).filter(sm => sm).map((sm: SelectedModifier) => (
                 <li key={sm.option?.id || Math.random()}>{sm.quantity > 1 ? `${sm.quantity}x ` : ''}{sm.option?.name || 'Unknown'}</li>
               ))}
             </ul>
@@ -117,7 +122,7 @@ const PaymentTicket = memo(({ order, onVerify, onDelete }: { order: Order; onVer
         <button
           onClick={() => onVerify(order.id)}
           className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors font-bold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-zinc-800"
-          aria-label={`Verify payment for ${order.customerName}'s order`}
+          aria-label={`Verify payment for ${order.customerName || 'Customer'}'s order`}
         >
           Verify Payment & Send to Kitchen
         </button>
@@ -128,7 +133,7 @@ const PaymentTicket = memo(({ order, onVerify, onDelete }: { order: Order; onVer
 PaymentTicket.displayName = 'PaymentTicket';
 
 const TabButton: React.FC<{
-  tabId: 'payment-required' | 'pending' | 'scheduled' | 'history';
+  tabId: 'payment-required' | 'pending' | 'scheduled' | 'history' | 'customers';
   count: number;
   children: React.ReactNode;
   panelId: string;
@@ -189,7 +194,7 @@ const ViewModeToggle: React.FC<{
 );
 
 const KDSView: React.FC = () => {
-  const { state, dispatch } = useContext(AppContext);
+  const { state, dispatch } = useApp();
   const { addToast } = useToast();
   const [requeueCandidate, setRequeueCandidate] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<string | null>(null);
@@ -215,7 +220,7 @@ const KDSView: React.FC = () => {
     [state.orders]
   );
 
-  const [activeTab, setActiveTab] = useState<'payment-required' | 'pending' | 'scheduled' | 'history'>(
+  const [activeTab, setActiveTab] = useState<'payment-required' | 'pending' | 'scheduled' | 'history' | 'customers'>(
       paymentRequiredOrdersUnfiltered.length > 0 ? 'payment-required' : 'pending'
   );
 
@@ -223,7 +228,7 @@ const KDSView: React.FC = () => {
     const interval = setInterval(() => {
         const now = Date.now();
         state.orders.forEach(order => {
-            if (order.status === 'scheduled' && order.pickupTime && order.pickupTime - now <= PREPARATION_LEAD_TIME) {
+            if (order.status === 'scheduled' && order.pickupTime && (order.pickupTime - now) <= PREPARATION_LEAD_TIME) {
                 dispatch({ type: 'ACTIVATE_SCHEDULED_ORDER', payload: order.id });
             }
         });
@@ -280,7 +285,8 @@ const KDSView: React.FC = () => {
             }
             const existingAggregatedItem = itemsMap.get(key)!;
             existingAggregatedItem.quantity += item.quantity;
-            const orderInfo = existingAggregatedItem.orders.get(order.id) || { name: order.customerName, quantity: 0 };
+            const customerName = order.customerName || 'Unknown';
+            const orderInfo = existingAggregatedItem.orders.get(order.id) || { name: customerName, quantity: 0 };
             orderInfo.quantity += item.quantity;
             existingAggregatedItem.orders.set(order.id, orderInfo);
         });
@@ -288,16 +294,16 @@ const KDSView: React.FC = () => {
 
     let result: AggregatedItem[] = Array.from(itemsMap.values()).map(aggItem => ({
         ...aggItem,
-        orders: Array.from(aggItem.orders.entries()).map(([id, info]) => ({ id, name: info.name, quantity: info.quantity }))
+        orders: Array.from(aggItem.orders.entries()).map(([id, info]) => ({ id, name: info.name || 'Unknown', quantity: info.quantity }))
     }));
     
     if (searchQuery.trim()) {
         const lowerCaseQuery = searchQuery.toLowerCase();
         result = result.filter(aggItem => {
-            const matchesDrink = aggItem.drink.name.toLowerCase().includes(lowerCaseQuery);
+            const matchesDrink = (aggItem.drink?.name || '').toLowerCase().includes(lowerCaseQuery);
             const matchesOrder = aggItem.orders.some(order => 
-                order.name.toLowerCase().includes(lowerCaseQuery) ||
-                order.id.toLowerCase().includes(lowerCaseQuery)
+                (order.name || '').toLowerCase().includes(lowerCaseQuery) ||
+                (order.id || '').toLowerCase().includes(lowerCaseQuery)
             );
             return matchesDrink || matchesOrder;
         });
@@ -321,7 +327,21 @@ const KDSView: React.FC = () => {
           order.items.forEach(item => {
               const typeKey = item.drink?.id || 'unknown';
               if (!typeMap.has(typeKey)) {
-                  typeMap.set(typeKey, { drink: item.drink || { id: 'unknown', name: 'Unknown Drink', price: 0, category: 'Uncategorized', description: '', image: '', modifiers: [] }, totalQuantity: 0, variations: new Map(), sourceOrders: new Map() });
+                  typeMap.set(typeKey, { 
+                    drink: item.drink || { 
+                      id: 'unknown', 
+                      name: 'Unknown Drink', 
+                      basePrice: 0, 
+                      baseCost: 0,
+                      category: 'Uncategorized', 
+                      description: '', 
+                      imageUrl: '', 
+                      modifierGroups: [] 
+                    }, 
+                    totalQuantity: 0, 
+                    variations: new Map(), 
+                    sourceOrders: new Map() 
+                  });
               }
               const aggByType = typeMap.get(typeKey)!;
               aggByType.totalQuantity += item.quantity || 0;
@@ -348,7 +368,7 @@ const KDSView: React.FC = () => {
       if (searchQuery.trim()) {
         const lowerCaseQuery = searchQuery.toLowerCase();
         finalResult = finalResult.filter(aggType => 
-            aggType.drink.name.toLowerCase().includes(lowerCaseQuery)
+            (aggType.drink?.name || '').toLowerCase().includes(lowerCaseQuery)
         );
       }
       
@@ -381,9 +401,26 @@ const KDSView: React.FC = () => {
     addToast('Orders grouped successfully', 'success');
   };
 
+  const handleMergeOrdersPermanent = () => {
+    if (selectedOrders.length < 2) {
+        addToast('Please select at least 2 orders to merge', 'error');
+        return;
+    }
+    const targetOrderId = selectedOrders[0];
+    dispatch({ type: 'MERGE_ORDERS_PERMANENT', payload: { orderIds: selectedOrders, targetOrderId } });
+    setSelectedOrders([]);
+    setIsMergeMode(false);
+    addToast('Orders merged permanently', 'success');
+  };
+
   const handleUngroupOrder = (id: string) => {
-    dispatch({ type: 'UNMERGE_ORDER', payload: id });
-    addToast('Order ungrouped', 'success');
+    if (id.startsWith('group-')) {
+        dispatch({ type: 'UNMERGE_GROUP', payload: id });
+        addToast('Group unmerged', 'success');
+    } else {
+        dispatch({ type: 'UNMERGE_ORDER', payload: id });
+        addToast('Order ungrouped', 'success');
+    }
   };
 
   const toggleOrderSelection = (id: string) => {
@@ -450,13 +487,22 @@ const KDSView: React.FC = () => {
                             )}
                         </div>
                         {isMergeMode && (
-                            <button 
-                                onClick={handleGroupOrders}
-                                disabled={selectedOrders.length < 2}
-                                className="px-6 py-2 bg-purple-600 text-white rounded-md font-bold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                            >
-                                Confirm Group
-                            </button>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={handleGroupOrders}
+                                    disabled={selectedOrders.length < 2}
+                                    className="px-4 py-2 bg-purple-600 text-white rounded-md font-bold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                >
+                                    Group Visual
+                                </button>
+                                <button 
+                                    onClick={handleMergeOrdersPermanent}
+                                    disabled={selectedOrders.length < 2}
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded-md font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                >
+                                    Merge Permanent
+                                </button>
+                            </div>
                         )}
                     </div>
 
@@ -529,10 +575,7 @@ const KDSView: React.FC = () => {
                                                     handleToggleItemCompletion(originalOrder.id, itemId);
                                                 }
                                             }}
-                                            onUnmerge={(id) => {
-                                                // Ungroup all orders in this group
-                                                orders.forEach(o => handleUngroupOrder(o.id));
-                                            }}
+                                            onUnmerge={handleUngroupOrder}
                                         />
                                         <div className="px-3 py-1 text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase text-center">
                                             Combined Group Ticket
@@ -561,7 +604,7 @@ const KDSView: React.FC = () => {
                 <div className={containerClasses}>
                     <AnimatePresence mode="popLayout">
                         {aggregatedByType.map(item => (
-                            <div key={item.drink.id} className={ticketWrapperClasses}>
+                            <div key={item.drink?.id || Math.random()} className={ticketWrapperClasses}>
                                 <GroupedByTypeCard item={item} />
                             </div>
                         ))}
@@ -606,6 +649,7 @@ const KDSView: React.FC = () => {
         <TabButton tabId="pending" count={pendingOrders.length} panelId="tabpanel-pending" activeTab={activeTab} onTabChange={setActiveTab}>Pending</TabButton>
         <TabButton tabId="scheduled" count={scheduledOrders.length} panelId="tabpanel-scheduled" activeTab={activeTab} onTabChange={setActiveTab}>Scheduled</TabButton>
         <TabButton tabId="history" count={completedOrders.length} panelId="tabpanel-history" activeTab={activeTab} onTabChange={setActiveTab}>History</TabButton>
+        <TabButton tabId="customers" count={state.customers.length} panelId="tabpanel-customers" activeTab={activeTab} onTabChange={setActiveTab}>Customers</TabButton>
       </div>
       
       <div id="tabpanel-payment-required" role="tabpanel" aria-labelledby="tab-payment-required" hidden={activeTab !== 'payment-required'}>
@@ -623,7 +667,24 @@ const KDSView: React.FC = () => {
       </div>
 
       <div id="tabpanel-pending" role="tabpanel" aria-labelledby="tab-pending" hidden={activeTab !== 'pending'}>
-            <ViewModeToggle kdsViewMode={kdsViewMode} onModeChange={setKdsViewMode} />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <ViewModeToggle kdsViewMode={kdsViewMode} onModeChange={setKdsViewMode} />
+                
+                <div className="flex items-center space-x-2 bg-stone-200 dark:bg-zinc-700 p-1 rounded-lg">
+                    <button 
+                        onClick={() => setScrollDirection('vertical')}
+                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${scrollDirection === 'vertical' ? 'bg-white text-stone-800 shadow dark:bg-zinc-600 dark:text-white' : 'text-stone-600 dark:text-zinc-300'}`}
+                    >
+                        Vertical
+                    </button>
+                    <button 
+                        onClick={() => setScrollDirection('horizontal')}
+                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${scrollDirection === 'horizontal' ? 'bg-white text-stone-800 shadow dark:bg-zinc-600 dark:text-white' : 'text-stone-600 dark:text-zinc-300'}`}
+                    >
+                        Horizontal
+                    </button>
+                </div>
+            </div>
             {pendingOrdersBase.length > 0 ? renderPendingContent() : renderEmptyState('No pending orders. Great job!')}
             {pendingOrdersBase.length > 0 && pendingOrders.length === 0 && aggregatedItems.length === 0 && aggregatedByType.length === 0 && renderEmptyState('')}
       </div>
@@ -711,7 +772,7 @@ const KDSView: React.FC = () => {
                                                 {item.customName && <span className="font-normal text-stone-600 dark:text-zinc-400"> ({item.customName})</span>}
                                             </div>
                                             <div className="text-xs text-stone-500 dark:text-zinc-400 pl-2">
-                                                {Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => 
+                                                {Object.values(item.selectedModifiers || {}).flatMap(mods => mods || []).filter(sm => sm).map((sm: SelectedModifier) => 
                                                     sm.quantity > 1 ? `${sm.quantity}x ${sm.option?.name || 'Unknown'}` : (sm.option?.name || 'Unknown')
                                                 ).join(', ')}
                                             </div>
@@ -746,6 +807,10 @@ const KDSView: React.FC = () => {
                 </div>
             )}
         </div>
+      </div>
+
+      <div id="tabpanel-customers" role="tabpanel" aria-labelledby="tab-customers" hidden={activeTab !== 'customers'}>
+        <CustomerDirectory />
       </div>
 
       <ConfirmationModal

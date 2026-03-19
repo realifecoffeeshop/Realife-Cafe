@@ -1,6 +1,6 @@
 
 import React, { useState, useContext, useMemo, useEffect, useCallback, Suspense, lazy, memo } from 'react';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
 import { Drink, CartItem, PaymentMethod, Discount, UserRole, Order, ModifierOption, Category, SelectedModifier } from '../../types';
 import DrinkCard from './DrinkCard';
@@ -113,7 +113,7 @@ const MenuControls: React.FC<{
 ));
 
 const CustomerView: React.FC = () => {
-  const { state, dispatch, firebaseUser } = useContext(AppContext);
+  const { state, dispatch, firebaseUser } = useApp();
   const { addToast } = useToast();
   const { currentUser, cart, tutorialSteps } = state;
   const [selectedDrink, setSelectedDrink] = useState<Drink | null>(null);
@@ -159,7 +159,7 @@ const CustomerView: React.FC = () => {
 
   useEffect(() => {
     if (currentUser) {
-      setCustomerName(currentUser.name);
+      setCustomerName(currentUser.name || '');
     }
   }, [currentUser]);
 
@@ -445,7 +445,8 @@ const CustomerView: React.FC = () => {
 
   const filteredDrinks = useMemo(() => {
     return state.drinks.filter(drink => {
-       const matchesSearch = drink.name.toLowerCase().includes(searchTerm.toLowerCase());
+       if (!drink) return false;
+       const matchesSearch = (drink.name || '').toLowerCase().includes(searchTerm.toLowerCase());
        const matchesCategory = selectedCategory === 'all' || drink.category === selectedCategory;
        return matchesSearch && matchesCategory;
     });

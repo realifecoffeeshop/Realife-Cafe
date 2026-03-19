@@ -1,5 +1,5 @@
 import React, { useContext, useMemo } from 'react';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 
 const StarDisplay: React.FC<{ rating: number }> = ({ rating }) => (
     <div className="flex">
@@ -12,7 +12,7 @@ const StarDisplay: React.FC<{ rating: number }> = ({ rating }) => (
 );
 
 const FeedbackView: React.FC = () => {
-    const { state } = useContext(AppContext);
+    const { state } = useApp();
     
     const sortedFeedback = useMemo(() => {
         return [...(state.feedback || [])].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));

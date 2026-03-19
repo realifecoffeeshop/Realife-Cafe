@@ -19,7 +19,7 @@ const DetailedDrinkCard: React.FC<DetailedDrinkCardProps> = ({ drink, onSelect, 
       <div className="flex-1 p-4 flex flex-col justify-between">
         <div>
           <h3 className="text-lg font-bold text-stone-900 dark:text-white group-hover:text-[#A58D79] transition-colors line-clamp-1">
-            {drink.name}
+            {drink?.name || 'Unnamed Drink'}
           </h3>
           {drink.description && (
             <p className="mt-1 text-sm text-stone-500 dark:text-zinc-400 line-clamp-2 leading-snug">
@@ -38,7 +38,7 @@ const DetailedDrinkCard: React.FC<DetailedDrinkCardProps> = ({ drink, onSelect, 
                 onQuickAdd(drink);
               }}
               className="p-1.5 bg-stone-100 dark:bg-zinc-700 hover:bg-[#A58D79] hover:text-white dark:hover:bg-zinc-600 rounded-full transition-all duration-300"
-              aria-label={`Quick add ${drink.name}`}
+              aria-label={`Quick add ${drink?.name || 'Item'}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -52,7 +52,7 @@ const DetailedDrinkCard: React.FC<DetailedDrinkCardProps> = ({ drink, onSelect, 
         <img 
           className={`w-full h-full object-cover transition-all duration-500 ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-110'}`}
           src={drink.imageUrl} 
-          alt={drink.name} 
+          alt={drink?.name || 'Drink'} 
           loading="lazy"
           onLoad={() => setImageLoaded(true)}
         />

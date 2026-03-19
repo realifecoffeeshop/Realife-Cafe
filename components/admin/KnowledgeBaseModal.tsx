@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useContext, useEffect, useRef } from 'react';
 import Modal from '../shared/Modal';
 import ConfirmationModal from '../shared/ConfirmationModal';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { KnowledgeArticle } from '../../types';
 import { useToast } from '../../context/ToastContext';
 
@@ -40,7 +40,7 @@ const parseMarkdown = (text: string): string => {
 };
 
 const KnowledgeBaseModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-  const { state, dispatch } = useContext(AppContext);
+  const { state, dispatch } = useApp();
   const { addToast } = useToast();
   const { activeKnowledgeArticleId, knowledgeBase } = state;
   const [searchTerm, setSearchTerm] = useState('');

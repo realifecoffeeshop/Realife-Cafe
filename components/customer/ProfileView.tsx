@@ -1,10 +1,10 @@
 import React, { useContext, useMemo, useState } from 'react';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
 import { CartItem, ModifierOption } from '../../types';
 
 const ProfileView: React.FC = () => {
-  const { state, dispatch } = useContext(AppContext);
+  const { state, dispatch } = useApp();
   const { addToast } = useToast();
   const { currentUser, orders } = state;
   const [swipedFavouriteId, setSwipedFavouriteId] = useState<string | null>(null);
@@ -31,7 +31,7 @@ const ProfileView: React.FC = () => {
   const handleReorder = (favourite: CartItem) => {
     const newCartItem = { ...favourite, id: `cart-item-${Date.now()}` };
     dispatch({ type: 'ADD_ITEM_TO_CART', payload: newCartItem });
-    addToast(`${favourite.customName || favourite.drink.name} added to your order!`, 'success');
+    addToast(`${favourite.customName || favourite.drink?.name || 'Item'} added to your order!`, 'success');
     setSwipedFavouriteId(null); // Close the swipe view
   };
 
@@ -121,14 +121,14 @@ const ProfileView: React.FC = () => {
                                  <button 
                                      onClick={(e) => { e.stopPropagation(); handleReorder(fav); }}
                                      className="w-24 h-full flex items-center justify-center bg-stone-700 text-white font-semibold transition-colors hover:bg-stone-600"
-                                     aria-label={`Re-order ${fav.customName || fav.drink.name}`}
+                                     aria-label={`Re-order ${fav.customName || fav.drink?.name || 'Item'}`}
                                  >
                                      Re-order
                                  </button>
                                  <button
                                      onClick={(e) => { e.stopPropagation(); handleRemoveFavourite(fav.id); }}
                                      className="w-24 h-full flex items-center justify-center bg-red-600 text-white font-semibold transition-colors hover:bg-red-700"
-                                     aria-label={`Remove ${fav.customName || fav.drink.name} from favourites`}
+                                     aria-label={`Remove ${fav.customName || fav.drink?.name || 'Item'} from favourites`}
                                  >
                                     Remove
                                  </button>

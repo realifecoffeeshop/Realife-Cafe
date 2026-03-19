@@ -1,16 +1,17 @@
 import React, { useState, useContext, useEffect, ReactNode, Suspense, lazy } from 'react';
-import { AppProvider, AppContext } from './context/AppContext';
+import ErrorBoundary from './components/shared/ErrorBoundary';
+import { AppProvider, useApp } from './context/AppContext';
 import { ToastProvider } from './context/ToastContext';
 import { View, UserRole } from './types';
 import Header from './components/shared/Header';
-import CustomerView from './components/customer/CustomerView';
 import LoginModal from './components/customer/LoginModal';
 import Feedback from './components/shared/Feedback';
 import Modal from './components/shared/Modal';
 import KnowledgeBaseModal from './components/admin/KnowledgeBaseModal';
 import { isFirebaseConfigured } from './firebase/config';
 
-import KDSView from './components/kds/KDSView';
+const CustomerView = lazy(() => import('./components/customer/CustomerView'));
+const KDSView = lazy(() => import('./components/kds/KDSView'));
 const AdminView = lazy(() => import('./components/admin/AdminView'));
 const ProfileView = lazy(() => import('./components/customer/ProfileView'));
 const BirthdaysView = lazy(() => import('./components/shared/BirthdaysView'));
@@ -60,7 +61,7 @@ const AccessDenied: React.FC = () => (
 );
 
 const AppContent: React.FC = () => {
-  const { state, dispatch } = useContext(AppContext);
+  const { state, dispatch } = useApp();
   const { currentUser, theme, isKnowledgeModalOpen, permissionError } = state;
   const [currentView, setCurrentView] = useState<View>(View.CUSTOMER);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -185,11 +186,13 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <ToastProvider>
-        <AppProvider>
-            <AppContent />
-        </AppProvider>
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+          <AppProvider>
+              <AppContent />
+          </AppProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 };
 

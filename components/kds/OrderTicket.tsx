@@ -18,7 +18,8 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
 
   useEffect(() => {
     const updateTimer = () => {
-      const seconds = Math.floor((Date.now() - order.createdAt) / 1000);
+      const createdAt = order.createdAt || Date.now();
+      const seconds = Math.floor((Date.now() - createdAt) / 1000);
       const minutes = Math.floor(seconds / 60);
       const remainingSeconds = seconds % 60;
       setTimeElapsed(`${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`);
@@ -29,7 +30,10 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
     return () => clearInterval(interval);
   }, [order.createdAt]);
   
-  const getMinutesWaiting = () => Math.floor((Date.now() - order.createdAt) / 60000);
+  const getMinutesWaiting = () => {
+      const createdAt = order.createdAt || Date.now();
+      return Math.floor((Date.now() - createdAt) / 60000);
+  };
   
   const allItemsCompleted = order.items.every(item => item.isCompleted);
 
@@ -98,11 +102,11 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
       >
         <div className="flex justify-between items-start">
             <div id={`order-heading-${order.id}`}>
-              <h3 className="font-bold text-xl text-stone-900 dark:text-white truncate">{order.customerName}</h3>
+              <h3 className="font-bold text-xl text-stone-900 dark:text-white truncate">{order.customerName || 'Unknown'}</h3>
               <div className="flex items-center space-x-2 mt-1">
-                <p className="text-xs text-stone-500 dark:text-zinc-400">ID: #{order.id.slice(-6)}</p>
+                <p className="text-xs text-stone-500 dark:text-zinc-400">ID: #{(order.id || '').slice(-6)}</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-200 dark:bg-zinc-600 text-stone-600 dark:text-zinc-300 font-bold uppercase tracking-wider">
-                  {getStatusLabel(order.status)}
+                  {getStatusLabel(order.status || '')}
                 </span>
                 {order.mergeId && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 font-bold uppercase tracking-wider flex items-center">
@@ -189,7 +193,7 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
             onComplete(order.id);
           }}
           className={`w-full py-2 rounded-md font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-800 ${allItemsCompleted ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500' : 'bg-stone-200 dark:bg-zinc-700 text-stone-600 dark:text-zinc-300 hover:bg-stone-300 dark:hover:bg-zinc-600'}`}
-          aria-label={!allItemsCompleted ? `Cannot complete order for ${order.customerName} yet` : `Complete order for ${order.customerName}`}
+          aria-label={!allItemsCompleted ? `Cannot complete order for ${order.customerName || 'Unknown'} yet` : `Complete order for ${order.customerName || 'Unknown'}`}
         >
           {allItemsCompleted ? 'Complete Order' : 'Force Complete'}
         </button>

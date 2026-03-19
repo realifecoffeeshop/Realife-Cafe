@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Drink, ModifierGroup, ModifierOption, CartItem, SelectedModifier } from '../../types';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../shared/Modal';
 
@@ -13,7 +13,7 @@ interface OrderModalProps {
 }
 
 const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveItem, cartItemToEdit }) => {
-  const { state, dispatch } = useContext(AppContext);
+  const { state, dispatch } = useApp();
   const { addToast } = useToast();
   const { currentUser } = state;
   const [quantity, setQuantity] = useState(1);
@@ -70,7 +70,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
   const activeDrink = cartItemToEdit?.drink || drink;
   if (!activeDrink) return null;
   
-  const modalTitle = `Customise ${customName.trim() ? `${customName.trim()} (${activeDrink.name})` : activeDrink.name}`;
+  const modalTitle = `Customise ${customName.trim() ? `${customName.trim()} (${activeDrink.name || 'Drink'})` : (activeDrink.name || 'Drink')}`;
 
   const handleModifierChange = (groupId: string, option: ModifierOption) => {
     const group = state.modifierGroups.find(g => g.id === groupId);
@@ -152,7 +152,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
 
   const handleSaveFavourite = () => {
     dispatch({ type: 'ADD_FAVOURITE', payload: { ...currentCartItem, quantity: 1 } }); // Favourites are always quantity 1
-    addToast(`${currentCartItem.customName || currentCartItem.drink.name} saved to favourites!`, 'success');
+    addToast(`${currentCartItem.customName || currentCartItem.drink?.name || 'Drink'} saved to favourites!`, 'success');
   };
 
   const drinkModifierGroups = state.modifierGroups.filter(mg => activeDrink.modifierGroups.includes(mg.id));
@@ -164,8 +164,8 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
           {drinkModifierGroups.map(group => (
             <div key={group.id}>
               <div className="flex items-center justify-between mb-2">
-                <h4 className="font-semibold">{group.name}</h4>
-                {group.isRequired ? (
+                <h4 className="font-semibold">{group?.name || 'Group'}</h4>
+                {group?.isRequired ? (
                   <span className="text-xs bg-stone-200 dark:bg-zinc-700 px-2 py-0.5 rounded text-stone-600 dark:text-zinc-400">Required</span>
                 ) : (
                   <span className="text-xs text-stone-400 dark:text-zinc-500 italic">Optional</span>
@@ -186,7 +186,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
                             : 'bg-stone-100 dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 hover:bg-stone-200 dark:hover:bg-zinc-600'
                         }`}
                       >
-                        {option.name} {option.price > 0 && `(+$${option.price.toFixed(2)})`}
+                        {option?.name || 'Option'} {option?.price > 0 && `(+$${option.price.toFixed(2)})`}
                       </button>
                       
                       {isSelected && group.allowQuantity && (

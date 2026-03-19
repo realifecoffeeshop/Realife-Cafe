@@ -55,7 +55,7 @@ const GroupedByTypeCard: React.FC<GroupedByTypeCardProps> = ({ item }) => {
           <ul className="space-y-1 text-xs max-h-32 overflow-y-auto pr-2">
               {item.sourceOrders.map((order, index) => (
                   <li key={index} className="flex justify-between items-center text-stone-600 dark:text-zinc-400">
-                      <span className="truncate mr-2">{order.customerName}</span>
+                      <span className="truncate mr-2">{order.customerName || 'Unknown'}</span>
                       <span className="font-bold">x{order.quantity}</span>
                   </li>
               ))}

@@ -42,8 +42,8 @@ const GroupedItemCard: React.FC<GroupedItemCardProps> = ({ item }) => {
         <ul className="space-y-1 text-sm max-h-24 overflow-y-auto pr-2">
             {item.orders.map(order => (
                 <li key={order.id} className="flex justify-between items-center text-stone-700 dark:text-zinc-300">
-                    <span>{order.quantity}x for <strong>{order.name}</strong></span>
-                    <span className="font-mono text-xs bg-neutral-100 dark:bg-zinc-700 px-1.5 py-0.5 rounded">{order.id.slice(-6)}</span>
+                    <span>{order.quantity}x for <strong>{order.name || 'Unknown'}</strong></span>
+                    <span className="font-mono text-xs bg-neutral-100 dark:bg-zinc-700 px-1.5 py-0.5 rounded">{(order.id || '').slice(-6)}</span>
                 </li>
             ))}
         </ul>

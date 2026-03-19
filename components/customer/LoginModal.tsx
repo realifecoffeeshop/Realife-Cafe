@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import Modal from '../shared/Modal';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
 
 interface LoginModalProps {
@@ -9,7 +9,7 @@ interface LoginModalProps {
 }
 
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
-    const { state, dispatch, firebaseUser } = useContext(AppContext);
+    const { state, dispatch, firebaseUser } = useApp();
     const { addToast } = useToast();
     const [viewMode, setViewMode] = useState<'login' | 'register'>('login');
     const [name, setName] = useState('');

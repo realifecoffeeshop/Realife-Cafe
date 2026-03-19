@@ -16,13 +16,13 @@ const DrinkCard: React.FC<DrinkCardProps> = ({ drink, onSelect, onQuickAdd, prio
     <div 
       className="relative rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 transition-all duration-300 cursor-pointer group h-48 bg-stone-200 dark:bg-zinc-700 transform-gpu will-change-transform" 
       onClick={() => onSelect(drink)}
-      aria-label={`Select ${drink.name}`}
+      aria-label={`Select ${drink?.name || 'Item'}`}
     >
       <div className="absolute inset-0 rounded-lg overflow-hidden">
         <img 
             className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
             src={drink.imageUrl} 
-            alt={drink.name} 
+            alt={drink?.name || 'Drink'} 
             loading={priority ? "eager" : "lazy"}
             decoding="async"
             onLoad={() => setImageLoaded(true)}
@@ -33,7 +33,7 @@ const DrinkCard: React.FC<DrinkCardProps> = ({ drink, onSelect, onQuickAdd, prio
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent rounded-lg"></div>
       
       <div className="absolute bottom-0 left-0 p-4 w-full flex justify-between items-end">
-        <h3 className="text-lg font-semibold text-white drop-shadow-md transition-transform duration-300 transform group-hover:-translate-y-1">{drink.name}</h3>
+        <h3 className="text-lg font-semibold text-white drop-shadow-md transition-transform duration-300 transform group-hover:-translate-y-1">{drink?.name || 'Unnamed Drink'}</h3>
         {onQuickAdd && (
           <button
             onClick={(e) => {
@@ -41,7 +41,7 @@ const DrinkCard: React.FC<DrinkCardProps> = ({ drink, onSelect, onQuickAdd, prio
               onQuickAdd(drink);
             }}
             className="p-2 bg-white/20 hover:bg-white/40 rounded-full backdrop-blur-sm transition-all duration-300 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0"
-            aria-label={`Quick add ${drink.name} to cart`}
+            aria-label={`Quick add ${drink?.name || 'Item'} to cart`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

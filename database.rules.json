@@ -1,12 +1,34 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
-    "orders": {
-      ".indexOn": ["createdAt", "status"]
+    "users": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || (auth.token.email === 'realifecoffeeshop@gmail.com' && auth.token.email_verified === true))",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || (auth.token.email === 'realifecoffeeshop@gmail.com' && auth.token.email_verified === true))"
+      },
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (auth.token.email === 'realifecoffeeshop@gmail.com' && auth.token.email_verified === true))",
+      ".indexOn": ["role"]
     },
-    "drinks": {
-      ".indexOn": ["category"]
+    "orders": {
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'kitchen' || (auth.token.email === 'realifecoffeeshop@gmail.com' && auth.token.email_verified === true))",
+      "$orderId": {
+        ".read": "auth != null && (data.child('customerId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'kitchen' || (auth.token.email === 'realifecoffeeshop@gmail.com' && auth.token.email_verified === true))",
+        ".write": "auth != null && (!data.exists() || data.child('customerId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'kitchen' || (auth.token.email === 'realifecoffeeshop@gmail.com' && auth.token.email_verified === true))"
+      },
+      ".indexOn": ["createdAt", "status", "customerId"]
+    },
+    "menu": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (auth.token.email === 'realifecoffeeshop@gmail.com' && auth.token.email_verified === true))"
+    },
+    "tutorialSteps": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (auth.token.email === 'realifecoffeeshop@gmail.com' && auth.token.email_verified === true))"
+    },
+    "feedback": {
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (auth.token.email === 'realifecoffeeshop@gmail.com' && auth.token.email_verified === true))",
+      "$feedbackId": {
+        ".write": "auth != null"
+      }
     }
   }
 }

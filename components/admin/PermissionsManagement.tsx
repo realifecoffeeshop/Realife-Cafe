@@ -1,10 +1,10 @@
 import React, { useContext } from 'react';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
 import { UserRole } from '../../types';
 
 const PermissionsManagement: React.FC = () => {
-    const { state, dispatch } = useContext(AppContext);
+    const { state, dispatch } = useApp();
     const { addToast } = useToast();
     const { users, currentUser } = state;
 
@@ -31,9 +31,9 @@ const PermissionsManagement: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {(users || []).map(user => (
+                            {(users || []).filter(u => u && u.id).map(user => (
                                 <tr key={user.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
-                                    <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{user.name}</td>
+                                    <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{user.name || 'Unknown'}</td>
                                     <td className="px-6 py-4">{user.role}</td>
                                     <td className="px-6 py-4">
                                         <select

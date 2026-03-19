@@ -1,6 +1,6 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, memo } from 'react';
 import { View, UserRole } from '../../types';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import Logo from './Logo';
 import HamburgerMenu from './HamburgerMenu';
 
@@ -11,7 +11,7 @@ interface HeaderProps {
   onMenuLinkClick: (section: string) => void;
 }
 
-const NavButton: React.FC<{ view: View; currentView: View; setView: (view: View) => void; children: React.ReactNode }> = ({ view, currentView, setView, children }) => (
+const NavButton: React.FC<{ view: View; currentView: View; setView: (view: View) => void; children: React.ReactNode }> = memo(({ view, currentView, setView, children }) => (
   <button
     onClick={() => setView(view)}
     className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
@@ -22,10 +22,10 @@ const NavButton: React.FC<{ view: View; currentView: View; setView: (view: View)
   >
     {children}
   </button>
-);
+));
 
 const Header: React.FC<HeaderProps> = ({ currentView, setView, onLoginClick, onMenuLinkClick }) => {
-  const { state, dispatch } = useContext(AppContext);
+  const { state, dispatch } = useApp();
   const { currentUser, theme } = state;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -113,4 +113,4 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLoginClick, onM
   );
 };
 
-export default Header;
+export default memo(Header);

@@ -1,10 +1,10 @@
 import React, { useContext } from 'react';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
 import { Discount } from '../../types';
 
 const DiscountManagement: React.FC = () => {
-    const { state, dispatch } = useContext(AppContext);
+    const { state, dispatch } = useApp();
     const { addToast } = useToast();
 
     const handleAddDiscount = (e: React.FormEvent<HTMLFormElement>) => {

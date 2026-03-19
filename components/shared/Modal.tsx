@@ -1,5 +1,5 @@
 import React, { ReactNode, useContext } from 'react';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 
 interface ModalProps {
   isOpen: boolean;
@@ -10,7 +10,7 @@ interface ModalProps {
 }
 
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, helpArticleId }) => {
-  const { dispatch } = useContext(AppContext);
+  const { dispatch } = useApp();
 
   if (!isOpen) return null;
 

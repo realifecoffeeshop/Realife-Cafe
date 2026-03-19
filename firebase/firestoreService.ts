@@ -1,5 +1,5 @@
 import { database, isFirebaseConfigured } from './config';
-import { Order, Drink, Category, ModifierGroup, TutorialStep, User } from '../types';
+import { Order, Drink, Category, ModifierGroup, TutorialStep, User, Feedback, Customer } from '../types';
 import { INITIAL_DRINKS, INITIAL_CATEGORIES, INITIAL_MODIFIERS, INITIAL_TUTORIAL_STEPS } from '../constants';
 
 // NOTE: This service interacts with FIREBASE REALTIME DATABASE, not Firestore,
@@ -693,4 +693,76 @@ export const seedInitialUsers = async (initialUsers: User[]): Promise<void> => {
         console.error("Error seeding initial users:", error);
         throw error;
     }
+};
+
+// --- Customer Functions ---
+
+export const onCustomersUpdate = (callback: (customers: Customer[]) => void, errorCallback?: (error: any) => void): (() => void) => {
+    if (!isFirebaseConfigured || !database) return () => {};
+    const customersRef = database.ref('customers');
+    const listener = customersRef.on('value', (snapshot: any) => {
+        const customersArray: Customer[] = [];
+        if (snapshot.exists()) {
+            snapshot.forEach((childSnapshot: any) => {
+                customersArray.push({ ...childSnapshot.val(), id: childSnapshot.key });
+            });
+        }
+        callback(customersArray);
+    }, (error: any) => {
+        if (errorCallback) errorCallback(error);
+        else console.error("Error listening for customer updates:", error);
+    });
+    return () => customersRef.off('value', listener);
+};
+
+export const saveCustomer = async (customer: Customer): Promise<void> => {
+    if (!isFirebaseConfigured || !database) return;
+    try {
+        const { id, ...customerData } = customer;
+        const sanitized = sanitizeForFirebase(customerData);
+        const finalCustomer = JSON.parse(JSON.stringify(sanitized, (k, v) => v === undefined ? null : v));
+        validateNoUndefined(finalCustomer, `saveCustomer/${id}`);
+        await database.ref(`customers/${id}`).set(finalCustomer);
+    } catch (error: any) {
+        console.error("Error saving customer:", error);
+        throw error;
+    }
+};
+
+export const deleteCustomer = async (customerId: string): Promise<void> => {
+    if (!isFirebaseConfigured || !database) return;
+    try {
+        await database.ref(`customers/${customerId}`).remove();
+    } catch (error: any) {
+        console.error("Error deleting customer:", error);
+        throw error;
+    }
+};
+
+export const submitFeedback = async (feedback: Omit<Feedback, 'id' | 'createdAt'>) => {
+    if (!database) return;
+    const feedbackRef = database.ref('feedback').push();
+    const newFeedback = {
+        ...feedback,
+        id: feedbackRef.key,
+        createdAt: Date.now()
+    };
+    await feedbackRef.set(newFeedback);
+};
+
+export const onFeedbackUpdate = (callback: (feedback: Feedback[]) => void, onError?: (error: Error) => void) => {
+    if (!database) return () => {};
+    const feedbackRef = database.ref('feedback');
+    const listener = feedbackRef.on('value', (snapshot: any) => {
+        const data = snapshot.val();
+        if (data) {
+            const feedbackList = Object.values(data) as Feedback[];
+            callback(feedbackList);
+        } else {
+            callback([]);
+        }
+    }, (error: any) => {
+        if (onError) onError(error);
+    });
+    return () => feedbackRef.off('value', listener);
 };

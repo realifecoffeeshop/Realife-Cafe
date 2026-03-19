@@ -1,9 +1,10 @@
 import React, { createContext, useReducer, useEffect, ReactNode, Dispatch, useState, useRef } from 'react';
 import { AppState, Action, Order, User, UserRole, Feedback, Category, KnowledgeArticle, TutorialStep } from '../types';
 import { INITIAL_DISCOUNTS, INITIAL_KNOWLEDGE_BASE, INITIAL_TUTORIAL_STEPS } from '../constants';
-import { updateOrder, deleteOrder, onOrdersUpdate, onMenuUpdate, saveMenu, seedInitialMenu, saveTutorialSteps, seedInitialTutorialSteps, getTutorialSteps, onUsersUpdate, updateUser, saveUser, seedInitialUsers, isPermissionError } from '../firebase/firestoreService';
+import { updateOrder, deleteOrder, onOrdersUpdate, onMenuUpdate, saveMenu, seedInitialMenu, saveTutorialSteps, seedInitialTutorialSteps, getTutorialSteps, onUsersUpdate, updateUser, saveUser, seedInitialUsers, isPermissionError, submitFeedback, onFeedbackUpdate, onCustomersUpdate, saveCustomer, deleteCustomer } from '../firebase/firestoreService';
 import { database, auth, isFirebaseConfigured } from '../firebase/config';
 import { useToast } from './ToastContext';
+import { Customer } from '../types';
 
 const initialState: AppState = {
   drinks: [],
@@ -16,6 +17,7 @@ const initialState: AppState = {
       { id: 'kitchen-user', name: 'kitchen', role: UserRole.KITCHEN, favourites: [] },
       { id: 'jp1-admin-user', name: 'JP1', role: UserRole.ADMIN, favourites: [] },
   ],
+  customers: [],
   currentUser: null,
   feedback: [],
   knowledgeBase: INITIAL_KNOWLEDGE_BASE,
@@ -45,10 +47,12 @@ const appReducer = (state: AppState, action: Action): AppState => {
         return { ...state, orders: action.payload };
     case 'SET_USERS': {
         const updatedCurrentUser = state.currentUser 
-            ? action.payload.find(u => u.id === state.currentUser?.id) || state.currentUser 
+            ? (action.payload || []).find(u => u && u.id === state.currentUser?.id) || state.currentUser 
             : null;
-        return { ...state, users: action.payload, currentUser: updatedCurrentUser };
+        return { ...state, users: action.payload || [], currentUser: updatedCurrentUser };
     }
+    case 'SET_CUSTOMERS':
+        return { ...state, customers: action.payload };
     case '_HYDRATE_STATE_FROM_STORAGE': {
         try {
             const localData = localStorage.getItem('cafe-pos-data');
@@ -72,13 +76,13 @@ const appReducer = (state: AppState, action: Action): AppState => {
     case 'SET_THEME':
       return { ...state, theme: action.payload };
     case 'REGISTER': {
-      const existingUser = state.users.find(c => c.name.toLowerCase() === action.payload.name.toLowerCase());
+      const existingUser = (state.users || []).find(c => c && c.name && c.name.toLowerCase() === (action.payload.name || '').toLowerCase());
       if (existingUser) {
         return { ...state, currentUser: existingUser };
       }
       
       // Auto-promote the first 'admin' registration to Administrator
-      const isInitialAdmin = action.payload.name.toLowerCase() === 'admin';
+      const isInitialAdmin = (action.payload.name || '').toLowerCase() === 'admin';
       
       const newUser: User = {
         name: action.payload.name,
@@ -97,8 +101,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
       };
     }
     case 'LOGIN': {
-      const user = state.users.find(
-        c => c.name.toLowerCase() === action.payload.name.toLowerCase()
+      const user = (state.users || []).find(
+        c => c && c.name && c.name.toLowerCase() === (action.payload.name || '').toLowerCase()
       );
       if (!user) {
         // Allow guest login if user doesn't exist
@@ -212,6 +216,48 @@ const appReducer = (state: AppState, action: Action): AppState => {
         updateOrder(action.payload, { mergeId: undefined })
             .catch(err => console.error(`Failed to unmerge order ${action.payload}:`, err));
         return state;
+    }
+    case 'UNMERGE_GROUP': {
+        const mergeId = action.payload;
+        state.orders.forEach(order => {
+            if (order.mergeId === mergeId) {
+                updateOrder(order.id, { mergeId: undefined })
+                    .catch(err => console.error(`Failed to unmerge order ${order.id} from group ${mergeId}:`, err));
+            }
+        });
+        return state;
+    }
+    case 'MERGE_ORDERS_PERMANENT': {
+        const { orderIds, targetOrderId } = action.payload;
+        const targetOrder = state.orders.find(o => o.id === targetOrderId);
+        if (!targetOrder) return state;
+
+        const otherOrders = state.orders.filter(o => orderIds.includes(o.id) && o.id !== targetOrderId);
+        const combinedItems = [...targetOrder.items];
+        
+        otherOrders.forEach(o => {
+            combinedItems.push(...o.items);
+            deleteOrder(o.id).catch(err => console.error(`Failed to delete merged order ${o.id}:`, err));
+        });
+
+        updateOrder(targetOrderId, { items: combinedItems })
+            .catch(err => console.error(`Failed to update target order ${targetOrderId} with merged items:`, err));
+            
+        return state;
+    }
+    case 'ADD_CUSTOMER': {
+        const newCustomer = action.payload;
+        saveCustomer(newCustomer).catch(err => console.error("Failed to save new customer:", err));
+        return { ...state, customers: [...state.customers, newCustomer] };
+    }
+    case 'UPDATE_CUSTOMER': {
+        const updatedCustomer = action.payload;
+        saveCustomer(updatedCustomer).catch(err => console.error("Failed to update customer:", err));
+        return { ...state, customers: state.customers.map(c => c.id === updatedCustomer.id ? updatedCustomer : c) };
+    }
+    case 'DELETE_CUSTOMER': {
+        deleteCustomer(action.payload).catch(err => console.error("Failed to delete customer:", err));
+        return { ...state, customers: state.customers.filter(c => c.id !== action.payload) };
     }
     case 'COMPLETE_ORDER':
       updateOrder(action.payload, { status: 'completed', completedAt: Date.now() })
@@ -329,12 +375,15 @@ const appReducer = (state: AppState, action: Action): AppState => {
         };
     }
     case 'SUBMIT_FEEDBACK': {
+        const { rating, message } = action.payload;
+        submitFeedback({ rating, message })
+            .catch(err => console.error("Failed to submit feedback to Firebase:", err));
+        
         const newFeedback: Feedback = {
             ...action.payload,
             id: `feedback-${Date.now()}`,
             createdAt: Date.now(),
         };
-        console.log('Feedback submitted:', newFeedback);
         return {
             ...state,
             feedback: [...state.feedback, newFeedback],
@@ -378,6 +427,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
             modifierGroups: action.payload.modifierGroups || [],
             isMenuLoaded: true, // New flag to track initial load
         };
+    case 'SET_FEEDBACK':
+        return { ...state, feedback: action.payload };
     case 'ADD_KB_ARTICLE': {
         const newArticle: KnowledgeArticle = {
             id: `kb-${Date.now()}`,
@@ -417,11 +468,15 @@ const appReducer = (state: AppState, action: Action): AppState => {
 };
 
 // @ts-ignore
-const AppContext = createContext<{ state: AppState; dispatch: Dispatch<Action>; firebaseUser: any | null }>({
-  state: initialState,
-  dispatch: () => null,
-  firebaseUser: null,
-});
+const AppContext = createContext<{ state: AppState; dispatch: Dispatch<Action>; firebaseUser: any | null } | undefined>(undefined);
+
+export const useApp = () => {
+  const context = React.useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};
 
 const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { addToast } = useToast();
@@ -506,6 +561,8 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         let unsubscribeMenu: (() => void) | undefined;
         let unsubscribeOrders: (() => void) | undefined;
         let unsubscribeUsers: (() => void) | undefined;
+        let unsubscribeFeedback: (() => void) | undefined;
+        let unsubscribeCustomers: (() => void) | undefined;
 
         const setupListeners = async () => {
             // Seeding data (requires write permission, which is auth != null)
@@ -580,6 +637,28 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                             }
                         }
                     );
+
+                    unsubscribeFeedback = onFeedbackUpdate(
+                        (feedback: Feedback[]) => {
+                            dispatch({ type: 'SET_FEEDBACK', payload: feedback });
+                        },
+                        (error: any) => {
+                            if (error.message?.toLowerCase().includes('permission_denied')) {
+                                dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/feedback'.` });
+                            }
+                        }
+                    );
+
+                    unsubscribeCustomers = onCustomersUpdate(
+                        (customers: Customer[]) => {
+                            dispatch({ type: 'SET_CUSTOMERS', payload: customers });
+                        },
+                        (error: any) => {
+                            if (error.message?.toLowerCase().includes('permission_denied')) {
+                                dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/customers'.` });
+                            }
+                        }
+                    );
                 }
             } else if (state.currentUser) {
                 // For customers, we could implement a filtered listener here 
@@ -594,6 +673,8 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             if (unsubscribeOrders) unsubscribeOrders();
             if (unsubscribeUsers) unsubscribeUsers();
             if (unsubscribeMenu) unsubscribeMenu();
+            if (unsubscribeFeedback) unsubscribeFeedback();
+            if (unsubscribeCustomers) unsubscribeCustomers();
         };
     }
   }, [firebaseUser, state.currentUser?.role]);

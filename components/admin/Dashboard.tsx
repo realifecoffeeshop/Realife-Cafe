@@ -1,16 +1,16 @@
-import React, { useContext, useMemo, useState } from 'react';
-import { AppContext } from '../../context/AppContext';
+import React, { useContext, useMemo, useState, memo } from 'react';
+import { useApp } from '../../context/AppContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { PaymentMethod } from '../../types';
+import { PaymentMethod, Order } from '../../types';
 
-const StatCard: React.FC<{ title: string; value: string; }> = ({ title, value }) => (
+const StatCard: React.FC<{ title: string; value: string; }> = memo(({ title, value }) => (
   <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
     <h3 className="text-sm font-medium text-stone-500 dark:text-zinc-400 uppercase">{title}</h3>
     <p className="mt-1 text-3xl font-semibold text-stone-900 dark:text-white">{value}</p>
   </div>
-);
+));
 
-const ChartPlaceholder: React.FC<{ message: string; isError?: boolean }> = ({ message, isError }) => (
+const ChartPlaceholder: React.FC<{ message: string; isError?: boolean }> = memo(({ message, isError }) => (
   <div className={`flex flex-col items-center justify-center h-full p-4 text-center ${isError ? 'text-red-500 dark:text-red-400' : 'text-stone-500 dark:text-zinc-400'}`}>
     {isError ? (
       <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -23,11 +23,153 @@ const ChartPlaceholder: React.FC<{ message: string; isError?: boolean }> = ({ me
     )}
     <p className="text-sm font-medium">{message}</p>
   </div>
-);
+));
+
+const PerformanceChart: React.FC<{ 
+  data: any[]; 
+  isSingleDay: boolean; 
+  tickColor: string; 
+  tooltipStyle: any;
+  dateError: string | null;
+  hasOrders: boolean;
+}> = memo(({ data, isSingleDay, tickColor, tooltipStyle, dateError, hasOrders }) => (
+  <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
+    <h3 className="text-lg font-semibold mb-4 text-stone-900 dark:text-white">Performance Overview</h3>
+    <div style={{ width: '100%', height: 300 }}>
+      {dateError ? (
+          <ChartPlaceholder message={dateError} isError />
+      ) : hasOrders ? (
+          <ResponsiveContainer>
+              <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128, 128, 128, 0.2)" />
+              <XAxis dataKey={isSingleDay ? "hour" : "date"} tick={{ fill: tickColor }} />
+              <YAxis tick={{ fill: tickColor }} tickFormatter={(value) => `$${value}`} />
+              <Tooltip
+                  contentStyle={tooltipStyle}
+                  cursor={{ fill: 'rgba(113, 128, 150, 0.1)' }}
+                  formatter={(value: number) => `$${value.toFixed(2)}`}
+              />
+              <Legend wrapperStyle={{color: tickColor}} />
+              <Bar dataKey="Revenue" fill="#78716c" />
+              <Bar dataKey="Profit" fill="#a8a29e" />
+              </BarChart>
+          </ResponsiveContainer>
+      ) : (
+          <ChartPlaceholder message="No sales data available for the selected period." />
+      )}
+    </div>
+  </div>
+));
+
+const PaymentMethodsChart: React.FC<{ 
+  data: any[]; 
+  tickColor: string; 
+  tooltipStyle: any;
+  dateError: string | null;
+  colors: string[];
+}> = memo(({ data, tickColor, tooltipStyle, dateError, colors }) => (
+  <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
+      <h3 className="text-lg font-semibold mb-4 text-stone-900 dark:text-white">Payment Methods</h3>
+      <div style={{ width: '100%', height: 300 }}>
+          {dateError ? (
+              <ChartPlaceholder message={dateError} isError />
+          ) : data.length > 0 ? (
+              <ResponsiveContainer>
+                  <PieChart>
+                      <Pie
+                          data={data}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          paddingAngle={5}
+                          dataKey="value"
+                          nameKey="name"
+                      >
+                          {data.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                          ))}
+                      </Pie>
+                      <Tooltip
+                          contentStyle={tooltipStyle}
+                          formatter={(value: number, name: string) => [`${value} orders`, name]}
+                      />
+                      <Legend wrapperStyle={{color: tickColor}} />
+                  </PieChart>
+              </ResponsiveContainer>
+          ) : (
+              <ChartPlaceholder message="No payment data available for the selected period." />
+          )}
+      </div>
+  </div>
+));
+
+const TopItemsChart: React.FC<{ 
+  data: any[]; 
+  tickColor: string; 
+  tooltipStyle: any;
+  dateError: string | null;
+}> = memo(({ data, tickColor, tooltipStyle, dateError }) => (
+  <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
+    <h3 className="text-lg font-semibold mb-4 text-stone-900 dark:text-white">Top 10 Items by Revenue</h3>
+    <div style={{ width: '100%', height: 400 }}>
+      {dateError ? (
+          <ChartPlaceholder message={dateError} isError />
+      ) : data.length > 0 ? (
+          <ResponsiveContainer>
+              <BarChart data={data} layout="vertical" margin={{ left: 40, right: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="rgba(128, 128, 128, 0.2)" />
+              <XAxis type="number" tick={{ fill: tickColor }} tickFormatter={(value) => `$${value}`} />
+              <YAxis dataKey="name" type="category" tick={{ fill: tickColor }} width={100} />
+              <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(value: number) => `$${value.toFixed(2)}`}
+              />
+              <Bar dataKey="revenue" name="Revenue" fill="#78716c" radius={[0, 4, 4, 0]} />
+              </BarChart>
+          </ResponsiveContainer>
+      ) : (
+          <ChartPlaceholder message="No item sales data available." />
+      )}
+    </div>
+  </div>
+));
+
+const CategorySalesChart: React.FC<{ 
+  data: any[]; 
+  tickColor: string; 
+  tooltipStyle: any;
+  dateError: string | null;
+}> = memo(({ data, tickColor, tooltipStyle, dateError }) => (
+  <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
+    <h3 className="text-lg font-semibold mb-4 text-stone-900 dark:text-white">Sales by Category</h3>
+    <div style={{ width: '100%', height: 400 }}>
+      {dateError ? (
+          <ChartPlaceholder message={dateError} isError />
+      ) : data.length > 0 ? (
+          <ResponsiveContainer>
+              <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128, 128, 128, 0.2)" />
+              <XAxis dataKey="name" tick={{ fill: tickColor }} />
+              <YAxis tick={{ fill: tickColor }} tickFormatter={(value) => `$${value}`} />
+              <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(value: number) => `$${value.toFixed(2)}`}
+              />
+              <Bar dataKey="revenue" name="Revenue" fill="#a8a29e" radius={[4, 4, 0, 0]} />
+              </BarChart>
+          </ResponsiveContainer>
+      ) : (
+          <ChartPlaceholder message="No category sales data available." />
+      )}
+    </div>
+  </div>
+));
 
 const Dashboard: React.FC = () => {
-  const { state, theme } = useContext(AppContext);
-  const { orders } = state;
+  const { state } = useApp();
+  const { orders, theme } = state;
   
   const todayStr = new Date().toISOString().split('T')[0];
   const [startDate, setStartDate] = useState<string>(todayStr);
@@ -134,7 +276,9 @@ const Dashboard: React.FC = () => {
     try {
       const itemStats: { [name: string]: { revenue: number, quantity: number } } = {};
       (filteredOrders || []).forEach(order => {
+        if (!order) return;
         (order.items || []).forEach(item => {
+          if (!item) return;
           const name = item.drink?.name || 'Unknown Item';
           if (!itemStats[name]) {
             itemStats[name] = { revenue: 0, quantity: 0 };
@@ -157,7 +301,9 @@ const Dashboard: React.FC = () => {
     try {
       const categoryStats: { [category: string]: { revenue: number, quantity: number } } = {};
       (filteredOrders || []).forEach(order => {
+        if (!order) return;
         (order.items || []).forEach(item => {
+          if (!item) return;
           const category = item.drink?.category || 'Uncategorized';
           if (!categoryStats[category]) {
             categoryStats[category] = { revenue: 0, quantity: 0 };
@@ -225,120 +371,40 @@ const Dashboard: React.FC = () => {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold mb-4 text-stone-900 dark:text-white">Performance Overview</h3>
-          <div style={{ width: '100%', height: 300 }}>
-            {dateError ? (
-                <ChartPlaceholder message={dateError} isError />
-            ) : filteredOrders.length > 0 ? (
-                <ResponsiveContainer>
-                    <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128, 128, 128, 0.2)" />
-                    <XAxis dataKey={isSingleDay ? "hour" : "date"} tick={{ fill: tickColor }} />
-                    <YAxis tick={{ fill: tickColor }} tickFormatter={(value) => `$${value}`} />
-                    <Tooltip
-                        contentStyle={tooltipStyle}
-                        cursor={{ fill: 'rgba(113, 128, 150, 0.1)' }}
-                        formatter={(value: number) => `$${value.toFixed(2)}`}
-                    />
-                    <Legend wrapperStyle={{color: tickColor}} />
-                    <Bar dataKey="Revenue" fill="#78716c" />
-                    <Bar dataKey="Profit" fill="#a8a29e" />
-                    </BarChart>
-                </ResponsiveContainer>
-            ) : (
-                <ChartPlaceholder message="No sales data available for the selected period." />
-            )}
-          </div>
-        </div>
-        <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold mb-4 text-stone-900 dark:text-white">Payment Methods</h3>
-            <div style={{ width: '100%', height: 300 }}>
-                {dateError ? (
-                    <ChartPlaceholder message={dateError} isError />
-                ) : paymentMethodData.length > 0 ? (
-                    <ResponsiveContainer>
-                        <PieChart>
-                            <Pie
-                                data={paymentMethodData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={60}
-                                outerRadius={80}
-                                fill="#8884d8"
-                                paddingAngle={5}
-                                dataKey="value"
-                                nameKey="name"
-                            >
-                                {paymentMethodData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                            </Pie>
-                            <Tooltip
-                                contentStyle={tooltipStyle}
-                                formatter={(value: number, name: string) => [`${value} orders`, name]}
-                            />
-                            <Legend wrapperStyle={{color: tickColor}} />
-                        </PieChart>
-                    </ResponsiveContainer>
-                ) : (
-                    <ChartPlaceholder message="No payment data available for the selected period." />
-                )}
-            </div>
-        </div>
+        <PerformanceChart 
+          data={chartData} 
+          isSingleDay={isSingleDay} 
+          tickColor={tickColor} 
+          tooltipStyle={tooltipStyle} 
+          dateError={dateError}
+          hasOrders={filteredOrders.length > 0}
+        />
+        <PaymentMethodsChart 
+          data={paymentMethodData} 
+          tickColor={tickColor} 
+          tooltipStyle={tooltipStyle} 
+          dateError={dateError}
+          colors={COLORS}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold mb-4 text-stone-900 dark:text-white">Top 10 Items by Revenue</h3>
-          <div style={{ width: '100%', height: 400 }}>
-            {dateError ? (
-                <ChartPlaceholder message={dateError} isError />
-            ) : salesByItemData.length > 0 ? (
-                <ResponsiveContainer>
-                    <BarChart data={salesByItemData} layout="vertical" margin={{ left: 40, right: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="rgba(128, 128, 128, 0.2)" />
-                    <XAxis type="number" tick={{ fill: tickColor }} tickFormatter={(value) => `$${value}`} />
-                    <YAxis dataKey="name" type="category" tick={{ fill: tickColor }} width={100} />
-                    <Tooltip
-                        contentStyle={tooltipStyle}
-                        formatter={(value: number) => `$${value.toFixed(2)}`}
-                    />
-                    <Bar dataKey="revenue" name="Revenue" fill="#78716c" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                </ResponsiveContainer>
-            ) : (
-                <ChartPlaceholder message="No item sales data available." />
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold mb-4 text-stone-900 dark:text-white">Sales by Category</h3>
-          <div style={{ width: '100%', height: 400 }}>
-            {dateError ? (
-                <ChartPlaceholder message={dateError} isError />
-            ) : salesByCategoryData.length > 0 ? (
-                <ResponsiveContainer>
-                    <BarChart data={salesByCategoryData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128, 128, 128, 0.2)" />
-                    <XAxis dataKey="name" tick={{ fill: tickColor }} />
-                    <YAxis tick={{ fill: tickColor }} tickFormatter={(value) => `$${value}`} />
-                    <Tooltip
-                        contentStyle={tooltipStyle}
-                        formatter={(value: number) => `$${value.toFixed(2)}`}
-                    />
-                    <Bar dataKey="revenue" name="Revenue" fill="#a8a29e" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                </ResponsiveContainer>
-            ) : (
-                <ChartPlaceholder message="No category sales data available." />
-            )}
-          </div>
-        </div>
+        <TopItemsChart 
+          data={salesByItemData} 
+          tickColor={tickColor} 
+          tooltipStyle={tooltipStyle} 
+          dateError={dateError}
+        />
+        <CategorySalesChart 
+          data={salesByCategoryData} 
+          tickColor={tickColor} 
+          tooltipStyle={tooltipStyle} 
+          dateError={dateError}
+        />
       </div>
     </div>
   );
 };
 
-export default Dashboard;
+export default memo(Dashboard);
+

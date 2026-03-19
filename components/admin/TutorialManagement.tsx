@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { AppContext } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
 import { TutorialStep } from '../../types';
 import Modal from '../shared/Modal';
@@ -68,7 +68,7 @@ const TutorialStepForm: React.FC<{
 
 
 const TutorialManagement: React.FC = () => {
-  const { state, dispatch } = useContext(AppContext);
+  const { state, dispatch } = useApp();
   const { addToast } = useToast();
 
   const [steps, setSteps] = useState<TutorialStep[]>([]);
