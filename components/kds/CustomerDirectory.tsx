@@ -1,6 +1,6 @@
 
 import React, { useContext, useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { Customer, CartItem, Drink } from '../../types';
 import { useToast } from '../../context/ToastContext';
 

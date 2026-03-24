@@ -1,10 +1,10 @@
-import React, { createContext, useReducer, useEffect, ReactNode, Dispatch, useState, useRef } from 'react';
-import { AppState, Action, Order, User, UserRole, Feedback, Category } from '../types';
+import React, { useReducer, useEffect, ReactNode, Dispatch, useState, useRef, useContext } from 'react';
+import { AppState, Action, Order, User, UserRole, Feedback, Category, Customer } from '../types';
 import { INITIAL_DISCOUNTS, INITIAL_DRINKS, INITIAL_CATEGORIES, INITIAL_MODIFIERS } from '../constants';
 import { updateOrder, deleteOrder, onOrdersUpdate, onMenuUpdate, saveMenu, seedInitialMenu, onUsersUpdate, updateUser, saveUser, seedInitialUsers, isPermissionError, submitFeedback, onFeedbackUpdate, onCustomersUpdate, saveCustomer, deleteCustomer } from '../firebase/firestoreService';
 import { database, auth, isFirebaseConfigured } from '../firebase/config';
 import { useToast } from './ToastContext';
-import { Customer } from '../types';
+import { AppContext, useApp } from './useApp';
 
 const initialState: AppState = {
   drinks: INITIAL_DRINKS,
@@ -50,7 +50,10 @@ const appReducer = (state: AppState, action: Action): AppState => {
                 const hasChanges = 
                     (parsed.theme && parsed.theme !== state.theme) ||
                     (parsed.users && JSON.stringify(parsed.users) !== JSON.stringify(state.users)) ||
-                    (parsed.discounts && JSON.stringify(parsed.discounts) !== JSON.stringify(state.discounts));
+                    (parsed.discounts && JSON.stringify(parsed.discounts) !== JSON.stringify(state.discounts)) ||
+                    (parsed.drinks && JSON.stringify(parsed.drinks) !== JSON.stringify(state.drinks)) ||
+                    (parsed.categories && JSON.stringify(parsed.categories) !== JSON.stringify(state.categories)) ||
+                    (parsed.modifierGroups && JSON.stringify(parsed.modifierGroups) !== JSON.stringify(state.modifierGroups));
 
                 if (!hasChanges) return state;
 
@@ -60,6 +63,10 @@ const appReducer = (state: AppState, action: Action): AppState => {
                     users: parsed.users ?? state.users,
                     feedback: parsed.feedback ?? state.feedback,
                     theme: parsed.theme ?? state.theme,
+                    drinks: parsed.drinks ?? state.drinks,
+                    categories: parsed.categories ?? state.categories,
+                    modifierGroups: parsed.modifierGroups ?? state.modifierGroups,
+                    isMenuLoaded: parsed.drinks ? true : state.isMenuLoaded,
                 };
             }
             return state;
@@ -417,17 +424,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
   }
 };
 
-// @ts-ignore
-const AppContext = createContext<{ state: AppState; dispatch: Dispatch<Action>; firebaseUser: any | null } | undefined>(undefined);
-
-export const useApp = () => {
-  const context = React.useContext(AppContext);
-  if (context === undefined) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
-  return context;
-};
-
 const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { addToast } = useToast();
 
@@ -644,4 +640,5 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   return <AppContext.Provider value={{ state, dispatch, firebaseUser }}>{children}</AppContext.Provider>;
 };
 
-export { AppContext, AppProvider };
+export { AppProvider };
+

@@ -1,5 +1,5 @@
 import React, { useContext, useMemo } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 
 const StarDisplay: React.FC<{ rating: number }> = ({ rating }) => (
     <div className="flex">

@@ -1,7 +1,9 @@
-import React, { useContext, useMemo, useState, memo } from 'react';
-import { useApp } from '../../context/AppContext';
+import React, { useContext, useMemo, useState, memo, useEffect } from 'react';
+import { useApp } from '../../context/useApp';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { PaymentMethod, Order } from '../../types';
+import { fetchOrdersByDateRange } from '../../firebase/firestoreService';
+import { Loader2 } from 'lucide-react';
 
 const StatCard: React.FC<{ title: string; value: string; }> = memo(({ title, value }) => (
   <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-zinc-800 group hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
@@ -171,11 +173,14 @@ const CategorySalesChart: React.FC<{
 
 const Dashboard: React.FC = () => {
   const { state } = useApp();
-  const { orders, theme } = state;
+  const { theme } = state;
   
   const todayStr = new Date().toISOString().split('T')[0];
   const [startDate, setStartDate] = useState<string>(todayStr);
   const [endDate, setEndDate] = useState<string>(todayStr);
+  const [fetchedOrders, setFetchedOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const dateError = useMemo(() => {
     if (new Date(startDate) > new Date(endDate)) {
@@ -184,20 +189,37 @@ const Dashboard: React.FC = () => {
     return null;
   }, [startDate, endDate]);
 
+  // Fetch orders for the selected date range
+  useEffect(() => {
+    const loadRangeData = async () => {
+      if (dateError) return;
+      
+      setIsLoading(true);
+      setFetchError(null);
+      
+      try {
+        const startTimestamp = new Date(startDate).getTime();
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        const endTimestamp = endOfDay.getTime();
+        
+        const data = await fetchOrdersByDateRange(startTimestamp, endTimestamp);
+        setFetchedOrders(data);
+      } catch (err) {
+        console.error("Error loading dashboard data:", err);
+        setFetchError("Failed to load data for the selected range.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadRangeData();
+  }, [startDate, endDate, dateError]);
+
   const filteredOrders = useMemo(() => {
     if (dateError) return [];
-      
-    const startTimestamp = new Date(startDate).getTime();
-    const endOfDay = new Date(endDate);
-    endOfDay.setHours(23, 59, 59, 999);
-    const endTimestamp = endOfDay.getTime();
-
-    return (orders || []).filter(o =>
-        o.status === 'completed' &&
-        o.createdAt >= startTimestamp &&
-        o.createdAt <= endTimestamp
-    );
-  }, [orders, startDate, endDate, dateError]);
+    return fetchedOrders.filter(o => o.status === 'completed');
+  }, [fetchedOrders, dateError]);
 
   const totalRevenue = useMemo(() => (filteredOrders || []).reduce((sum, o) => sum + (o.finalTotal || 0), 0), [filteredOrders]);
   const totalCost = useMemo(() => (filteredOrders || []).reduce((sum, o) => sum + (o.totalCost || 0), 0), [filteredOrders]);
@@ -339,6 +361,11 @@ const Dashboard: React.FC = () => {
         </div>
         
         <div className="flex flex-col sm:flex-row items-center gap-3 bg-white dark:bg-zinc-800 p-2 rounded-xl shadow-sm border border-stone-100 dark:border-zinc-700/50">
+          {isLoading && (
+            <div className="flex items-center gap-2 px-2">
+              <Loader2 className="w-4 h-4 animate-spin text-stone-400" />
+            </div>
+          )}
           <div className="flex items-center gap-2 px-3">
             <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Period</span>
           </div>
@@ -364,6 +391,13 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {fetchError && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-xl text-red-600 dark:text-red-400 text-sm font-medium flex items-center gap-2">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          {fetchError}
+        </div>
+      )}
 
       {dateError && (
         <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-xl text-red-600 dark:text-red-400 text-sm font-medium flex items-center gap-2">

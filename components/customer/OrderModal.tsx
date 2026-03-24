@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Drink, ModifierGroup, ModifierOption, CartItem, SelectedModifier } from '../../types';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../shared/Modal';
 

@@ -1,6 +1,6 @@
 
 import React, { useState, useContext, useMemo, useEffect, useCallback, Suspense, lazy, memo } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
 import { Drink, CartItem, PaymentMethod, Discount, UserRole, Order, ModifierOption, Category, SelectedModifier } from '../../types';
 import DrinkCard from './DrinkCard';

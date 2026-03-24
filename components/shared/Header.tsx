@@ -1,6 +1,6 @@
 import React, { useContext, useState, memo } from 'react';
 import { View, UserRole } from '../../types';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import Logo from './Logo';
 import HamburgerMenu from './HamburgerMenu';
 

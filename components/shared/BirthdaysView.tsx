@@ -1,5 +1,5 @@
 import React, { useContext, useState, useMemo } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { User } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
 

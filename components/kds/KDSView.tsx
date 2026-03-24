@@ -1,7 +1,7 @@
 
 import React, { useContext, useState, useMemo, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
 import { Drink, ModifierOption, Order, SelectedModifier } from '../../types';
 import OrderTicket from './OrderTicket';

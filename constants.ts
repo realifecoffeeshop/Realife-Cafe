@@ -5,7 +5,6 @@ export const INITIAL_CATEGORIES: Category[] = [
     { id: 'cat-1', name: 'Hot Drinks', imageUrl: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=100&q=50' },
     { id: 'cat-2', name: 'Iced Drinks', imageUrl: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=100&q=50' },
     { id: 'cat-3', name: 'Teas', imageUrl: 'https://images.unsplash.com/photo-1573326140384-031e6ab9b48f?auto=format&fit=crop&w=100&q=50' },
-    { id: 'cat-4', name: 'Other', imageUrl: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=100&q=50' },
     { id: 'cat-5', name: 'Uncategorised' }, // Fallback category
 ];
 
@@ -149,26 +148,6 @@ export const INITIAL_DRINKS: Drink[] = [
     description: 'A delicious blend of rich chocolate, espresso, and steamed milk.',
   },
   {
-    id: 'drink-9',
-    name: 'White Hot Chocolate',
-    category: 'cat-1',
-    basePrice: 4.5,
-    baseCost: 1.5,
-    imageUrl: 'https://images.unsplash.com/photo-1572498284483-7923a105d3b3' + IMG_PARAMS,
-    modifierGroups: ['mod-group-1', 'mod-group-4', 'mod-group-5'],
-    description: 'A creamy and sweet alternative made from rich white chocolate and steamed milk.',
-  },
-  {
-    id: 'drink-10',
-    name: 'Piccolo',
-    category: 'cat-1',
-    basePrice: 3.5,
-    baseCost: 1.0,
-    imageUrl: 'https://images.unsplash.com/photo-1616870830113-a41ac2a2f814' + IMG_PARAMS,
-    modifierGroups: ['mod-group-1', 'mod-group-3'],
-    description: 'A mini latte with a restricted ristretto shot for a strong, balanced flavour.',
-  },
-  {
     id: 'drink-22',
     name: 'Americano',
     category: 'cat-1',
@@ -219,16 +198,6 @@ export const INITIAL_DRINKS: Drink[] = [
     modifierGroups: ['mod-group-1', 'mod-group-2'],
     description: 'Vibrant Japanese green tea powder whisked with steamed milk.',
   },
-  {
-    id: 'drink-24',
-    name: 'English Breakfast Tea',
-    category: 'cat-3',
-    basePrice: 3.50,
-    baseCost: 0.5,
-    imageUrl: 'https://images.unsplash.com/photo-1589136113881-857b32f91a66' + IMG_PARAMS,
-    modifierGroups: ['mod-group-1', 'mod-group-2'],
-    description: 'A traditional blend of black teas originating from Assam, Ceylon and Kenya. A robust, full-bodied tea.',
-  },
   // Iced Drinks
   {
     id: 'drink-15',
@@ -269,47 +238,6 @@ export const INITIAL_DRINKS: Drink[] = [
     imageUrl: 'https://images.unsplash.com/photo-1509082025158-6c827339734e' + IMG_PARAMS,
     modifierGroups: ['mod-group-1', 'mod-group-2'],
     description: 'Vibrant Japanese green tea powder whisked with cold milk and served over ice.',
-  },
-  // Other
-  {
-    id: 'drink-16',
-    name: 'Babyccino',
-    category: 'cat-4',
-    basePrice: 1.5,
-    baseCost: 0.5,
-    imageUrl: 'https://images.unsplash.com/photo-1610892013197-01e409395f17' + IMG_PARAMS,
-    modifierGroups: [],
-    description: 'Steamed, frothy milk in a tiny cup, perfect for the little ones.',
-  },
-  {
-    id: 'drink-17',
-    name: 'Cookie',
-    category: 'cat-4',
-    basePrice: 3.0,
-    baseCost: 1.0,
-    imageUrl: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35' + IMG_PARAMS,
-    modifierGroups: [],
-    description: 'A freshly baked, deliciously chewy cookie, the perfect partner for any drink.',
-  },
-  {
-    id: 'drink-18',
-    name: 'Coffee Beans',
-    category: 'cat-4',
-    basePrice: 18.0,
-    baseCost: 9.0,
-    imageUrl: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93' + IMG_PARAMS,
-    modifierGroups: [],
-    description: 'Take our signature house blend home with you; whole beans for ultimate freshness.',
-  },
-  {
-    id: 'drink-23',
-    name: 'Affogato',
-    category: 'cat-4',
-    basePrice: 5.50,
-    baseCost: 2.0,
-    imageUrl: 'https://images.unsplash.com/photo-1627762226499-2245d44a29a1' + IMG_PARAMS,
-    modifierGroups: [],
-    description: 'A scoop of vanilla ice cream drowned with a shot of hot espresso. A perfect dessert.',
   },
 ];
 

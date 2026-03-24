@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import { Discount } from '../../types';

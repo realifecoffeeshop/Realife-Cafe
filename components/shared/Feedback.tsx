@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import Modal from './Modal';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
 
 const Star: React.FC<{ filled: boolean; onClick: () => void; onMouseEnter: () => void; onMouseLeave: () => void; }> = ({ filled, onClick, onMouseEnter, onMouseLeave }) => (

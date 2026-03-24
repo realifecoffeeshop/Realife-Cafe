@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import Modal from '../shared/Modal';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
 
 interface LoginModalProps {

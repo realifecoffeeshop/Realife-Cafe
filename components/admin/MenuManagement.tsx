@@ -1,6 +1,6 @@
 
 import React, { useState, useContext, useEffect } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import { useToast } from '../../context/ToastContext';
 import { Drink, ModifierGroup, ModifierOption, Category } from '../../types';

@@ -1,6 +1,7 @@
 import React, { useState, useContext, useEffect, ReactNode, Suspense, lazy } from 'react';
 import ErrorBoundary from './components/shared/ErrorBoundary';
-import { AppProvider, useApp } from './context/AppContext';
+import { AppProvider } from './context/AppContext';
+import { useApp } from './context/useApp';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { View, UserRole } from './types';
 import Header from './components/shared/Header';
@@ -56,6 +57,33 @@ const AccessDenied: React.FC = () => (
         <h2 className="text-2xl font-bold text-red-600 dark:text-red-400">Access Denied</h2>
         <p className="text-gray-600 dark:text-gray-300 mt-2">You do not have permission to view this page. Please log in with an authorized account.</p>
     </div>
+);
+
+const ViewErrorBoundary: React.FC<{ children: React.ReactNode; viewName: string }> = ({ children, viewName }) => (
+  <ErrorBoundary 
+    fallback={
+      <div className="p-12 text-center bg-white dark:bg-zinc-800 rounded-3xl shadow-sm border border-stone-100 dark:border-zinc-700 m-4">
+        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h3 className="text-xl font-bold text-stone-900 dark:text-white mb-2">View Error</h3>
+        <p className="text-stone-600 dark:text-zinc-400 mb-6 max-w-md mx-auto">
+          There was a problem loading the <span className="font-semibold">{viewName}</span>. 
+          This might be a temporary issue. Please try refreshing the page.
+        </p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="bg-[#A58D79] hover:bg-[#947D6A] text-white px-6 py-2 rounded-full transition-colors font-semibold"
+        >
+          Refresh Page
+        </button>
+      </div>
+    }
+  >
+    {children}
+  </ErrorBoundary>
 );
 
 const AppContent: React.FC = () => {
@@ -128,39 +156,47 @@ const AppContent: React.FC = () => {
     switch (currentView) {
       case View.CUSTOMER:
         return (
-          <ErrorBoundary fallback={<div className="p-8 text-center text-red-600">An error occurred in the CustomerView component.<br/>Consider adding an error boundary to your tree to customize error handling behavior.<br/>Visit https://react.dev/link/error-boundaries to learn more about error boundaries.</div>}>
+          <ViewErrorBoundary viewName="Menu">
             <CustomerView />
-          </ErrorBoundary>
+          </ViewErrorBoundary>
         );
       case View.KDS:
         return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? (
-          <ErrorBoundary fallback={<div className="p-8 text-center text-red-600">An error occurred in the KDSView component.<br/>Consider adding an error boundary to your tree to customize error handling behavior.<br/>Visit https://react.dev/link/error-boundaries to learn more about error boundaries.</div>}>
-            <KDSView />
-          </ErrorBoundary>
+          <ViewErrorBoundary viewName="Kitchen Display">
+            <Suspense fallback={<LoadingSpinner />}>
+              <KDSView />
+            </Suspense>
+          </ViewErrorBoundary>
         ) : <AccessDenied />;
       case View.ADMIN:
         return currentUser?.role === UserRole.ADMIN ? (
-          <ErrorBoundary fallback={<div className="p-8 text-center text-red-600">An error occurred in the AdminView component.<br/>Consider adding an error boundary to your tree to customize error handling behavior.<br/>Visit https://react.dev/link/error-boundaries to learn more about error boundaries.</div>}>
-            <AdminView />
-          </ErrorBoundary>
+          <ViewErrorBoundary viewName="Admin Dashboard">
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminView />
+            </Suspense>
+          </ViewErrorBoundary>
         ) : <AccessDenied />;
       case View.PROFILE:
         return currentUser ? (
-          <ErrorBoundary fallback={<div className="p-8 text-center text-red-600">An error occurred in the ProfileView component.<br/>Consider adding an error boundary to your tree to customize error handling behavior.<br/>Visit https://react.dev/link/error-boundaries to learn more about error boundaries.</div>}>
-            <ProfileView />
-          </ErrorBoundary>
+          <ViewErrorBoundary viewName="Profile">
+            <Suspense fallback={<LoadingSpinner />}>
+              <ProfileView />
+            </Suspense>
+          </ViewErrorBoundary>
         ) : <AccessDenied />;
       case View.BIRTHDAYS:
         return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? (
-          <ErrorBoundary fallback={<div className="p-8 text-center text-red-600">An error occurred in the BirthdaysView component.<br/>Consider adding an error boundary to your tree to customize error handling behavior.<br/>Visit https://react.dev/link/error-boundaries to learn more about error boundaries.</div>}>
-            <BirthdaysView />
-          </ErrorBoundary>
+          <ViewErrorBoundary viewName="Birthdays">
+            <Suspense fallback={<LoadingSpinner />}>
+              <BirthdaysView />
+            </Suspense>
+          </ViewErrorBoundary>
         ) : <AccessDenied />;
       default:
         return (
-          <ErrorBoundary fallback={<div className="p-8 text-center text-red-600">An error occurred in the CustomerView component.<br/>Consider adding an error boundary to your tree to customize error handling behavior.<br/>Visit https://react.dev/link/error-boundaries to learn more about error boundaries.</div>}>
+          <ViewErrorBoundary viewName="Menu">
             <CustomerView />
-          </ErrorBoundary>
+          </ViewErrorBoundary>
         );
     }
   };
@@ -181,9 +217,7 @@ const AppContent: React.FC = () => {
         onMenuLinkClick={handleMenuLinkClick}
       />
       <main className="flex-grow">
-        <Suspense fallback={<LoadingSpinner />}>
-            {renderCurrentView()}
-        </Suspense>
+        {renderCurrentView()}
       </main>
       <Feedback />
       <Suspense fallback={null}>

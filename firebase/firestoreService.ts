@@ -161,6 +161,38 @@ export const fetchOrderHistory = async (limit: number = 100, beforeTimestamp?: n
     }
 };
 
+export const fetchOrdersByDateRange = async (startDate: number, endDate: number): Promise<Order[]> => {
+    if (!isFirebaseConfigured || !database) {
+        console.warn('Firebase not configured. Cannot fetch orders by date range.');
+        return [];
+    }
+    
+    try {
+        const query = database.ref('orders')
+            .orderByChild('createdAt')
+            .startAt(startDate)
+            .endAt(endDate);
+            
+        const snapshot = await query.once('value');
+        const ordersArray: Order[] = [];
+        
+        if (snapshot.exists()) {
+            snapshot.forEach((childSnapshot: any) => {
+                ordersArray.push({ ...childSnapshot.val(), id: childSnapshot.key });
+            });
+        }
+        
+        return ordersArray.sort((a, b) => b.createdAt - a.createdAt);
+    } catch (error: any) {
+        if (isPermissionError(error)) {
+            console.warn("Firebase Permission Denied: Could not fetch orders by date range.");
+            return [];
+        }
+        console.error("Error fetching orders by date range:", error);
+        throw error;
+    }
+};
+
 export const addOrder = async (order: Omit<Order, 'id'>): Promise<void> => {
     if (!isFirebaseConfigured || !database) {
         console.warn('Firebase not configured. Order not sent.');

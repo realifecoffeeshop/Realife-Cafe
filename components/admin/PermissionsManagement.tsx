@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
 import { UserRole } from '../../types';
 import { ChevronDown } from 'lucide-react';
