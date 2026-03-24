@@ -108,7 +108,14 @@ const PaymentTicket = memo(({ order, onVerify, onDelete }: { order: Order; onVer
       <div className="p-4 space-y-3 flex-grow overflow-y-auto">
         {order.items.map(item => (
           <div key={item.id} className="text-sm">
-            <p className="font-semibold text-base text-stone-800 dark:text-zinc-200">{item.quantity}x {item.drink?.name || 'Unknown Drink'}</p>
+            <p className="font-semibold text-base text-stone-800 dark:text-zinc-200">
+              {item.quantity}x {item.drink?.name || 'Unknown Drink'}
+              {item.selectedVariantId && item.drink?.variants && (
+                <span className="text-sm font-bold text-stone-400 dark:text-zinc-500 ml-2 italic">
+                  ({item.drink.variants.find(v => v.id === item.selectedVariantId)?.name})
+                </span>
+              )}
+            </p>
             {item.customName && <p className="pl-4 font-medium text-stone-700 dark:text-zinc-300">- {item.customName}</p>}
             <ul className="pl-4 list-disc list-inside text-stone-600 dark:text-zinc-400">
               {Object.values(item.selectedModifiers || {}).flatMap(mods => mods || []).filter(sm => sm).map((sm: SelectedModifier) => (
@@ -266,6 +273,7 @@ const KDSView: React.FC = () => {
     const itemsMap: Map<string, {
         drink: Drink;
         selectedModifiers: { [key: string]: SelectedModifier[] };
+        selectedVariantId?: string;
         quantity: number;
         orders: Map<string, { name: string; quantity: number }>;
     }> = new Map();
@@ -273,12 +281,13 @@ const KDSView: React.FC = () => {
     pendingOrdersBase.forEach(order => {
         order.items.forEach(item => {
             const modifierIds = Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => `${sm.option?.id || 'unknown'}:${sm.quantity}`).sort().join('_');
-            const key = `${item.drink?.id || 'unknown'}_${modifierIds}`;
+            const key = `${item.drink?.id || 'unknown'}_${item.selectedVariantId || 'no-variant'}_${modifierIds}`;
 
             if (!itemsMap.has(key)) {
                 itemsMap.set(key, {
                     drink: item.drink,
                     selectedModifiers: item.selectedModifiers || {},
+                    selectedVariantId: item.selectedVariantId,
                     quantity: 0,
                     orders: new Map(),
                 });
@@ -318,6 +327,7 @@ const KDSView: React.FC = () => {
           totalQuantity: number;
           variations: Map<string, {
               selectedModifiers: { [key: string]: SelectedModifier[] };
+              selectedVariantId?: string;
               quantity: number;
           }>;
           sourceOrders: Map<string, { id: string, customerName: string, quantity: number }>;
@@ -352,8 +362,8 @@ const KDSView: React.FC = () => {
               existingSource.quantity += item.quantity || 0;
               aggByType.sourceOrders.set(sourceKey, existingSource);
 
-              const variationKey = Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => `${sm.option?.id || 'unknown'}:${sm.quantity}`).sort().join('_');
-              const variation = aggByType.variations.get(variationKey) || { selectedModifiers: item.selectedModifiers || {}, quantity: 0 };
+              const variationKey = `${item.selectedVariantId || 'no-variant'}_${Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => `${sm.option?.id || 'unknown'}:${sm.quantity}`).sort().join('_')}`;
+              const variation = aggByType.variations.get(variationKey) || { selectedModifiers: item.selectedModifiers || {}, selectedVariantId: item.selectedVariantId, quantity: 0 };
               variation.quantity += item.quantity || 0;
               aggByType.variations.set(variationKey, variation);
           });
@@ -769,6 +779,11 @@ const KDSView: React.FC = () => {
                                         <li key={item.id}>
                                             <div className="font-semibold text-stone-900 dark:text-white">
                                                 {item.quantity}x {item.drink?.name || 'Unknown Drink'}
+                                                {item.selectedVariantId && item.drink?.variants && (
+                                                    <span className="text-sm font-bold text-stone-400 dark:text-zinc-500 ml-2 italic">
+                                                        ({item.drink.variants.find(v => v.id === item.selectedVariantId)?.name})
+                                                    </span>
+                                                )}
                                                 {item.customName && <span className="font-normal text-stone-600 dark:text-zinc-400"> ({item.customName})</span>}
                                             </div>
                                             <div className="text-xs text-stone-500 dark:text-zinc-400 pl-2">

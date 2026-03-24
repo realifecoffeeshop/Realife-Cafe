@@ -5,6 +5,7 @@ import { Drink, ModifierOption, SelectedModifier } from '../../types';
 export interface AggregatedItem {
     drink: Drink;
     selectedModifiers: { [key: string]: SelectedModifier[] };
+    selectedVariantId?: string;
     quantity: number;
     orders: { id: string; name: string; quantity: number }[];
 }
@@ -21,7 +22,14 @@ const GroupedItemCard: React.FC<GroupedItemCardProps> = ({ item }) => {
       className="bg-white dark:bg-zinc-800 rounded-lg shadow-md p-4 flex flex-col"
     >
       <div className="flex items-start justify-between">
-        <h3 className="font-bold text-lg text-stone-900 dark:text-white">{item.drink?.name || 'Unknown Drink'}</h3>
+        <div>
+          <h3 className="font-bold text-lg text-stone-900 dark:text-white">{item.drink?.name || 'Unknown Drink'}</h3>
+          {item.selectedVariantId && item.drink?.variants && (
+            <p className="text-xs font-bold text-stone-400 dark:text-zinc-500 italic">
+              ({item.drink.variants.find(v => v.id === item.selectedVariantId)?.name})
+            </p>
+          )}
+        </div>
         <span className="bg-zinc-700 text-white font-bold text-xl rounded-full flex items-center justify-center h-10 w-10 flex-shrink-0">
           {item.quantity}
         </span>

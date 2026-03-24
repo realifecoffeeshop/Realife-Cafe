@@ -66,71 +66,77 @@ const OrderHistory: React.FC = () => {
     }
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h2 className="text-2xl font-bold text-stone-900 dark:text-white">Order History</h2>
+        <div className="p-8 space-y-10">
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 pb-10 border-b border-stone-100 dark:border-zinc-800">
+                <div>
+                    <h2 className="text-3xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">Order History</h2>
+                    <p className="text-stone-400 dark:text-zinc-500 mt-2 font-medium">Review and manage past transactions with precision.</p>
+                </div>
                 <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                    <div className="relative group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 group-focus-within:text-stone-900 dark:group-focus-within:text-white transition-colors" />
                         <input
                             type="text"
-                            placeholder="Search by name or ID..."
+                            placeholder="Search orders..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-4 py-2 border rounded-md bg-white dark:bg-zinc-800 border-stone-200 dark:border-zinc-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-stone-500"
+                            className="pl-12 pr-6 py-3.5 bg-white dark:bg-zinc-900 border border-stone-100 dark:border-zinc-800 rounded-2xl text-sm text-stone-900 dark:text-white placeholder:text-stone-400 focus:ring-4 focus:ring-stone-900/5 dark:focus:ring-white/5 focus:outline-none transition-all w-full sm:w-72 shadow-sm font-serif italic"
                         />
                     </div>
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="px-4 py-2 border rounded-md bg-white dark:bg-zinc-800 border-stone-200 dark:border-zinc-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-stone-500"
-                    >
-                        <option value="all">All Statuses</option>
-                        <option value="completed">Completed</option>
-                        <option value="pending">Pending</option>
-                        <option value="scheduled">Scheduled</option>
-                        <option value="payment-required">Payment Required</option>
-                    </select>
+                    <div className="relative group">
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="pl-6 pr-12 py-3.5 bg-white dark:bg-zinc-900 border border-stone-100 dark:border-zinc-800 rounded-2xl text-sm text-stone-900 dark:text-white focus:ring-4 focus:ring-stone-900/5 dark:focus:ring-white/5 focus:outline-none transition-all cursor-pointer appearance-none shadow-sm font-serif italic min-w-[180px]"
+                        >
+                            <option value="all">All Statuses</option>
+                            <option value="completed">Completed</option>
+                            <option value="pending">Pending</option>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="payment-required">Payment Required</option>
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
+                    </div>
                 </div>
-            </div>
+            </header>
 
-            <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-stone-200 dark:border-zinc-700 overflow-hidden">
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-stone-100 dark:border-zinc-800 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-stone-50 dark:bg-zinc-900/50 text-stone-500 dark:text-zinc-400 text-sm uppercase tracking-wider">
+                        <thead className="text-[10px] text-stone-400 dark:text-zinc-500 uppercase tracking-[0.2em] bg-stone-50/50 dark:bg-zinc-800/30">
                             <tr>
-                                <th className="px-6 py-4 font-semibold">Date</th>
-                                <th className="px-6 py-4 font-semibold">Customer</th>
-                                <th className="px-6 py-4 font-semibold">Items</th>
-                                <th className="px-6 py-4 font-semibold">Total</th>
-                                <th className="px-6 py-4 font-semibold">Status</th>
+                                <th className="px-8 py-5 font-bold">Date</th>
+                                <th className="px-8 py-5 font-bold">Customer</th>
+                                <th className="px-8 py-5 font-bold">Items</th>
+                                <th className="px-8 py-5 font-bold">Total</th>
+                                <th className="px-8 py-5 font-bold">Status</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-stone-100 dark:divide-zinc-700">
+                        <tbody className="divide-y divide-stone-50 dark:divide-zinc-800/50">
                             {filteredOrders.map((order) => (
-                                <tr key={order.id} className="hover:bg-stone-50/50 dark:hover:bg-zinc-700/30 transition-colors">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-stone-600 dark:text-zinc-300">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar className="w-3.5 h-3.5 opacity-50" />
-                                            {formatDate(order.createdAt)}
+                                <tr key={order.id} className="hover:bg-stone-50/30 dark:hover:bg-zinc-800/20 transition-all duration-300">
+                                    <td className="px-8 py-6 whitespace-nowrap text-sm text-stone-500 dark:text-zinc-400">
+                                        <div className="flex items-center gap-3">
+                                            <Calendar className="w-4 h-4 opacity-30" />
+                                            <span className="font-serif italic">{formatDate(order.createdAt)}</span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm font-medium text-stone-900 dark:text-white">{order.customerName || 'Unknown'}</div>
-                                        <div className="text-xs text-stone-400 font-mono">#{order.id?.slice(-6) || 'N/A'}</div>
+                                    <td className="px-8 py-6 whitespace-nowrap">
+                                        <div className="text-base font-serif font-bold text-stone-900 dark:text-white tracking-tight">{order.customerName || 'Guest'}</div>
+                                        <div className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-1">ID: {order.id?.slice(-8).toUpperCase() || 'N/A'}</div>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-stone-600 dark:text-zinc-300">
-                                        {(order.items || []).length} {(order.items || []).length === 1 ? 'item' : 'items'}
+                                    <td className="px-8 py-6 text-sm text-stone-500 dark:text-zinc-400">
+                                        <span className="font-serif font-bold text-stone-900 dark:text-white">{(order.items || []).length}</span> {(order.items || []).length === 1 ? 'item' : 'items'}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-stone-900 dark:text-white">
+                                    <td className="px-8 py-6 whitespace-nowrap text-xl font-serif font-bold text-stone-900 dark:text-white tracking-tighter">
                                         ${(order.finalTotal || 0).toFixed(2)}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                                            order.status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                                            order.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                                            order.status === 'scheduled' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                            'bg-stone-100 text-stone-700 dark:bg-zinc-700 dark:text-zinc-400'
+                                    <td className="px-8 py-6 whitespace-nowrap">
+                                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
+                                            order.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/30' :
+                                            order.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/30' :
+                                            order.status === 'scheduled' ? 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30' :
+                                            'bg-stone-50 text-stone-700 border-stone-100 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
                                         }`}>
                                             {order.status}
                                         </span>
@@ -142,17 +148,20 @@ const OrderHistory: React.FC = () => {
                 </div>
 
                 {filteredOrders.length === 0 && (
-                    <div className="p-12 text-center">
-                        <p className="text-stone-500 dark:text-zinc-400">No orders found matching your criteria.</p>
+                    <div className="p-20 text-center">
+                        <div className="w-20 h-20 bg-stone-50 dark:bg-zinc-800 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner">
+                            <Search className="w-8 h-8 text-stone-200" />
+                        </div>
+                        <p className="text-stone-400 dark:text-zinc-500 font-serif italic text-lg">"No orders found matching your criteria."</p>
                     </div>
                 )}
 
                 {hasMore && (
-                    <div className="p-4 bg-stone-50/50 dark:bg-zinc-900/30 border-t border-stone-100 dark:border-zinc-700 flex justify-center">
+                    <div className="p-8 bg-stone-50/20 dark:bg-zinc-800/10 border-t border-stone-50 dark:border-zinc-800 flex justify-center">
                         <button
                             onClick={() => loadOrders(false)}
                             disabled={loadingMore}
-                            className="flex items-center gap-2 px-6 py-2 text-sm font-medium text-stone-600 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-white transition-colors disabled:opacity-50"
+                            className="flex items-center gap-3 px-10 py-4 bg-white dark:bg-zinc-900 border border-stone-100 dark:border-zinc-800 rounded-2xl text-xs font-bold uppercase tracking-widest text-stone-900 dark:text-white hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all shadow-lg disabled:opacity-50"
                         >
                             {loadingMore ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />

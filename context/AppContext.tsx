@@ -1,15 +1,15 @@
 import React, { createContext, useReducer, useEffect, ReactNode, Dispatch, useState, useRef } from 'react';
-import { AppState, Action, Order, User, UserRole, Feedback, Category, KnowledgeArticle, TutorialStep } from '../types';
-import { INITIAL_DISCOUNTS, INITIAL_KNOWLEDGE_BASE, INITIAL_TUTORIAL_STEPS } from '../constants';
-import { updateOrder, deleteOrder, onOrdersUpdate, onMenuUpdate, saveMenu, seedInitialMenu, saveTutorialSteps, seedInitialTutorialSteps, getTutorialSteps, onUsersUpdate, updateUser, saveUser, seedInitialUsers, isPermissionError, submitFeedback, onFeedbackUpdate, onCustomersUpdate, saveCustomer, deleteCustomer } from '../firebase/firestoreService';
+import { AppState, Action, Order, User, UserRole, Feedback, Category } from '../types';
+import { INITIAL_DISCOUNTS, INITIAL_DRINKS, INITIAL_CATEGORIES, INITIAL_MODIFIERS } from '../constants';
+import { updateOrder, deleteOrder, onOrdersUpdate, onMenuUpdate, saveMenu, seedInitialMenu, onUsersUpdate, updateUser, saveUser, seedInitialUsers, isPermissionError, submitFeedback, onFeedbackUpdate, onCustomersUpdate, saveCustomer, deleteCustomer } from '../firebase/firestoreService';
 import { database, auth, isFirebaseConfigured } from '../firebase/config';
 import { useToast } from './ToastContext';
 import { Customer } from '../types';
 
 const initialState: AppState = {
-  drinks: [],
-  categories: [],
-  modifierGroups: [],
+  drinks: INITIAL_DRINKS,
+  categories: INITIAL_CATEGORIES,
+  modifierGroups: INITIAL_MODIFIERS,
   orders: [],
   discounts: INITIAL_DISCOUNTS,
   users: [
@@ -20,24 +20,11 @@ const initialState: AppState = {
   customers: [],
   currentUser: null,
   feedback: [],
-  knowledgeBase: INITIAL_KNOWLEDGE_BASE,
-  tutorialSteps: INITIAL_TUTORIAL_STEPS,
   theme: 'light',
   cart: [],
-  isKnowledgeModalOpen: false,
-  activeKnowledgeArticleId: null,
   permissionError: null,
   isMenuLoaded: false,
-  isTutorialLoaded: false,
 };
-
-// Basic sanitiser to strip HTML tags. In a real app, use a robust library like DOMPurify.
-const sanitiseHTML = (str: string) => {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-};
-
 
 const appReducer = (state: AppState, action: Action): AppState => {
   switch (action.type) {
@@ -58,7 +45,15 @@ const appReducer = (state: AppState, action: Action): AppState => {
             const localData = localStorage.getItem('cafe-pos-data');
             if (localData) {
                 const parsed: Partial<AppState> = JSON.parse(localData);
-                // Orders and Menu are now handled by Firebase, so they are not hydrated from localStorage.
+                
+                // Only update if there are actual changes to avoid unnecessary re-renders
+                const hasChanges = 
+                    (parsed.theme && parsed.theme !== state.theme) ||
+                    (parsed.users && JSON.stringify(parsed.users) !== JSON.stringify(state.users)) ||
+                    (parsed.discounts && JSON.stringify(parsed.discounts) !== JSON.stringify(state.discounts));
+
+                if (!hasChanges) return state;
+
                 return {
                     ...state,
                     discounts: parsed.discounts ?? state.discounts,
@@ -89,7 +84,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
         id: action.payload.userId,
         role: isInitialAdmin ? UserRole.ADMIN : UserRole.CUSTOMER,
         favourites: [],
-        hasCompletedTutorial: false,
       };
       
       saveUser(newUser).catch(err => console.error("Failed to save new user to Firebase:", err));
@@ -389,18 +383,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
             feedback: [...state.feedback, newFeedback],
         };
     }
-    case 'COMPLETE_TUTORIAL': {
-        if (!state.currentUser || state.currentUser.id.startsWith('guest-')) return state;
-        const updatedUser = {
-            ...state.currentUser,
-            hasCompletedTutorial: true,
-        };
-        return {
-            ...state,
-            currentUser: updatedUser,
-            users: state.users.map(u => u.id === updatedUser.id ? updatedUser : u),
-        };
-    }
     case 'ADD_ITEM_TO_CART':
       return { ...state, cart: [...state.cart, action.payload] };
     case 'UPDATE_CART_ITEM':
@@ -418,50 +400,18 @@ const appReducer = (state: AppState, action: Action): AppState => {
     case 'SET_MENU_DATA':
         return {
             ...state,
-            drinks: (action.payload.drinks || []).map(drink => ({
+            drinks: (action.payload.drinks || []).filter(Boolean).map((drink: any) => ({
                 ...drink,
                 modifierGroups: drink.modifierGroups || [],
+                variants: drink.variants || [],
                 imageUrl: drink.imageUrl || "", // Ensure it's never undefined or null
             })),
-            categories: action.payload.categories || [],
-            modifierGroups: action.payload.modifierGroups || [],
+            categories: (action.payload.categories || []).filter(Boolean),
+            modifierGroups: (action.payload.modifierGroups || []).filter(Boolean),
             isMenuLoaded: true, // New flag to track initial load
         };
     case 'SET_FEEDBACK':
         return { ...state, feedback: action.payload };
-    case 'ADD_KB_ARTICLE': {
-        const newArticle: KnowledgeArticle = {
-            id: `kb-${Date.now()}`,
-            ...action.payload,
-        };
-        return { ...state, knowledgeBase: [...state.knowledgeBase, newArticle] };
-    }
-    case 'UPDATE_KB_ARTICLE':
-        return {
-            ...state,
-            knowledgeBase: state.knowledgeBase.map(a => a.id === action.payload.id ? action.payload : a),
-        };
-    case 'DELETE_KB_ARTICLE':
-        return {
-            ...state,
-            knowledgeBase: state.knowledgeBase.filter(a => a.id !== action.payload),
-        };
-    case 'OPEN_KB_MODAL':
-        return {
-            ...state,
-            isKnowledgeModalOpen: true,
-            activeKnowledgeArticleId: action.payload?.articleId || null,
-        };
-    case 'CLOSE_KB_MODAL':
-        return {
-            ...state,
-            isKnowledgeModalOpen: false,
-            activeKnowledgeArticleId: null,
-        };
-    case 'SET_TUTORIAL_STEPS':
-        return { ...state, tutorialSteps: action.payload, isTutorialLoaded: true };
-    case 'UPDATE_TUTORIAL_STEPS':
-        return { ...state, tutorialSteps: action.payload, isTutorialLoaded: true };
     default:
       return state;
   }
@@ -480,24 +430,19 @@ export const useApp = () => {
 
 const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { addToast } = useToast();
-  const isTutorialLoadedRef = useRef(false);
 
   const [state, dispatch] = useReducer(appReducer, initialState, (initial) => {
     try {
       const localData = localStorage.getItem('cafe-pos-data');
       if (localData) {
         const parsed = JSON.parse(localData);
-        delete parsed.orders;
-        delete parsed.drinks;
-        delete parsed.categories;
-        delete parsed.modifierGroups;
-        delete parsed.payItForwardMessage;
-        delete parsed.tutorialSteps;
+        // We now keep drinks, categories, and modifierGroups for instant hydration
+        // delete parsed.orders; // Orders should still be fresh
+        // delete parsed.payItForwardMessage;
 
         if (!parsed.theme) parsed.theme = 'light';
         if (!parsed.feedback) parsed.feedback = [];
         
-        parsed.knowledgeBase = INITIAL_KNOWLEDGE_BASE;
         parsed.cart = [];
 
         const hydratedState = { ...initial, ...parsed };
@@ -542,18 +487,28 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   }, [addToast]);
   
   // Destructure for explicit dependency arrays
-  const { drinks, categories, modifierGroups, tutorialSteps, ...nonMenuState } = state;
+  const { drinks, categories, modifierGroups, ...nonMenuState } = state;
   const { discounts, users, currentUser, feedback, theme } = nonMenuState;
 
   // Effect for persisting non-menu and non-order data to localStorage
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      const stateToSave = { discounts, users: users.filter(u => !u.id.startsWith('guest-')), currentUser, feedback, theme };
+      const stateToSave = { 
+        discounts, 
+        users: users.filter(u => !u.id.startsWith('guest-')), 
+        currentUser, 
+        feedback, 
+        theme,
+        // Persist menu data for instant hydration on next load
+        drinks,
+        categories,
+        modifierGroups
+      };
       localStorage.setItem('cafe-pos-data', JSON.stringify(stateToSave));
     }, 1000); // Debounce by 1 second
     
     return () => clearTimeout(timeoutId);
-  }, [discounts, users, currentUser, feedback, theme]);
+  }, [discounts, users, currentUser, feedback, theme, drinks, categories, modifierGroups]);
 
   // Effect to listen for real-time updates from Firebase
   useEffect(() => {
@@ -576,14 +531,6 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     const errorStr = String(error).toLowerCase();
                     if (errorStr.includes('permission_denied')) {
                         dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase write permission denied for '/menu'.` });
-                    }
-                }
-                try {
-                    await seedInitialTutorialSteps();
-                } catch (error: any) {
-                    const errorStr = String(error).toLowerCase();
-                    if (errorStr.includes('permission_denied')) {
-                        dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase write permission denied for '/tutorialSteps'.` });
                     }
                 }
                 try {
@@ -692,20 +639,6 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
-
-
-  // Effect to fetch tutorial steps once
-  useEffect(() => {
-    if (firebaseUser) {
-        getTutorialSteps()
-            .then(steps => dispatch({ type: 'SET_TUTORIAL_STEPS', payload: steps }))
-            .catch(error => {
-                if (error.message?.toLowerCase().includes('permission_denied')) {
-                    dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/tutorialSteps'.` });
-                }
-            });
-    }
-  }, [firebaseUser]);
 
 
   return <AppContext.Provider value={{ state, dispatch, firebaseUser }}>{children}</AppContext.Provider>;

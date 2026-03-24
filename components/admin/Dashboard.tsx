@@ -4,24 +4,25 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { PaymentMethod, Order } from '../../types';
 
 const StatCard: React.FC<{ title: string; value: string; }> = memo(({ title, value }) => (
-  <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
-    <h3 className="text-sm font-medium text-stone-500 dark:text-zinc-400 uppercase">{title}</h3>
-    <p className="mt-1 text-3xl font-semibold text-stone-900 dark:text-white">{value}</p>
+  <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-zinc-800 group hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+    <h3 className="text-[10px] font-bold text-stone-400 dark:text-zinc-500 uppercase tracking-[0.2em] mb-4 ml-1">{title}</h3>
+    <p className="text-4xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">{value}</p>
+    <div className="mt-4 h-1 w-8 bg-stone-100 dark:bg-zinc-800 rounded-full group-hover:w-16 group-hover:bg-stone-900 dark:group-hover:bg-white transition-all duration-500"></div>
   </div>
 ));
 
 const ChartPlaceholder: React.FC<{ message: string; isError?: boolean }> = memo(({ message, isError }) => (
-  <div className={`flex flex-col items-center justify-center h-full p-4 text-center ${isError ? 'text-red-500 dark:text-red-400' : 'text-stone-500 dark:text-zinc-400'}`}>
+  <div className={`flex flex-col items-center justify-center h-full p-8 text-center ${isError ? 'text-red-500 dark:text-red-400' : 'text-stone-400 dark:text-zinc-500'}`}>
     {isError ? (
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
       </svg>
     ) : (
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
       </svg>
     )}
-    <p className="text-sm font-medium">{message}</p>
+    <p className="text-sm font-medium italic font-serif">{message}</p>
   </div>
 ));
 
@@ -33,25 +34,25 @@ const PerformanceChart: React.FC<{
   dateError: string | null;
   hasOrders: boolean;
 }> = memo(({ data, isSingleDay, tickColor, tooltipStyle, dateError, hasOrders }) => (
-  <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
-    <h3 className="text-lg font-semibold mb-4 text-stone-900 dark:text-white">Performance Overview</h3>
-    <div style={{ width: '100%', height: 300 }}>
+  <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-sm border border-stone-100 dark:border-zinc-700/50">
+    <h3 className="text-lg font-serif font-bold mb-6 text-stone-900 dark:text-white">Performance Overview</h3>
+    <div style={{ width: '100%', height: 320 }}>
       {dateError ? (
           <ChartPlaceholder message={dateError} isError />
       ) : hasOrders ? (
           <ResponsiveContainer>
               <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128, 128, 128, 0.2)" />
-              <XAxis dataKey={isSingleDay ? "hour" : "date"} tick={{ fill: tickColor }} />
-              <YAxis tick={{ fill: tickColor }} tickFormatter={(value) => `$${value}`} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128, 128, 128, 0.1)" />
+              <XAxis dataKey={isSingleDay ? "hour" : "date"} tick={{ fill: tickColor, fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: tickColor, fontSize: 11 }} tickFormatter={(value) => `$${value}`} axisLine={false} tickLine={false} />
               <Tooltip
                   contentStyle={tooltipStyle}
-                  cursor={{ fill: 'rgba(113, 128, 150, 0.1)' }}
-                  formatter={(value: number) => `$${value.toFixed(2)}`}
+                  cursor={{ fill: 'rgba(113, 128, 150, 0.05)' }}
+                  formatter={(value: number) => [`$${value.toFixed(2)}`, '']}
               />
-              <Legend wrapperStyle={{color: tickColor}} />
-              <Bar dataKey="Revenue" fill="#78716c" />
-              <Bar dataKey="Profit" fill="#a8a29e" />
+              <Legend wrapperStyle={{ paddingTop: 20, fontSize: 12 }} />
+              <Bar dataKey="Revenue" fill="#78716c" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Profit" fill="#a8a29e" radius={[4, 4, 0, 0]} />
               </BarChart>
           </ResponsiveContainer>
       ) : (
@@ -68,9 +69,9 @@ const PaymentMethodsChart: React.FC<{
   dateError: string | null;
   colors: string[];
 }> = memo(({ data, tickColor, tooltipStyle, dateError, colors }) => (
-  <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
-      <h3 className="text-lg font-semibold mb-4 text-stone-900 dark:text-white">Payment Methods</h3>
-      <div style={{ width: '100%', height: 300 }}>
+  <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-sm border border-stone-100 dark:border-zinc-700/50">
+      <h3 className="text-lg font-serif font-bold mb-6 text-stone-900 dark:text-white">Payment Methods</h3>
+      <div style={{ width: '100%', height: 320 }}>
           {dateError ? (
               <ChartPlaceholder message={dateError} isError />
           ) : data.length > 0 ? (
@@ -80,12 +81,13 @@ const PaymentMethodsChart: React.FC<{
                           data={data}
                           cx="50%"
                           cy="50%"
-                          innerRadius={60}
-                          outerRadius={80}
+                          innerRadius={70}
+                          outerRadius={90}
                           fill="#8884d8"
-                          paddingAngle={5}
+                          paddingAngle={8}
                           dataKey="value"
                           nameKey="name"
+                          stroke="none"
                       >
                           {data.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
@@ -95,7 +97,7 @@ const PaymentMethodsChart: React.FC<{
                           contentStyle={tooltipStyle}
                           formatter={(value: number, name: string) => [`${value} orders`, name]}
                       />
-                      <Legend wrapperStyle={{color: tickColor}} />
+                      <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: 12 }} />
                   </PieChart>
               </ResponsiveContainer>
           ) : (
@@ -111,20 +113,20 @@ const TopItemsChart: React.FC<{
   tooltipStyle: any;
   dateError: string | null;
 }> = memo(({ data, tickColor, tooltipStyle, dateError }) => (
-  <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
-    <h3 className="text-lg font-semibold mb-4 text-stone-900 dark:text-white">Top 10 Items by Revenue</h3>
+  <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-sm border border-stone-100 dark:border-zinc-700/50">
+    <h3 className="text-lg font-serif font-bold mb-6 text-stone-900 dark:text-white">Top 10 Items by Revenue</h3>
     <div style={{ width: '100%', height: 400 }}>
       {dateError ? (
           <ChartPlaceholder message={dateError} isError />
       ) : data.length > 0 ? (
           <ResponsiveContainer>
               <BarChart data={data} layout="vertical" margin={{ left: 40, right: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="rgba(128, 128, 128, 0.2)" />
-              <XAxis type="number" tick={{ fill: tickColor }} tickFormatter={(value) => `$${value}`} />
-              <YAxis dataKey="name" type="category" tick={{ fill: tickColor }} width={100} />
+              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="rgba(128, 128, 128, 0.1)" />
+              <XAxis type="number" tick={{ fill: tickColor, fontSize: 11 }} tickFormatter={(value) => `$${value}`} axisLine={false} tickLine={false} />
+              <YAxis dataKey="name" type="category" tick={{ fill: tickColor, fontSize: 11 }} width={100} axisLine={false} tickLine={false} />
               <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(value: number) => `$${value.toFixed(2)}`}
+                  formatter={(value: number) => [`$${value.toFixed(2)}`, 'Revenue']}
               />
               <Bar dataKey="revenue" name="Revenue" fill="#78716c" radius={[0, 4, 4, 0]} />
               </BarChart>
@@ -142,20 +144,20 @@ const CategorySalesChart: React.FC<{
   tooltipStyle: any;
   dateError: string | null;
 }> = memo(({ data, tickColor, tooltipStyle, dateError }) => (
-  <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
-    <h3 className="text-lg font-semibold mb-4 text-stone-900 dark:text-white">Sales by Category</h3>
+  <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-sm border border-stone-100 dark:border-zinc-700/50">
+    <h3 className="text-lg font-serif font-bold mb-6 text-stone-900 dark:text-white">Sales by Category</h3>
     <div style={{ width: '100%', height: 400 }}>
       {dateError ? (
           <ChartPlaceholder message={dateError} isError />
       ) : data.length > 0 ? (
           <ResponsiveContainer>
               <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128, 128, 128, 0.2)" />
-              <XAxis dataKey="name" tick={{ fill: tickColor }} />
-              <YAxis tick={{ fill: tickColor }} tickFormatter={(value) => `$${value}`} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128, 128, 128, 0.1)" />
+              <XAxis dataKey="name" tick={{ fill: tickColor, fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: tickColor, fontSize: 11 }} tickFormatter={(value) => `$${value}`} axisLine={false} tickLine={false} />
               <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(value: number) => `$${value.toFixed(2)}`}
+                  formatter={(value: number) => [`$${value.toFixed(2)}`, 'Revenue']}
               />
               <Bar dataKey="revenue" name="Revenue" fill="#a8a29e" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -323,51 +325,58 @@ const Dashboard: React.FC = () => {
 
   const COLORS = ['#78716c', '#a8a29e', '#d6d3d1', '#57534e', '#44403c', '#292524'];
   
-  const tickColor = theme === 'dark' ? '#a1a1aa' : '#57534e';
+  const tickColor = theme === 'dark' ? '#52525b' : '#d6d3d1';
   const tooltipStyle = theme === 'dark' 
-    ? { backgroundColor: '#27272a', border: '1px solid #3f3f46', color: '#f4f4f5' }
-    : { backgroundColor: '#ffffff', border: '1px solid #e5e7eb' };
+    ? { backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: '24px', color: '#f4f4f5', padding: '20px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(12px)' }
+    : { backgroundColor: '#ffffff', border: '1px solid #f5f5f4', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.1)', padding: '20px' };
 
   return (
-    <div className="p-6 space-y-6">
-      <h2 className="text-2xl font-bold text-stone-900 dark:text-white">Dashboard</h2>
-      
-      <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4 bg-white dark:bg-zinc-800 p-4 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold text-stone-900 dark:text-white flex-shrink-0">Reporting Period</h3>
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div>
-                <label htmlFor="startDate" className="sr-only">Start Date</label>
-                <input
-                    type="date"
-                    id="startDate"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className={`p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white ${dateError ? 'border-red-500 focus:ring-red-500' : ''}`}
-                    aria-label="Start Date"
-                />
-            </div>
-            <span className="text-stone-500 dark:text-zinc-400">to</span>
-            <div>
-                <label htmlFor="endDate" className="sr-only">End Date</label>
-                <input
-                    type="date"
-                    id="endDate"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    min={startDate}
-                    className={`p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white ${dateError ? 'border-red-500 focus:ring-red-500' : ''}`}
-                    aria-label="End Date"
-                />
-            </div>
+    <div className="p-8 space-y-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h2 className="text-2xl font-serif font-bold text-stone-900 dark:text-white">Business Insights</h2>
+          <p className="text-stone-500 dark:text-zinc-400 mt-1">Real-time performance metrics and sales data.</p>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row items-center gap-3 bg-white dark:bg-zinc-800 p-2 rounded-xl shadow-sm border border-stone-100 dark:border-zinc-700/50">
+          <div className="flex items-center gap-2 px-3">
+            <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Period</span>
           </div>
-          {dateError && <p className="text-red-500 text-sm font-medium">{dateError}</p>}
+          <div className="flex items-center gap-2">
+            <input
+                type="date"
+                id="startDate"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className={`text-sm p-2 bg-stone-50 dark:bg-zinc-900 border-none rounded-lg dark:text-white focus:ring-1 focus:ring-stone-200 ${dateError ? 'text-red-500' : ''}`}
+                aria-label="Start Date"
+            />
+            <span className="text-stone-300 dark:text-zinc-600">—</span>
+            <input
+                type="date"
+                id="endDate"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate}
+                className={`text-sm p-2 bg-stone-50 dark:bg-zinc-900 border-none rounded-lg dark:text-white focus:ring-1 focus:ring-stone-200 ${dateError ? 'text-red-500' : ''}`}
+                aria-label="End Date"
+            />
+          </div>
+        </div>
       </div>
+
+      {dateError && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-xl text-red-600 dark:text-red-400 text-sm font-medium flex items-center gap-2">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          {dateError}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="Total Revenue" value={`$${totalRevenue.toFixed(2)}`} />
         <StatCard title="Total Profit" value={`$${totalProfit.toFixed(2)}`} />
         <StatCard title="Drinks Processed" value={drinksProcessed.toString()} />
-        <StatCard title="Avg. Processing Time" value={`${avgProcessingTime.toFixed(1)} min`} />
+        <StatCard title="Avg. Time" value={`${avgProcessingTime.toFixed(1)}m`} />
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -1,5 +1,5 @@
 
-import { Drink, ModifierGroup, ModifierOption, Discount, Category, KnowledgeArticle, TutorialStep } from './types';
+import { Drink, ModifierGroup, ModifierOption, Discount, Category } from './types';
 
 export const INITIAL_CATEGORIES: Category[] = [
     { id: 'cat-1', name: 'Hot Drinks', imageUrl: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=100&q=50' },
@@ -64,7 +64,7 @@ export const INITIAL_MODIFIERS: ModifierGroup[] = [
   },
 ];
 
-const IMG_PARAMS = '?auto=format&fit=crop&w=400&q=50';
+const IMG_PARAMS = '?auto=format&fit=crop&w=300&q=40';
 
 export const INITIAL_DRINKS: Drink[] = [
   // Hot Drinks
@@ -319,114 +319,6 @@ export const INITIAL_DISCOUNTS: Discount[] = [
     { id: 'disc-3', code: '2DOLLARSOFF', type: 'fixed', value: 2 },
 ];
 
-export const INITIAL_KNOWLEDGE_BASE: KnowledgeArticle[] = [
-  {
-    id: 'kb-0',
-    title: 'The Full Order Lifecycle',
-    category: 'Workflow',
-    content: `1. A customer places an order via the Customer View.
-2. For non-admin users, the order appears in the KDS **"Payment Required"** tab.
-3. Staff at the counter collect payment and click **"Verify Payment & Send to Kitchen"**.
-4. The order ticket moves to the **"Pending"** tab, and its timer starts.
-5. Kitchen staff prepare the drinks, marking off items as they go.
-6. Once all items are ready, they click **"Complete"** on the ticket header.
-7. The order moves to the **"History"** tab, and the process is complete.`,
-    imageUrl: 'https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1' + IMG_PARAMS,
-  },
-  {
-    id: 'kb-1',
-    title: 'Customer Ordering',
-    category: 'Customer View',
-    content: 'Customers browse the menu, which is organized by categories. They can click on any drink to open the customisation modal, where they can select modifiers like milk type, size, and syrups. The final price updates in real-time. Items can be added to the cart or saved as a favourite for later.',
-    imageUrl: 'https://images.unsplash.com/photo-1551632436-cbf8dd354fa8' + IMG_PARAMS,
-  },
-  {
-    id: 'kb-2',
-    title: 'Shopping Cart & Checkout',
-    category: 'Customer View',
-    content: 'The cart flyout shows all items in the current order. Here, customers can provide their name, apply discount codes, and choose a pickup time (now or later). The "Pay it Forward" feature lets them leave a nice message for the next customer.',
-    imageUrl: 'https://images.unsplash.com/photo-1583394833446-ac868007a8a2' + IMG_PARAMS,
-  },
-  {
-    id: 'kb-3',
-    title: 'KDS: Payment Required',
-    category: 'KDS',
-    content: 'This is the first queue for orders placed by non-admin users. Tickets appear here highlighted in blue, showing the total amount to be collected. Staff must verify the payment and click "Send to Kitchen" to move the order to the pending queue for preparation.',
-    imageUrl: 'https://images.unsplash.com/photo-1556740772-1a28a2a7f2d4' + IMG_PARAMS,
-  },
-  {
-    id: 'kb-4',
-    title: 'KDS: Pending Orders',
-    category: 'KDS',
-    content: 'This is the main preparation queue. Each ticket has a timer showing how long the order has been waiting. Timers change colour (green -> yellow -> orange -> red) as time increases. Staff can click individual items to strike them through as they are made, and click the header to complete the entire order.',
-    imageUrl: 'https://images.unsplash.com/photo-1600096194534-95cf5ece1466' + IMG_PARAMS,
-  },
-   {
-    id: 'kb-5',
-    title: 'KDS: Aggregated Views',
-    category: 'KDS',
-    content: 'The pending screen has three view modes: "By Order" (default tickets), "By Item" (groups all identical drinks with the same modifiers), and "By Type" (groups all drinks of the same type, listing variations). These views help staff prepare multiple drinks efficiently.',
-    imageUrl: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4' + IMG_PARAMS,
-  },
-  {
-    id: 'kb-6',
-    title: 'KDS: Scheduled & History',
-    category: 'KDS',
-    content: 'The "Scheduled" tab shows orders for future pickup, which automatically move to Pending 15 minutes before their due time. The "History" tab shows all completed orders. From here, an admin can "Re-queue" an order if it was completed by mistake.',
-    imageUrl: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40' + IMG_PARAMS,
-  },
-  {
-    id: 'kb-7',
-    title: 'Admin: Dashboard',
-    category: 'Admin Panel',
-    content: 'The dashboard provides key business insights for a selected date range. It shows total revenue, profit, number of drinks processed, and average order completion time. A chart visualises revenue and profit over the selected period.',
-    imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71' + IMG_PARAMS,
-  },
-  {
-    id: 'kb-8',
-    title: 'Admin: Menu Management',
-    category: 'Admin Panel',
-    content: 'This section allows full control over the menu. Admins can add, edit, and delete Categories, Drinks, and Modifier Groups. When creating or editing a drink, you can assign it to a category, set its price and cost, define an image, and link multiple modifier groups.',
-    imageUrl: 'https://images.unsplash.com/photo-1495474472287-4d713b22e85b' + IMG_PARAMS,
-  },
-  {
-    id: 'kb-9',
-    title: 'Admin: Permissions',
-    category: 'Admin Panel',
-    content: 'Admins can manage the roles of all registered users. The available roles are Customer, Kitchen Staff, and Administrator. For security, an administrator cannot change their own role to prevent being locked out of the admin panel.',
-    imageUrl: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7' + IMG_PARAMS,
-  },
-  {
-    id: 'kb-10',
-    title: 'Accounts & Login',
-    category: 'Customer View',
-    content: `### Registered Users vs. Guests
-**Registered Users** can save favourite drinks and have their name pre-filled for orders. All data is saved to their account.
-**Guests** can place orders, but favourites are tied to the name they enter and are only saved on the current device.
-
-### Logging In
-Enter an existing registered name to log in and access your saved profile.
-
-### Continuing as a Guest
-Enter any name that is not already registered. A temporary guest profile will be created for your session.`,
-    imageUrl: 'https://images.unsplash.com/photo-1529539795054-3c162aab037a' + IMG_PARAMS,
-  },
-  {
-    id: 'kb-11',
-    title: 'Providing Feedback',
-    category: 'Workflow',
-    content: `Your feedback is valuable to us! Use the feedback button (the speech bubble icon) to tell us about your experience.
-
-1. Click the button to open the feedback form.
-2. Select a star rating from 1 to 5.
-3. Optionally, leave a detailed message in the text box.
-4. Click "Submit Feedback".
-
-All feedback is sent to our administrators for review. Thank you for helping us improve!`,
-    imageUrl: 'https://images.unsplash.com/photo-1553729459-efe14ef6055d' + IMG_PARAMS,
-  },
-];
-
 export const COFFEE_JOKES = [
   "What do you call a sad cup of coffee? Depresso.",
   "How did the hipster burn his tongue? He drank his coffee before it was cool.",
@@ -435,79 +327,4 @@ export const COFFEE_JOKES = [
   "What's it called when you steal someone's coffee? Mugging!",
   "How does Moses make his coffee? Hebrews it.",
   "What's the opposite of coffee? Sneezy.",
-];
-
-export const INITIAL_TUTORIAL_STEPS: TutorialStep[] = [
-    {
-        id: 'tut-step-1',
-        title: 'Step 1: Welcome!',
-        content: "Let's walk through placing an order. You can exit this guide at any time by clicking the backdrop.",
-        target: '#customer-view-heading',
-        position: 'bottom',
-        waitForAction: false,
-    },
-    {
-        id: 'tut-step-2',
-        title: 'Step 2: Find Your Drink',
-        content: "We've organised our drinks into categories. Use these filters to find what you're looking for.",
-        target: '#menu-categories',
-        position: 'bottom',
-        waitForAction: false,
-    },
-    {
-        id: 'tut-step-3',
-        title: 'Step 3: Select an Item',
-        content: "See something you like? Let's start by selecting a Latte. Click on it to start customising it.",
-        target: '.first-drink-card',
-        position: 'bottom',
-        waitForAction: true,
-    },
-    {
-        id: 'tut-step-4',
-        title: 'Step 4: Choose Your Options',
-        content: "Select your preferred milk, sweetness, and other options. The price updates automatically as you make selections.",
-        target: '#modifiers-section',
-        position: 'bottom',
-        waitForAction: false,
-    },
-    {
-        id: 'tut-step-5',
-        title: 'Step 5: Set Quantity & Name',
-        content: "Adjust the quantity or give your drink a custom name, which is perfect for keeping track of large group orders!",
-        target: '#quantity-and-name-section',
-        position: 'right',
-        waitForAction: false,
-    },
-    {
-        id: 'tut-step-6',
-        title: 'Step 6: Add to Order',
-        content: "Once you're happy with your drink, click here to add it to your order. You can add more drinks, or open the cart to checkout.",
-        target: '#add-to-order-button',
-        position: 'top',
-        waitForAction: true,
-    },
-    {
-        id: 'tut-step-7',
-        title: 'Step 7: View Your Cart',
-        content: "Great! Your drink is in the cart. Click this button to review your order and checkout.",
-        target: '#cart-button',
-        position: 'left',
-        waitForAction: true,
-    },
-    {
-        id: 'tut-step-8',
-        title: 'Step 8: Finalize Your Order',
-        content: "Almost there! Enter a name for your order, apply any discounts, and choose your pickup time.",
-        target: '.cart-flyout-footer',
-        position: 'top',
-        waitForAction: false,
-    },
-    {
-        id: 'tut-step-9',
-        title: 'Step 9: Place Your Order',
-        content: "Everything look good? Click here to send your order to our kitchen. Enjoy!",
-        target: '#place-order-button',
-        position: 'top',
-        waitForAction: false,
-    },
 ];

@@ -1,21 +1,19 @@
 import React, { useState, useContext, useEffect, ReactNode, Suspense, lazy } from 'react';
 import ErrorBoundary from './components/shared/ErrorBoundary';
 import { AppProvider, useApp } from './context/AppContext';
-import { ToastProvider } from './context/ToastContext';
+import { ToastProvider, useToast } from './context/ToastContext';
 import { View, UserRole } from './types';
 import Header from './components/shared/Header';
-import LoginModal from './components/customer/LoginModal';
 import Feedback from './components/shared/Feedback';
 import Modal from './components/shared/Modal';
-import KnowledgeBaseModal from './components/admin/KnowledgeBaseModal';
 import { isFirebaseConfigured } from './firebase/config';
 
-const CustomerView = lazy(() => import('./components/customer/CustomerView'));
+import CustomerView from './components/customer/CustomerView';
 const KDSView = lazy(() => import('./components/kds/KDSView'));
 const AdminView = lazy(() => import('./components/admin/AdminView'));
 const ProfileView = lazy(() => import('./components/customer/ProfileView'));
 const BirthdaysView = lazy(() => import('./components/shared/BirthdaysView'));
-
+const LoginModal = lazy(() => import('./components/customer/LoginModal'));
 const LoadingSpinner = () => (
     <div className="flex items-center justify-center p-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#A58D79]"></div>
@@ -62,7 +60,8 @@ const AccessDenied: React.FC = () => (
 
 const AppContent: React.FC = () => {
   const { state, dispatch } = useApp();
-  const { currentUser, theme, isKnowledgeModalOpen, permissionError } = state;
+  const { addToast } = useToast();
+  const { currentUser, theme, permissionError } = state;
   const [currentView, setCurrentView] = useState<View>(View.CUSTOMER);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [infoModalContent, setInfoModalContent] = useState<{ title: string; content: ReactNode } | null>(null);
@@ -122,26 +121,47 @@ const AppContent: React.FC = () => {
                 content: <p className="text-stone-600 dark:text-zinc-300">Interested in joining the Realife Cafe family? We're always looking for enthusiastic people to help us spread warmth and great coffee. Contact us at careers@realifecafe.com.</p>
             });
             break;
-        case 'knowledge-base':
-            dispatch({ type: 'OPEN_KB_MODAL' });
-            break;
     }
   };
   
   const renderCurrentView = () => {
     switch (currentView) {
       case View.CUSTOMER:
-        return <CustomerView />;
+        return (
+          <ErrorBoundary fallback={<div className="p-8 text-center text-red-600">An error occurred in the CustomerView component.<br/>Consider adding an error boundary to your tree to customize error handling behavior.<br/>Visit https://react.dev/link/error-boundaries to learn more about error boundaries.</div>}>
+            <CustomerView />
+          </ErrorBoundary>
+        );
       case View.KDS:
-        return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? <KDSView /> : <AccessDenied />;
+        return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? (
+          <ErrorBoundary fallback={<div className="p-8 text-center text-red-600">An error occurred in the KDSView component.<br/>Consider adding an error boundary to your tree to customize error handling behavior.<br/>Visit https://react.dev/link/error-boundaries to learn more about error boundaries.</div>}>
+            <KDSView />
+          </ErrorBoundary>
+        ) : <AccessDenied />;
       case View.ADMIN:
-        return currentUser?.role === UserRole.ADMIN ? <AdminView /> : <AccessDenied />;
+        return currentUser?.role === UserRole.ADMIN ? (
+          <ErrorBoundary fallback={<div className="p-8 text-center text-red-600">An error occurred in the AdminView component.<br/>Consider adding an error boundary to your tree to customize error handling behavior.<br/>Visit https://react.dev/link/error-boundaries to learn more about error boundaries.</div>}>
+            <AdminView />
+          </ErrorBoundary>
+        ) : <AccessDenied />;
       case View.PROFILE:
-        return currentUser ? <ProfileView /> : <AccessDenied />;
+        return currentUser ? (
+          <ErrorBoundary fallback={<div className="p-8 text-center text-red-600">An error occurred in the ProfileView component.<br/>Consider adding an error boundary to your tree to customize error handling behavior.<br/>Visit https://react.dev/link/error-boundaries to learn more about error boundaries.</div>}>
+            <ProfileView />
+          </ErrorBoundary>
+        ) : <AccessDenied />;
       case View.BIRTHDAYS:
-        return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? <BirthdaysView /> : <AccessDenied />;
+        return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? (
+          <ErrorBoundary fallback={<div className="p-8 text-center text-red-600">An error occurred in the BirthdaysView component.<br/>Consider adding an error boundary to your tree to customize error handling behavior.<br/>Visit https://react.dev/link/error-boundaries to learn more about error boundaries.</div>}>
+            <BirthdaysView />
+          </ErrorBoundary>
+        ) : <AccessDenied />;
       default:
-        return <CustomerView />;
+        return (
+          <ErrorBoundary fallback={<div className="p-8 text-center text-red-600">An error occurred in the CustomerView component.<br/>Consider adding an error boundary to your tree to customize error handling behavior.<br/>Visit https://react.dev/link/error-boundaries to learn more about error boundaries.</div>}>
+            <CustomerView />
+          </ErrorBoundary>
+        );
     }
   };
 
@@ -166,7 +186,9 @@ const AppContent: React.FC = () => {
         </Suspense>
       </main>
       <Feedback />
-      <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+      <Suspense fallback={null}>
+        <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+      </Suspense>
       {infoModalContent && (
         <Modal 
             isOpen={!!infoModalContent} 
@@ -176,10 +198,6 @@ const AppContent: React.FC = () => {
             {infoModalContent.content}
         </Modal>
       )}
-      <KnowledgeBaseModal 
-        isOpen={isKnowledgeModalOpen} 
-        onClose={() => dispatch({ type: 'CLOSE_KB_MODAL' })}
-      />
     </div>
   );
 };

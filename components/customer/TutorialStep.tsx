@@ -113,31 +113,36 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ step, isLastStep, onNext, o
             <div className="fixed inset-0 bg-black/60" onClick={onExit}></div>
             
             <div
-                className="fixed bg-transparent rounded-lg transition-all duration-300"
+                className="fixed bg-transparent rounded-2xl transition-all duration-500 border-2 border-white/50 dark:border-zinc-500/50"
                 style={{
-                    top: position.top - 4,
-                    left: position.left - 4,
-                    width: position.width + 8,
-                    height: position.height + 8,
-                    boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)',
+                    top: position.top - 8,
+                    left: position.left - 8,
+                    width: position.width + 16,
+                    height: position.height + 16,
+                    boxShadow: '0 0 0 9999px rgba(0,0,0,0.7)',
                     zIndex: 1001,
                 }}
             ></div>
             
             <div
                 style={getTooltipPosition()}
-                className="bg-white dark:bg-zinc-800 p-4 rounded-lg shadow-2xl w-72 text-stone-800 dark:text-zinc-200"
+                className="bg-white dark:bg-zinc-900 p-6 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] w-80 text-stone-900 dark:text-white border border-stone-100 dark:border-zinc-800"
             >
-                <h3 className="font-bold text-lg mb-2">{step.title}</h3>
-                <p className="text-sm mb-4">{step.content}</p>
+                <h3 className="font-serif font-bold text-xl mb-3 tracking-tight">{step.title}</h3>
+                <p className="text-sm text-stone-600 dark:text-zinc-400 mb-6 leading-relaxed">{step.content}</p>
                 <div className="flex justify-between items-center">
-                    <button onClick={onExit} className="text-sm text-stone-500 hover:underline">Exit Tutorial</button>
+                    <button 
+                        onClick={onExit} 
+                        className="text-xs font-bold text-stone-400 hover:text-stone-900 dark:hover:text-white uppercase tracking-widest transition-colors"
+                    >
+                        Exit Tutorial
+                    </button>
                     {!step.waitForAction && (
                         <button
                             onClick={onNext}
-                            className="px-4 py-2 bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 rounded-md text-sm font-semibold"
+                            className="px-6 py-2 bg-stone-900 text-white dark:bg-white dark:text-stone-900 rounded-full text-sm font-bold shadow-md hover:bg-stone-800 dark:hover:bg-stone-100 transition-all transform hover:scale-105"
                         >
-                            {isLastStep ? 'Finish' : 'Next'}
+                            {isLastStep ? 'Finish' : 'Next Step'}
                         </button>
                     )}
                 </div>

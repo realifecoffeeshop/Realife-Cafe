@@ -1,6 +1,7 @@
 
 import React, { useState, useContext, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import ConfirmationModal from '../shared/ConfirmationModal';
 import { useToast } from '../../context/ToastContext';
 import { Drink, ModifierGroup, ModifierOption, Category } from '../../types';
 import Modal from '../shared/Modal';
@@ -65,77 +66,115 @@ const ModifierGroupForm: React.FC<{
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4 text-stone-800 dark:text-zinc-200">
-            <div>
-                <label className="block mb-1 font-medium">Group Name</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} required className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"/>
+        <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-3">
+                <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Group Name</label>
+                <input 
+                    value={name} 
+                    onChange={(e) => setName(e.target.value)} 
+                    required 
+                    className="w-full bg-stone-50 dark:bg-zinc-800 border-none rounded-2xl px-6 py-4 text-stone-900 dark:text-white placeholder-stone-300 dark:placeholder-zinc-600 focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 transition-all font-serif font-bold text-lg"
+                    placeholder="e.g. Milk Options"
+                />
             </div>
             
-            <div className="flex flex-wrap gap-4">
-                <label className="flex items-center space-x-2 cursor-pointer">
+            <div className="grid grid-cols-3 gap-4">
+                <label className="flex items-center gap-3 p-4 rounded-2xl bg-stone-50 dark:bg-zinc-800/50 border border-stone-100 dark:border-zinc-800 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 transition-all group">
                     <input 
                         type="checkbox" 
                         checked={isRequired} 
                         onChange={(e) => setIsRequired(e.target.checked)}
-                        className="h-4 w-4 rounded border-stone-300 text-[#A58D79] focus:ring-[#A58D79]"
+                        className="w-5 h-5 rounded border-stone-200 text-stone-900 focus:ring-stone-900/10"
                     />
-                    <span className="font-medium">Required</span>
+                    <span className="text-sm font-bold text-stone-600 dark:text-zinc-400 tracking-tight">Required</span>
                 </label>
 
-                <label className="flex items-center space-x-2 cursor-pointer">
+                <label className="flex items-center gap-3 p-4 rounded-2xl bg-stone-50 dark:bg-zinc-800/50 border border-stone-100 dark:border-zinc-800 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 transition-all group">
                     <input 
                         type="checkbox" 
                         checked={allowQuantity} 
                         onChange={(e) => setAllowQuantity(e.target.checked)}
-                        className="h-4 w-4 rounded border-stone-300 text-[#A58D79] focus:ring-[#A58D79]"
+                        className="w-5 h-5 rounded border-stone-200 text-stone-900 focus:ring-stone-900/10"
                     />
-                    <span className="font-medium">Allow Quantity Selector</span>
+                    <span className="text-sm font-bold text-stone-600 dark:text-zinc-400 tracking-tight">Quantity</span>
                 </label>
 
-                <label className="flex items-center space-x-2 cursor-pointer">
+                <label className="flex items-center gap-3 p-4 rounded-2xl bg-stone-50 dark:bg-zinc-800/50 border border-stone-100 dark:border-zinc-800 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 transition-all group">
                     <input 
                         type="checkbox" 
                         checked={allowMultiple} 
                         onChange={(e) => setAllowMultiple(e.target.checked)}
-                        className="h-4 w-4 rounded border-stone-300 text-[#A58D79] focus:ring-[#A58D79]"
+                        className="w-5 h-5 rounded border-stone-200 text-stone-900 focus:ring-stone-900/10"
                     />
-                    <span className="font-medium">Allow Multiple Selection</span>
+                    <span className="text-sm font-bold text-stone-600 dark:text-zinc-400 tracking-tight">Multiple</span>
                 </label>
             </div>
 
             {isRequired && (
-                <div>
-                    <label className="block mb-1 font-medium text-sm">Default Option (Pre-selected)</label>
+                <div className="space-y-3">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Default Selection</label>
                     <select 
                         value={defaultOptionId} 
                         onChange={(e) => setDefaultOptionId(e.target.value)}
-                        className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"
+                        className="w-full bg-stone-50 dark:bg-zinc-800 border-none rounded-2xl px-6 py-4 text-stone-900 dark:text-white font-serif font-bold text-lg focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 transition-all appearance-none cursor-pointer"
                     >
                         <option value="">Select a default...</option>
                         {options.map(opt => (
-                            <option key={opt.id} value={opt.id}>{opt.name || 'Unnamed Option'}</option>
+                            <option key={opt?.id} value={opt?.id}>{opt?.name || 'Unnamed Option'}</option>
                         ))}
                     </select>
                 </div>
             )}
 
-            <div>
-                <h4 className="font-medium mb-2">Options</h4>
-                <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+            <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                    <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Options</h4>
+                    <button type="button" onClick={addOption} className="text-[10px] font-bold uppercase tracking-widest text-stone-900 dark:text-white hover:underline transition-all">Add Option</button>
+                </div>
+                <div className="space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
                 {options.map((option, index) => (
-                    <div key={option.id} className="grid grid-cols-12 gap-2 items-center">
-                        <input value={option.name} onChange={(e) => handleOptionChange(index, 'name', e.target.value)} placeholder="Name" className="col-span-4 p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"/>
-                        <input type="number" step="0.01" value={option.price} onChange={(e) => handleOptionChange(index, 'price', e.target.value)} placeholder="Price" className="col-span-3 p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"/>
-                        <input type="number" step="0.01" value={option.cost} onChange={(e) => handleOptionChange(index, 'cost', e.target.value)} placeholder="Cost" className="col-span-3 p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"/>
-                        <button type="button" onClick={() => removeOption(index)} className="col-span-2 text-red-500 hover:text-red-700 justify-self-center">Remove</button>
+                    <div key={option?.id || index} className="grid grid-cols-12 gap-3 items-center bg-stone-50 dark:bg-zinc-800/30 p-4 rounded-2xl border border-stone-100 dark:border-zinc-800 group transition-all hover:bg-white dark:hover:bg-zinc-800">
+                        <div className="col-span-5 space-y-1">
+                            <label className="text-[8px] font-bold uppercase tracking-widest text-stone-400">Name</label>
+                            <input value={option?.name || ''} onChange={(e) => handleOptionChange(index, 'name', e.target.value)} placeholder="Name" className="w-full bg-transparent border-none p-0 text-stone-900 dark:text-white font-serif font-bold text-base focus:ring-0 placeholder-stone-300"/>
+                        </div>
+                        <div className="col-span-3 space-y-1">
+                            <label className="text-[8px] font-bold uppercase tracking-widest text-stone-400">Price</label>
+                            <div className="relative">
+                                <span className="absolute left-0 top-1/2 -translate-y-1/2 text-stone-400 font-serif font-bold text-xs">$</span>
+                                <input type="number" step="0.01" value={option?.price || 0} onChange={(e) => handleOptionChange(index, 'price', e.target.value)} placeholder="0.00" className="w-full bg-transparent border-none pl-3 p-0 text-stone-900 dark:text-white font-serif font-bold text-base focus:ring-0 placeholder-stone-300"/>
+                            </div>
+                        </div>
+                        <div className="col-span-3 space-y-1">
+                            <label className="text-[8px] font-bold uppercase tracking-widest text-stone-400">Cost</label>
+                            <div className="relative">
+                                <span className="absolute left-0 top-1/2 -translate-y-1/2 text-stone-400 font-serif font-bold text-xs">$</span>
+                                <input type="number" step="0.01" value={option?.cost || 0} onChange={(e) => handleOptionChange(index, 'cost', e.target.value)} placeholder="0.00" className="w-full bg-transparent border-none pl-3 p-0 text-stone-900 dark:text-white font-serif font-bold text-base focus:ring-0 placeholder-stone-300"/>
+                            </div>
+                        </div>
+                        <div className="col-span-1 flex justify-end">
+                            <button type="button" onClick={() => removeOption(index)} className="text-red-400 hover:text-red-600 transition-all p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
                     </div>
                 ))}
                 </div>
-                <button type="button" onClick={addOption} className="mt-3 text-sm text-stone-700 dark:text-zinc-300 hover:underline">Add Option</button>
             </div>
-            <div className="flex justify-end pt-4">
-                <button type="button" onClick={onClose} className="px-4 py-2 mr-2 bg-stone-200 dark:bg-zinc-600 rounded-md">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 rounded-md">Save Group</button>
+            <div className="flex justify-end gap-4 pt-8">
+                <button 
+                    type="button" 
+                    onClick={onClose} 
+                    className="px-8 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all"
+                >
+                    Cancel
+                </button>
+                <button 
+                    type="submit" 
+                    className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic"
+                >
+                    Save Group
+                </button>
             </div>
         </form>
     );
@@ -151,6 +190,7 @@ const MenuManagement: React.FC = () => {
     const [editingCategory, setEditingCategory] = useState<Partial<Category> | null>(null);
     const [categoryName, setCategoryName] = useState('');
     const [imageSource, setImageSource] = useState<'url' | 'upload'>('url');
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState<{ type: 'category' | 'drink' | 'modifier'; id: string } | null>(null);
     
     useEffect(() => {
         if (editingDrink) {
@@ -264,6 +304,7 @@ const MenuManagement: React.FC = () => {
             imageUrl: drinkFormState.imageUrl || '',
             description: drinkFormState.description || '',
             modifierGroups: drinkFormState.modifierGroups || [],
+            variants: drinkFormState.variants || [],
         };
 
         // Optimistic update
@@ -283,18 +324,23 @@ const MenuManagement: React.FC = () => {
         setEditingDrink(null);
     }
     
-    const handleDeleteDrink = async (id: string) => {
-        if(window.confirm('Are you sure you want to delete this drink?')) {
-            dispatch({ type: 'DELETE_DRINK', payload: id });
-            try {
-                const updatedDrinks = state.drinks.filter(d => d.id !== id);
-                await saveMenu({ drinks: updatedDrinks, categories: state.categories, modifierGroups: state.modifierGroups });
-                addToast('Drink deleted.', 'success');
-            } catch (error) {
-                addToast('Failed to delete from database.', 'error');
-            }
+    const handleDeleteDrink = (id: string) => {
+        setShowDeleteConfirm({ type: 'drink', id });
+    };
+
+    const confirmDeleteDrink = async () => {
+        if (!showDeleteConfirm) return;
+        const id = showDeleteConfirm.id;
+        dispatch({ type: 'DELETE_DRINK', payload: id });
+        try {
+            const updatedDrinks = state.drinks.filter(d => d.id !== id);
+            await saveMenu({ drinks: updatedDrinks, categories: state.categories, modifierGroups: state.modifierGroups });
+            addToast('Drink deleted.', 'success');
+        } catch (error) {
+            addToast('Failed to delete from database.', 'error');
         }
-    }
+        setShowDeleteConfirm(null);
+    };
 
     const handleSaveModifierGroup = async (group: ModifierGroup) => {
         const isNew = group.id.startsWith('new-group-');
@@ -317,17 +363,22 @@ const MenuManagement: React.FC = () => {
         setEditingModifierGroup(null);
     };
 
-    const handleDeleteModifierGroup = async (id: string) => {
-        if (window.confirm('Are you sure you want to delete this modifier group? This might affect drinks using it.')) {
-            dispatch({ type: 'DELETE_MODIFIER_GROUP', payload: id });
-            try {
-                const updatedGroups = state.modifierGroups.filter(g => g.id !== id);
-                await saveMenu({ drinks: state.drinks, categories: state.categories, modifierGroups: updatedGroups });
-                addToast('Modifier group deleted.', 'success');
-            } catch (error) {
-                addToast('Failed to delete from database.', 'error');
-            }
+    const handleDeleteModifierGroup = (id: string) => {
+        setShowDeleteConfirm({ type: 'modifier', id });
+    };
+
+    const confirmDeleteModifierGroup = async () => {
+        if (!showDeleteConfirm) return;
+        const id = showDeleteConfirm.id;
+        dispatch({ type: 'DELETE_MODIFIER_GROUP', payload: id });
+        try {
+            const updatedGroups = state.modifierGroups.filter(g => g.id !== id);
+            await saveMenu({ drinks: state.drinks, categories: state.categories, modifierGroups: updatedGroups });
+            addToast('Modifier group deleted.', 'success');
+        } catch (error) {
+            addToast('Failed to delete from database.', 'error');
         }
+        setShowDeleteConfirm(null);
     };
     
     const handleSaveCategory = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -363,50 +414,62 @@ const MenuManagement: React.FC = () => {
         setEditingCategory(null);
     };
 
-    const handleDeleteCategory = async (id: string) => {
+    const handleDeleteCategory = (id: string) => {
         if (id === 'cat-4') {
              addToast("Cannot delete the default 'Uncategorised' category.", 'error');
              return;
         }
-        if (window.confirm('Are you sure you want to delete this category? Drinks in it will be moved to "Uncategorised".')) {
-            dispatch({ type: 'DELETE_CATEGORY', payload: id });
-            try {
-                const updatedCategories = state.categories.filter(c => c.id !== id);
-                await saveMenu({ drinks: state.drinks, categories: updatedCategories, modifierGroups: state.modifierGroups });
-                addToast('Category deleted.', 'success');
-            } catch (error) {
-                addToast('Failed to delete category from database.', 'error');
-            }
+        setShowDeleteConfirm({ type: 'category', id });
+    };
+
+    const confirmDeleteCategory = async () => {
+        if (!showDeleteConfirm) return;
+        const id = showDeleteConfirm.id;
+        dispatch({ type: 'DELETE_CATEGORY', payload: id });
+        try {
+            const updatedCategories = state.categories.filter(c => c.id !== id);
+            await saveMenu({ drinks: state.drinks, categories: updatedCategories, modifierGroups: state.modifierGroups });
+            addToast('Category deleted.', 'success');
+        } catch (error) {
+            addToast('Failed to delete category from database.', 'error');
         }
+        setShowDeleteConfirm(null);
     };
     
     return (
-        <div className="p-6 space-y-8">
-            <div className="flex justify-between items-center pb-4 border-b dark:border-zinc-700">
-                <h2 className="text-2xl font-bold text-stone-900 dark:text-white">Live Menu Configuration</h2>
-            </div>
+        <div className="p-8 space-y-10">
+            <header className="pb-10 border-b border-stone-100 dark:border-zinc-800">
+                <h2 className="text-3xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">Menu Configuration</h2>
+                <p className="text-stone-400 dark:text-zinc-500 mt-2 font-medium">Manage your categories, drinks, and modifiers with elegance.</p>
+            </header>
+            
             {/* Categories Management */}
-            <div>
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold text-stone-900 dark:text-white">Categories</h2>
-                    <button onClick={() => setEditingCategory({ name: '' })} className="bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 px-4 py-2 rounded-md hover:bg-[#947D6A] dark:hover:bg-zinc-200">Add Category</button>
+            <section className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-2xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">Categories</h3>
+                    <button 
+                        onClick={() => setEditingCategory({ name: '' })} 
+                        className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-8 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic"
+                    >
+                        Add Category
+                    </button>
                 </div>
-                <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-md overflow-x-auto">
-                    <table className="w-full text-sm text-left text-stone-500 dark:text-zinc-400">
-                        <thead className="text-xs text-stone-700 dark:text-zinc-300 uppercase bg-stone-100 dark:bg-zinc-700">
+                <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-stone-100 dark:border-zinc-800 overflow-hidden">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-[10px] text-stone-400 dark:text-zinc-500 uppercase tracking-[0.2em] bg-stone-50/50 dark:bg-zinc-800/30">
                             <tr>
-                                <th scope="col" className="px-6 py-3">Name</th>
-                                <th scope="col" className="px-6 py-3">Actions</th>
+                                <th scope="col" className="px-8 py-5 font-bold">Name</th>
+                                <th scope="col" className="px-8 py-5 font-bold text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-stone-50 dark:divide-zinc-800/50">
                             {(state.categories || []).filter(c => c && c.id).map(cat => (
-                                <tr key={cat.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
-                                    <td className="px-6 py-4 font-medium text-stone-900 dark:text-white">{cat.name || 'Unnamed'}</td>
-                                    <td className="px-6 py-4 space-x-2">
-                                        <button onClick={() => setEditingCategory(cat)} className="text-stone-700 dark:text-zinc-300 hover:underline">Edit</button>
+                                <tr key={cat.id} className="hover:bg-stone-50/30 dark:hover:bg-zinc-800/20 transition-all duration-300">
+                                    <td className="px-8 py-6 font-serif font-bold text-stone-900 dark:text-white text-base tracking-tight">{cat.name || 'Unnamed'}</td>
+                                    <td className="px-8 py-6 text-right space-x-6">
+                                        <button onClick={() => setEditingCategory(cat)} className="text-[10px] font-bold uppercase tracking-widest text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all">Edit</button>
                                         {cat.id !== 'cat-4' && ( // Prevent deleting "Uncategorised"
-                                           <button onClick={() => handleDeleteCategory(cat.id)} className="text-red-600 hover:underline">Delete</button>
+                                           <button onClick={() => handleDeleteCategory(cat.id)} className="text-[10px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600 transition-all">Delete</button>
                                         )}
                                     </td>
                                 </tr>
@@ -414,219 +477,407 @@ const MenuManagement: React.FC = () => {
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
             
             {/* Drinks Management */}
-            <div>
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold text-stone-900 dark:text-white">Drinks</h2>
-                    <button onClick={() => setEditingDrink({} as Drink)} className="bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 px-4 py-2 rounded-md hover:bg-[#947D6A] dark:hover:bg-zinc-200">Add Drink</button>
+            <section className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-2xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">Drinks</h3>
+                    <button 
+                        onClick={() => setEditingDrink({} as Drink)} 
+                        className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-8 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic"
+                    >
+                        Add Drink
+                    </button>
                 </div>
-                <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-md overflow-x-auto">
-                    <table className="w-full text-sm text-left text-stone-500 dark:text-zinc-400">
-                        {/* Table head */}
-                        <thead className="text-xs text-stone-700 dark:text-zinc-300 uppercase bg-stone-100 dark:bg-zinc-700">
+                <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-stone-100 dark:border-zinc-800 overflow-hidden">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-[10px] text-stone-400 dark:text-zinc-500 uppercase tracking-[0.2em] bg-stone-50/50 dark:bg-zinc-800/30">
                             <tr>
-                                <th scope="col" className="px-6 py-3">Image</th>
-                                <th scope="col" className="px-6 py-3">Name</th>
-                                <th scope="col" className="px-6 py-3">Category</th>
-                                <th scope="col" className="px-6 py-3">Price</th>
-                                <th scope="col" className="px-6 py-3">Cost</th>
-                                <th scope="col" className="px-6 py-3">Actions</th>
+                                <th scope="col" className="px-8 py-5 font-bold">Item</th>
+                                <th scope="col" className="px-8 py-5 font-bold">Category</th>
+                                <th scope="col" className="px-8 py-5 font-bold">Price</th>
+                                <th scope="col" className="px-8 py-5 font-bold">Cost</th>
+                                <th scope="col" className="px-8 py-5 font-bold text-right">Actions</th>
                             </tr>
                         </thead>
-                        {/* Table body */}
-                        <tbody>
+                        <tbody className="divide-y divide-stone-50 dark:divide-zinc-800/50">
                             {(state.drinks || []).map(drink => {
                                 const categoryName = (state.categories || []).find(c => c.id === drink.category)?.name || 'N/A';
                                 return (
-                                <tr key={drink.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
-                                    <td className="px-6 py-4">
-                                        {drink.imageUrl ? (
-                                            <img src={drink.imageUrl} alt={drink.name || 'Drink'} className="w-10 h-10 rounded-md object-cover" />
-                                        ) : (
-                                            <div className="w-10 h-10 rounded-md bg-stone-200 dark:bg-zinc-700 flex items-center justify-center">
-                                                <svg className="w-6 h-6 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                <tr key={drink.id} className="hover:bg-stone-50/30 dark:hover:bg-zinc-800/20 transition-all duration-300">
+                                    <td className="px-8 py-6">
+                                        <div className="flex items-center gap-5">
+                                            <div className="w-14 h-14 rounded-2xl overflow-hidden bg-stone-50 dark:bg-zinc-800 flex-shrink-0 border border-stone-100 dark:border-zinc-700 shadow-inner">
+                                                {drink.imageUrl ? (
+                                                    <img src={drink.imageUrl} alt={drink.name || 'Drink'} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <svg className="w-6 h-6 text-stone-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
+                                            <span className="font-serif font-bold text-stone-900 dark:text-white text-lg tracking-tight">{drink.name || 'Unnamed'}</span>
+                                        </div>
                                     </td>
-                                    <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{drink.name || 'Unnamed Drink'}</td>
-                                    <td className="px-6 py-4">{categoryName}</td>
-                                    <td className="px-6 py-4">${(drink.basePrice || 0).toFixed(2)}</td>
-                                    <td className="px-6 py-4">${(drink.baseCost || 0).toFixed(2)}</td>
-                                    <td className="px-6 py-4 space-x-2">
-                                        <button onClick={() => setEditingDrink(drink)} className="text-stone-700 dark:text-zinc-300 hover:underline">Edit</button>
-                                        <button onClick={() => handleDeleteDrink(drink.id)} className="text-red-600 hover:underline">Delete</button>
+                                    <td className="px-8 py-6">
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 bg-stone-50 dark:bg-zinc-800 px-3 py-1 rounded-full border border-stone-100 dark:border-zinc-700">{categoryName}</span>
+                                    </td>
+                                    <td className="px-8 py-6 font-serif font-bold text-stone-900 dark:text-white text-base tracking-tight">${(drink.basePrice || 0).toFixed(2)}</td>
+                                    <td className="px-8 py-6 text-stone-400 dark:text-zinc-500 font-medium tracking-tight">${(drink.baseCost || 0).toFixed(2)}</td>
+                                    <td className="px-8 py-6 text-right space-x-6">
+                                        <button onClick={() => setEditingDrink(drink)} className="text-[10px] font-bold uppercase tracking-widest text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all">Edit</button>
+                                        <button onClick={() => handleDeleteDrink(drink.id)} className="text-[10px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600 transition-all">Delete</button>
                                     </td>
                                 </tr>
                             )})}
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
 
             {/* Modifier Groups Management */}
-            <div>
-                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold text-stone-900 dark:text-white">Modifier Groups</h2>
-                    <button onClick={() => setEditingModifierGroup({id: `new-group-${Date.now()}`, name: '', options: [], isRequired: false})} className="bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 px-4 py-2 rounded-md hover:bg-[#947D6A] dark:hover:bg-zinc-200">Add Group</button>
+            <section className="space-y-6">
+                 <div className="flex justify-between items-center">
+                    <h3 className="text-2xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">Modifier Groups</h3>
+                    <button 
+                        onClick={() => setEditingModifierGroup({id: `new-group-${Date.now()}`, name: '', options: [], isRequired: false})} 
+                        className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-8 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic"
+                    >
+                        Add Group
+                    </button>
                 </div>
-                 <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-md overflow-x-auto">
-                    <table className="w-full text-sm text-left text-stone-500 dark:text-zinc-400">
-                        {/* Table head */}
-                        <thead className="text-xs text-stone-700 dark:text-zinc-300 uppercase bg-stone-100 dark:bg-zinc-700">
+                 <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-stone-100 dark:border-zinc-800 overflow-hidden">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-[10px] text-stone-400 dark:text-zinc-500 uppercase tracking-[0.2em] bg-stone-50/50 dark:bg-zinc-800/30">
                             <tr>
-                                <th scope="col" className="px-6 py-3">Name</th>
-                                <th scope="col" className="px-6 py-3">Required</th>
-                                <th scope="col" className="px-6 py-3">Options</th>
-                                <th scope="col" className="px-6 py-3">Actions</th>
+                                <th scope="col" className="px-8 py-5 font-bold">Group Name</th>
+                                <th scope="col" className="px-8 py-5 font-bold">Requirement</th>
+                                <th scope="col" className="px-8 py-5 font-bold">Options</th>
+                                <th scope="col" className="px-8 py-5 font-bold text-right">Actions</th>
                             </tr>
                         </thead>
-                        {/* Table body */}
-                        <tbody>
+                        <tbody className="divide-y divide-stone-50 dark:divide-zinc-800/50">
                             {(state.modifierGroups || []).map(group => (
-                                <tr key={group.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
-                                    <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{group?.name || 'Unnamed Group'}</td>
-                                    <td className="px-6 py-4">
+                                <tr key={group.id} className="hover:bg-stone-50/30 dark:hover:bg-zinc-800/20 transition-all duration-300">
+                                    <td className="px-8 py-6 font-serif font-bold text-stone-900 dark:text-white text-lg tracking-tight">{group?.name || 'Unnamed'}</td>
+                                    <td className="px-8 py-6">
                                         {group.isRequired ? (
-                                            <span className="text-green-600 font-semibold">Yes</span>
+                                            <span className="inline-flex items-center px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/30">Required</span>
                                         ) : (
-                                            <span className="text-stone-400 italic">Optional</span>
+                                            <span className="text-stone-400 dark:text-zinc-500 italic font-serif text-sm">Optional</span>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4">{(group.options || []).map(o => o?.name || 'Unknown').join(', ')}</td>
-                                    <td className="px-6 py-4 space-x-2">
-                                        <button onClick={() => setEditingModifierGroup(group)} className="text-stone-700 dark:text-zinc-300 hover:underline">Edit</button>
-                                        <button onClick={() => handleDeleteModifierGroup(group.id)} className="text-red-600 hover:underline">Delete</button>
+                                    <td className="px-8 py-6 text-stone-400 dark:text-zinc-500 max-w-xs truncate font-medium tracking-tight">{(group.options || []).map(o => o?.name || 'Unknown').join(', ')}</td>
+                                    <td className="px-8 py-6 text-right space-x-6">
+                                        <button onClick={() => setEditingModifierGroup(group)} className="text-[10px] font-bold uppercase tracking-widest text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all">Edit</button>
+                                        <button onClick={() => handleDeleteModifierGroup(group.id)} className="text-[10px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600 transition-all">Delete</button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
 
             {/* Drink Edit/Add Modal */}
-            <Modal isOpen={!!editingDrink} onClose={() => setEditingDrink(null)} title={editingDrink?.id ? 'Edit Drink' : 'Add Drink'} helpArticleId="kb-8">
+            <Modal isOpen={!!editingDrink} onClose={() => setEditingDrink(null)} title={editingDrink?.id ? 'Edit Drink' : 'Add Drink'}>
                 {drinkFormState && (
-                    <form onSubmit={handleSaveDrink} className="space-y-4 text-stone-800 dark:text-zinc-200">
-                        <div>
-                            <label className="block mb-1 font-medium">Name</label>
-                            <input name="name" value={drinkFormState.name || ''} onChange={handleFormChange} required className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"/>
+                    <form onSubmit={handleSaveDrink} className="space-y-8">
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Drink Name</label>
+                            <input 
+                                name="name" 
+                                value={drinkFormState.name || ''} 
+                                onChange={handleFormChange} 
+                                required 
+                                className="w-full bg-stone-50 dark:bg-zinc-800 border-none rounded-2xl px-6 py-4 text-stone-900 dark:text-white placeholder-stone-300 dark:placeholder-zinc-600 focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 transition-all font-serif font-bold text-lg"
+                                placeholder="e.g. Honey Lavender Latte"
+                            />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block mb-1 font-medium">Base Price</label>
-                                <input name="basePrice" type="number" step="0.01" value={drinkFormState.basePrice || ''} onChange={handleFormChange} required className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"/>
+
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Base Price</label>
+                                <div className="relative">
+                                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-stone-400 font-serif font-bold">$</span>
+                                    <input 
+                                        name="basePrice" 
+                                        type="number" 
+                                        step="0.01" 
+                                        value={drinkFormState.basePrice || ''} 
+                                        onChange={handleFormChange} 
+                                        required 
+                                        className="w-full bg-stone-50 dark:bg-zinc-800 border-none rounded-2xl pl-10 pr-6 py-4 text-stone-900 dark:text-white font-serif font-bold text-lg focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 transition-all"
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <label className="block mb-1 font-medium">Base Cost</label>
-                                <input name="baseCost" type="number" step="0.01" value={drinkFormState.baseCost || ''} onChange={handleFormChange} required className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"/>
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Base Cost</label>
+                                <div className="relative">
+                                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-stone-400 font-serif font-bold">$</span>
+                                    <input 
+                                        name="baseCost" 
+                                        type="number" 
+                                        step="0.01" 
+                                        value={drinkFormState.baseCost || ''} 
+                                        onChange={handleFormChange} 
+                                        required 
+                                        className="w-full bg-stone-50 dark:bg-zinc-800 border-none rounded-2xl pl-10 pr-6 py-4 text-stone-900 dark:text-white font-serif font-bold text-lg focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 transition-all"
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block mb-1 font-medium">Category</label>
-                            <select name="category" value={drinkFormState.category || ''} onChange={handleFormChange} required className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white">
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Category</label>
+                            <select 
+                                name="category" 
+                                value={drinkFormState.category || ''} 
+                                onChange={handleFormChange} 
+                                required 
+                                className="w-full bg-stone-50 dark:bg-zinc-800 border-none rounded-2xl px-6 py-4 text-stone-900 dark:text-white font-serif font-bold text-lg focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 transition-all appearance-none cursor-pointer"
+                            >
                                 {state.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         </div>
                         
-                        <div>
-                            <label className="block mb-2 font-medium">Image Source</label>
-                            <div className="flex items-center space-x-4">
-                                <label className="flex items-center space-x-2 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="imageSource"
-                                        value="url"
-                                        checked={imageSource === 'url'}
-                                        onChange={() => setImageSource('url')}
-                                        className="h-4 w-4 text-stone-600 border-stone-300 focus:ring-stone-500"
-                                    />
-                                    <span>Image URL</span>
+                        <div className="space-y-4">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Visual Identity</label>
+                            <div className="flex items-center gap-8 bg-stone-50 dark:bg-zinc-800/50 p-6 rounded-3xl border border-stone-100 dark:border-zinc-800">
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${imageSource === 'url' ? 'border-stone-900 dark:border-white' : 'border-stone-200 dark:border-zinc-700'}`}>
+                                        {imageSource === 'url' && <div className="w-2.5 h-2.5 rounded-full bg-stone-900 dark:bg-white" />}
+                                    </div>
+                                    <input type="radio" name="imageSource" value="url" checked={imageSource === 'url'} onChange={() => setImageSource('url')} className="hidden" />
+                                    <span className={`text-sm font-bold tracking-tight transition-all ${imageSource === 'url' ? 'text-stone-900 dark:text-white' : 'text-stone-400'}`}>Image URL</span>
                                 </label>
-                                <label className="flex items-center space-x-2 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="imageSource"
-                                        value="upload"
-                                        checked={imageSource === 'upload'}
-                                        onChange={() => setImageSource('upload')}
-                                        className="h-4 w-4 text-stone-600 border-stone-300 focus:ring-stone-500"
-                                    />
-                                    <span>Upload File</span>
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${imageSource === 'upload' ? 'border-stone-900 dark:border-white' : 'border-stone-200 dark:border-zinc-700'}`}>
+                                        {imageSource === 'upload' && <div className="w-2.5 h-2.5 rounded-full bg-stone-900 dark:bg-white" />}
+                                    </div>
+                                    <input type="radio" name="imageSource" value="upload" checked={imageSource === 'upload'} onChange={() => setImageSource('upload')} className="hidden" />
+                                    <span className={`text-sm font-bold tracking-tight transition-all ${imageSource === 'upload' ? 'text-stone-900 dark:text-white' : 'text-stone-400'}`}>Upload File</span>
                                 </label>
                             </div>
                         </div>
 
                         {imageSource === 'url' && (
-                            <div>
-                                <label className="block mb-1 font-medium">Image URL (Optional)</label>
-                                <input name="imageUrl" value={drinkFormState.imageUrl || ''} onChange={handleFormChange} placeholder="https://example.com/image.jpg" className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"/>
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Image URL</label>
+                                <input 
+                                    name="imageUrl" 
+                                    value={drinkFormState.imageUrl || ''} 
+                                    onChange={handleFormChange} 
+                                    placeholder="https://images.unsplash.com/..." 
+                                    className="w-full bg-stone-50 dark:bg-zinc-800 border-none rounded-2xl px-6 py-4 text-stone-900 dark:text-white placeholder-stone-300 dark:placeholder-zinc-600 focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 transition-all font-mono text-xs"
+                                />
                             </div>
                         )}
                         
                         {imageSource === 'upload' && (
-                            <div>
-                                <label className="block mb-1 font-medium">Upload Image File</label>
-                                <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full text-sm text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-stone-50 dark:file:bg-zinc-600 file:text-stone-700 dark:file:text-zinc-200 hover:file:bg-stone-100 dark:hover:file:bg-zinc-500"/>
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Upload Image</label>
+                                <div className="relative group">
+                                    <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        onChange={handleImageUpload} 
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                    />
+                                    <div className="w-full bg-stone-50 dark:bg-zinc-800 border-2 border-dashed border-stone-200 dark:border-zinc-700 rounded-2xl px-6 py-8 text-center transition-all group-hover:border-stone-400 dark:group-hover:border-zinc-500">
+                                        <p className="text-sm font-bold text-stone-400 dark:text-zinc-500">Drop image here or click to browse</p>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
-                        <div>
-                            <label className="block mb-1 font-medium">Image Preview</label>
-                             {drinkFormState.imageUrl ? (
-                                <img src={drinkFormState.imageUrl} alt="Preview" className="w-32 h-32 object-cover rounded-md mt-2" loading="lazy"/>
-                             ) : (
-                                <div className="w-32 h-32 bg-stone-200 dark:bg-zinc-700 rounded-md mt-2 flex items-center justify-center border border-stone-300 dark:border-zinc-600">
-                                    <span className="text-stone-500 dark:text-zinc-400 text-sm">No Image</span>
-                                </div>
-                             )}
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Preview</label>
+                             <div className="w-40 h-40 rounded-3xl overflow-hidden bg-stone-50 dark:bg-zinc-800 border border-stone-100 dark:border-zinc-700 shadow-inner">
+                                {drinkFormState.imageUrl ? (
+                                    <img src={drinkFormState.imageUrl} alt="Preview" className="w-full h-full object-cover" loading="lazy"/>
+                                 ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                        <svg className="w-10 h-10 text-stone-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    </div>
+                                 )}
+                             </div>
                         </div>
 
-                        <div>
-                            <label className="block mb-1 font-medium">Description</label>
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Description</label>
                             <textarea 
                                 name="description" 
                                 value={drinkFormState.description || ''} 
                                 onChange={handleFormChange} 
-                                rows={3}
-                                className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"
-                                placeholder="Enter product description..."
+                                rows={4}
+                                className="w-full bg-stone-50 dark:bg-zinc-800 border-none rounded-2xl px-6 py-4 text-stone-900 dark:text-white placeholder-stone-300 dark:placeholder-zinc-600 focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 transition-all font-serif italic text-lg resize-none"
+                                placeholder="Describe the flavor profile and ingredients..."
                             />
                         </div>
 
-                        <div>
-                            <label className="block mb-1 font-medium">Modifier Groups</label>
-                            <select name="modifierGroups" multiple value={drinkFormState.modifierGroups || []} onChange={handleFormChange} className="w-full p-2 border rounded-md h-32 bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white">
-                                {state.modifierGroups.map(mg => <option key={mg.id} value={mg.id}>{mg.name}</option>)}
-                            </select>
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Modifier Groups</label>
+                            <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto p-4 bg-stone-50 dark:bg-zinc-800/50 rounded-2xl border border-stone-100 dark:border-zinc-800">
+                                {state.modifierGroups.map(mg => (
+                                    <label key={mg.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white dark:hover:bg-zinc-800 transition-all cursor-pointer border border-transparent hover:border-stone-100 dark:hover:border-zinc-700">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={(drinkFormState.modifierGroups || []).includes(mg.id)}
+                                            onChange={(e) => {
+                                                const current = drinkFormState.modifierGroups || [];
+                                                const next = e.target.checked 
+                                                    ? [...current, mg.id]
+                                                    : current.filter(id => id !== mg.id);
+                                                setDrinkFormState({ ...drinkFormState, modifierGroups: next });
+                                            }}
+                                            className="w-5 h-5 rounded border-stone-200 text-stone-900 focus:ring-stone-900/10"
+                                        />
+                                        <span className="text-sm font-bold text-stone-600 dark:text-zinc-400 tracking-tight">{mg.name}</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
-                        <div className="flex justify-end pt-4">
-                            <button type="button" onClick={() => setEditingDrink(null)} className="px-4 py-2 mr-2 bg-stone-200 dark:bg-zinc-600 rounded-md">Cancel</button>
-                            <button type="submit" className="px-4 py-2 bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 rounded-md">Save</button>
+
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                                <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Variants (e.g. Sizes)</label>
+                                <button 
+                                    type="button" 
+                                    onClick={() => {
+                                        const current = drinkFormState.variants || [];
+                                        setDrinkFormState({
+                                            ...drinkFormState,
+                                            variants: [...current, { id: `var-${Date.now()}`, name: '', price: drinkFormState.basePrice || 0, cost: drinkFormState.baseCost || 0 }]
+                                        });
+                                    }}
+                                    className="text-[10px] font-bold uppercase tracking-widest text-stone-900 dark:text-white hover:underline transition-all"
+                                >
+                                    Add Variant
+                                </button>
+                            </div>
+                            <div className="space-y-3">
+                                {(drinkFormState.variants || []).map((variant, index) => (
+                                    <div key={variant.id} className="grid grid-cols-12 gap-3 items-center bg-stone-50 dark:bg-zinc-800/30 p-4 rounded-2xl border border-stone-100 dark:border-zinc-800 group transition-all hover:bg-white dark:hover:bg-zinc-800">
+                                        <div className="col-span-5 space-y-1">
+                                            <label className="text-[8px] font-bold uppercase tracking-widest text-stone-400">Name</label>
+                                            <input 
+                                                value={variant.name} 
+                                                onChange={(e) => {
+                                                    const next = [...(drinkFormState.variants || [])];
+                                                    next[index].name = e.target.value;
+                                                    setDrinkFormState({ ...drinkFormState, variants: next });
+                                                }} 
+                                                placeholder="e.g. Large" 
+                                                className="w-full bg-transparent border-none p-0 text-stone-900 dark:text-white font-serif font-bold text-base focus:ring-0 placeholder-stone-300"
+                                            />
+                                        </div>
+                                        <div className="col-span-3 space-y-1">
+                                            <label className="text-[8px] font-bold uppercase tracking-widest text-stone-400">Price</label>
+                                            <div className="relative">
+                                                <span className="absolute left-0 top-1/2 -translate-y-1/2 text-stone-400 font-serif font-bold text-xs">$</span>
+                                                <input 
+                                                    type="number" 
+                                                    step="0.01" 
+                                                    value={variant.price} 
+                                                    onChange={(e) => {
+                                                        const next = [...(drinkFormState.variants || [])];
+                                                        next[index].price = parseFloat(e.target.value) || 0;
+                                                        setDrinkFormState({ ...drinkFormState, variants: next });
+                                                    }} 
+                                                    placeholder="0.00" 
+                                                    className="w-full bg-transparent border-none pl-3 p-0 text-stone-900 dark:text-white font-serif font-bold text-base focus:ring-0 placeholder-stone-300"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="col-span-3 space-y-1">
+                                            <label className="text-[8px] font-bold uppercase tracking-widest text-stone-400">Cost</label>
+                                            <div className="relative">
+                                                <span className="absolute left-0 top-1/2 -translate-y-1/2 text-stone-400 font-serif font-bold text-xs">$</span>
+                                                <input 
+                                                    type="number" 
+                                                    step="0.01" 
+                                                    value={variant.cost} 
+                                                    onChange={(e) => {
+                                                        const next = [...(drinkFormState.variants || [])];
+                                                        next[index].cost = parseFloat(e.target.value) || 0;
+                                                        setDrinkFormState({ ...drinkFormState, variants: next });
+                                                    }} 
+                                                    placeholder="0.00" 
+                                                    className="w-full bg-transparent border-none pl-3 p-0 text-stone-900 dark:text-white font-serif font-bold text-base focus:ring-0 placeholder-stone-300"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="col-span-1 flex justify-end">
+                                            <button 
+                                                type="button" 
+                                                onClick={() => {
+                                                    const next = (drinkFormState.variants || []).filter((_, i) => i !== index);
+                                                    setDrinkFormState({ ...drinkFormState, variants: next });
+                                                }} 
+                                                className="text-red-400 hover:text-red-600 transition-all p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-4 pt-8">
+                            <button 
+                                type="button" 
+                                onClick={() => setEditingDrink(null)} 
+                                className="px-8 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                type="submit" 
+                                className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic"
+                            >
+                                Save Product
+                            </button>
                         </div>
                     </form>
                 )}
             </Modal>
             
             {/* Category Edit/Add Modal */}
-            <Modal isOpen={!!editingCategory} onClose={() => setEditingCategory(null)} title={editingCategory?.id ? 'Edit Category' : 'Add Category'} helpArticleId="kb-8">
-                <form onSubmit={handleSaveCategory} className="space-y-4">
-                     <div>
-                        <label className="block mb-1 font-medium text-stone-800 dark:text-zinc-200">Category Name</label>
-                        <input value={categoryName} onChange={(e) => setCategoryName(e.target.value)} required className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"/>
+            <Modal isOpen={!!editingCategory} onClose={() => setEditingCategory(null)} title={editingCategory?.id ? 'Edit Category' : 'Add Category'}>
+                <form onSubmit={handleSaveCategory} className="space-y-8">
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Category Name</label>
+                        <input 
+                            value={categoryName} 
+                            onChange={(e) => setCategoryName(e.target.value)} 
+                            required 
+                            className="w-full bg-stone-50 dark:bg-zinc-800 border-none rounded-2xl px-6 py-4 text-stone-900 dark:text-white placeholder-stone-300 dark:placeholder-zinc-600 focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 transition-all font-serif font-bold text-lg"
+                            placeholder="e.g. Signature Lattes"
+                        />
                     </div>
-                    <div className="flex justify-end pt-4">
-                        <button type="button" onClick={() => setEditingCategory(null)} className="px-4 py-2 mr-2 bg-stone-200 dark:bg-zinc-600 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 rounded-md">Save</button>
+                    <div className="flex justify-end gap-4 pt-4">
+                        <button 
+                            type="button" 
+                            onClick={() => setEditingCategory(null)} 
+                            className="px-8 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit" 
+                            className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic"
+                        >
+                            Save Category
+                        </button>
                     </div>
                 </form>
             </Modal>
 
             {/* Modifier Group Edit/Add Modal */}
-            <Modal isOpen={!!editingModifierGroup} onClose={() => setEditingModifierGroup(null)} title={editingModifierGroup?.id.startsWith('new-group-') ? 'Add Modifier Group' : 'Edit Modifier Group'} helpArticleId="kb-8">
+            <Modal isOpen={!!editingModifierGroup} onClose={() => setEditingModifierGroup(null)} title={editingModifierGroup?.id.startsWith('new-group-') ? 'Add Modifier Group' : 'Edit Modifier Group'}>
                 {editingModifierGroup && (
                     <ModifierGroupForm 
                         group={editingModifierGroup} 
@@ -635,6 +886,34 @@ const MenuManagement: React.FC = () => {
                     />
                 )}
             </Modal>
+            {/* Delete Confirmation Modals */}
+            {showDeleteConfirm?.type === 'category' && (
+                <ConfirmationModal
+                    isOpen={true}
+                    onClose={() => setShowDeleteConfirm(null)}
+                    onConfirm={confirmDeleteCategory}
+                    title="Delete Category"
+                    message="Are you sure you want to delete this category? All drinks in this category will be uncategorized."
+                />
+            )}
+            {showDeleteConfirm?.type === 'drink' && (
+                <ConfirmationModal
+                    isOpen={true}
+                    onClose={() => setShowDeleteConfirm(null)}
+                    onConfirm={confirmDeleteDrink}
+                    title="Delete Drink"
+                    message="Are you sure you want to delete this drink?"
+                />
+            )}
+            {showDeleteConfirm?.type === 'modifier' && (
+                <ConfirmationModal
+                    isOpen={true}
+                    onClose={() => setShowDeleteConfirm(null)}
+                    onConfirm={confirmDeleteModifierGroup}
+                    title="Delete Modifier Group"
+                    message="Are you sure you want to delete this modifier group?"
+                />
+            )}
         </div>
     );
 };

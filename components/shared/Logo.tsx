@@ -43,20 +43,20 @@ const Logo: React.FC = () => {
         <text 
           x="80" 
           y="48" 
-          fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" 
+          fontFamily="serif" 
           fontSize="48" 
           fontWeight="bold" 
-          fill="#18181b"
+          fill="#1c1917"
         >
           realife
         </text>
         <text 
           x="82" 
           y="70" 
-          fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" 
+          fontFamily="sans-serif" 
           fontSize="20" 
           fontWeight="300" 
-          fill="#52525b" 
+          fill="#57534e" 
           letterSpacing="6"
         >
           CAFE
@@ -68,20 +68,20 @@ const Logo: React.FC = () => {
         <text 
           x="80" 
           y="48" 
-          fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" 
+          fontFamily="serif" 
           fontSize="48" 
           fontWeight="bold" 
-          fill="#f4f4f5"
+          fill="#ffffff"
         >
           realife
         </text>
         <text 
           x="82" 
           y="70" 
-          fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" 
+          fontFamily="sans-serif" 
           fontSize="20" 
           fontWeight="300" 
-          fill="#a1a1aa" 
+          fill="#a8a29e" 
           letterSpacing="6"
         >
           CAFE

@@ -1,6 +1,6 @@
 import { database, isFirebaseConfigured } from './config';
-import { Order, Drink, Category, ModifierGroup, TutorialStep, User, Feedback, Customer } from '../types';
-import { INITIAL_DRINKS, INITIAL_CATEGORIES, INITIAL_MODIFIERS, INITIAL_TUTORIAL_STEPS } from '../constants';
+import { Order, Drink, Category, ModifierGroup, User, Feedback, Customer } from '../types';
+import { INITIAL_DRINKS, INITIAL_CATEGORIES, INITIAL_MODIFIERS } from '../constants';
 
 // NOTE: This service interacts with FIREBASE REALTIME DATABASE, not Firestore,
 // to match the project's setup.
@@ -508,79 +508,6 @@ export const seedInitialMenu = async (): Promise<void> => {
             throw error; // Rethrow for AppContext to handle
         }
         console.error("Error seeding initial menu:", error);
-        throw error;
-    }
-};
-
-// --- Tutorial Functions ---
-
-// OPTIMIZATION: Replaced real-time listener with a one-time fetch to reduce API calls.
-export const getTutorialSteps = async (): Promise<TutorialStep[]> => {
-    if (!isFirebaseConfigured || !database) return [];
-    try {
-        const snapshot = await database.ref('tutorialSteps').once('value');
-        return snapshot.val() || [];
-    } catch (error: any) {
-        if (isPermissionError(error)) {
-            throw error;
-        }
-        console.error("Error fetching tutorial steps:", error);
-        throw error;
-    }
-};
-
-/**
- * Saves tutorial steps to the database in granular steps to avoid "Write too large" errors.
- */
-export const saveTutorialSteps = async (steps: TutorialStep[]): Promise<void> => {
-    if (!isFirebaseConfigured || !database) {
-        console.warn('Firebase not configured. Tutorial steps not saved.');
-        return;
-    }
-    try {
-        const stepsRef = database.ref('tutorialSteps');
-        
-        // Get existing count for cleanup
-        const snapshot = await stepsRef.once('value');
-        const existingData = snapshot.val();
-        const existingCount = Array.isArray(existingData) ? existingData.length : (existingData ? Object.keys(existingData).length : 0);
-        
-        // Save each step
-        for (let i = 0; i < steps.length; i++) {
-            await stepsRef.child(i.toString()).set(steps[i]);
-        }
-        
-        // Cleanup
-        if (existingCount > steps.length) {
-            for (let i = steps.length; i < existingCount; i++) {
-                await stepsRef.child(i.toString()).remove();
-            }
-        }
-    } catch (error: any) {
-        if (isPermissionError(error)) {
-            console.warn("Firebase Permission Denied: Could not save tutorial steps. Please update your Realtime Database rules.");
-            return;
-        }
-        console.error("Error saving tutorial steps:", error);
-        throw error;
-    }
-};
-
-export const seedInitialTutorialSteps = async (): Promise<void> => {
-    if (!isFirebaseConfigured || !database) return;
-    const stepsRef = database.ref('tutorialSteps');
-    try {
-        const snapshot = await stepsRef.once('value');
-        if (!snapshot.exists()) {
-            console.log('No tutorial data found. Seeding initial tutorial to Firebase...');
-            await saveTutorialSteps(INITIAL_TUTORIAL_STEPS);
-            console.log('Initial tutorial seeded successfully.');
-        }
-    } catch (error: any) {
-        if (isPermissionError(error)) {
-            throw error;
-        }
-        console.error("Error seeding initial tutorial steps:", error);
         throw error;
     }
 };

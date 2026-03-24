@@ -10,7 +10,7 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({ isPulsing, onClick }) => 
         <button
             onClick={onClick}
             title="Start Tutorial"
-            className={`fixed bottom-24 right-6 bg-blue-500 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-600 transition-transform hover:scale-110 z-30 ${isPulsing ? 'animate-pulse-blue' : ''}`}
+            className={`fixed bottom-24 right-6 bg-stone-900 text-white dark:bg-white dark:text-stone-900 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center hover:bg-stone-800 dark:hover:bg-stone-100 transition-all duration-300 hover:scale-110 z-30 ${isPulsing ? 'animate-pulse-cart' : ''}`}
             aria-label="Start interactive tutorial"
         >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">

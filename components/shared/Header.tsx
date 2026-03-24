@@ -14,10 +14,10 @@ interface HeaderProps {
 const NavButton: React.FC<{ view: View; currentView: View; setView: (view: View) => void; children: React.ReactNode }> = memo(({ view, currentView, setView, children }) => (
   <button
     onClick={() => setView(view)}
-    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+    className={`px-5 py-2 text-sm font-bold rounded-full transition-all tracking-wide uppercase ${
       currentView === view
-        ? 'bg-stone-200 text-stone-900 dark:bg-zinc-700 dark:text-white'
-        : 'text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700'
+        ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900 shadow-sm'
+        : 'text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-zinc-800'
     }`}
   >
     {children}
@@ -40,12 +40,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLoginClick, onM
   };
 
   return (
-    <header className="bg-white dark:bg-zinc-800 text-stone-800 dark:text-zinc-200 shadow-sm border-b border-stone-200 dark:border-zinc-700">
-      <nav className="container mx-auto px-6 py-3 flex justify-between items-center">
-        <div className="flex items-center space-x-4">
+    <header className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md text-stone-800 dark:text-zinc-200 sticky top-0 z-40 border-b border-stone-100 dark:border-zinc-800">
+      <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
+        <div className="flex items-center space-x-6">
             <button 
                 onClick={() => setIsMenuOpen(true)}
-                className="p-2 rounded-md text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700 md:hidden"
+                className="p-2 rounded-full text-stone-600 dark:text-zinc-400 hover:bg-stone-100 dark:hover:bg-zinc-800 md:hidden transition-all"
                 aria-label="Open menu"
                 aria-controls="hamburger-menu"
                 aria-expanded={isMenuOpen}
@@ -54,8 +54,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLoginClick, onM
             </button>
             <Logo />
         </div>
-        <div className="hidden md:flex items-center space-x-2">
-            <NavButton view={View.CUSTOMER} currentView={currentView} setView={setView}>Customer View</NavButton>
+        <div className="hidden md:flex items-center space-x-1">
+            <NavButton view={View.CUSTOMER} currentView={currentView} setView={setView}>Menu</NavButton>
             {(currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN) && (
                 <>
                     <NavButton view={View.KDS} currentView={currentView} setView={setView}>KDS</NavButton>
@@ -69,32 +69,45 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLoginClick, onM
         <div className="flex items-center space-x-4">
           <button
             onClick={handleThemeToggle}
-            className="p-2 rounded-full text-stone-700 dark:text-zinc-300 bg-white dark:bg-zinc-700 hover:bg-stone-100 dark:hover:bg-zinc-600 transition-colors"
+            className="p-2.5 rounded-full text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-zinc-800 transition-all"
             aria-label="Toggle theme"
           >
             {theme === 'light' ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
             ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
             )}
           </button>
-          <div className="border-l border-stone-300 dark:border-zinc-600 h-6"></div>
+          <div className="border-l border-stone-100 dark:border-zinc-800 h-6"></div>
           {currentUser ? (
-            <>
-              <NavButton view={View.PROFILE} currentView={currentView} setView={setView}>Profile</NavButton>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setView(View.PROFILE)}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all ${
+                    currentView === View.PROFILE 
+                    ? 'bg-stone-100 dark:bg-zinc-800 text-stone-900 dark:text-white' 
+                    : 'text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white'
+                }`}
+              >
+                <div className="w-6 h-6 rounded-full bg-stone-200 dark:bg-zinc-700 flex items-center justify-center text-[10px] font-bold">
+                    {currentUser.name.charAt(0)}
+                </div>
+                <span className="text-sm font-bold hidden sm:inline">{currentUser.name.split(' ')[0]}</span>
+              </button>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 text-sm font-medium text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700 rounded-md transition-colors"
+                className="p-2 text-stone-400 hover:text-red-500 transition-colors"
+                title="Logout"
               >
-                Logout
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
               </button>
-            </>
+            </div>
           ) : (
             <button
               onClick={onLoginClick}
-              className="px-4 py-2 text-sm font-medium bg-[#A58D79] text-white rounded-md hover:bg-[#947D6A] dark:bg-zinc-100 dark:text-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+              className="px-6 py-2.5 bg-stone-900 text-white dark:bg-white dark:text-stone-900 rounded-full font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-sm text-sm"
             >
-              Login / Register
+              Sign In
             </button>
           )}
         </div>

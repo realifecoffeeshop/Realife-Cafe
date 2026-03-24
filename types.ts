@@ -14,7 +14,6 @@ export enum AdminView {
   DISCOUNTS = 'DISCOUNTS',
   PERMISSIONS = 'PERMISSIONS',
   FEEDBACK = 'FEEDBACK',
-  TUTORIALS = 'TUTORIALS',
   QR_CODE = 'QR_CODE',
   ORDER_HISTORY = 'ORDER_HISTORY',
 }
@@ -54,6 +53,13 @@ export interface Category {
     imageUrl?: string;
 }
 
+export interface DrinkVariant {
+  id: string;
+  name: string;
+  price: number;
+  cost: number;
+}
+
 export interface Drink {
   id: string;
   name: string;
@@ -63,6 +69,7 @@ export interface Drink {
   imageUrl?: string;
   modifierGroups: string[]; // array of modifier group ids
   description?: string;
+  variants?: DrinkVariant[];
 }
 
 export interface SelectedModifier {
@@ -75,6 +82,7 @@ export interface CartItem {
   drink: Drink;
   quantity: number;
   selectedModifiers: { [groupId: string]: SelectedModifier[] };
+  selectedVariantId?: string;
   finalPrice: number;
   customName?: string;
   isCompleted?: boolean;
@@ -109,7 +117,6 @@ export interface User {
     name: string;
     role: UserRole;
     favourites: CartItem[];
-    hasCompletedTutorial?: boolean;
     birthday?: string; // ISO date string YYYY-MM-DD
 }
 
@@ -118,23 +125,6 @@ export interface Feedback {
     rating: number; // 1-5
     message: string;
     createdAt: number;
-}
-
-export interface KnowledgeArticle {
-  id: string;
-  title: string;
-  category: string;
-  content: string;
-  imageUrl: string;
-}
-
-export interface TutorialStep {
-  id: string;
-  title: string;
-  content: string;
-  target: string; // CSS Selector
-  position: 'top' | 'bottom' | 'left' | 'right';
-  waitForAction: boolean;
 }
 
 export interface Customer {
@@ -155,15 +145,10 @@ export interface AppState {
   customers: Customer[];
   currentUser: User | null;
   feedback: Feedback[];
-  knowledgeBase: KnowledgeArticle[];
-  tutorialSteps: TutorialStep[];
   theme: 'light' | 'dark';
   cart: CartItem[];
-  isKnowledgeModalOpen: boolean;
-  activeKnowledgeArticleId: string | null;
   permissionError: string | null;
   isMenuLoaded: boolean;
-  isTutorialLoaded: boolean;
 }
 
 export type Action =
@@ -209,7 +194,6 @@ export type Action =
   | { type: 'UPDATE_USER_ROLE'; payload: { userId: string; role: UserRole } }
   | { type: 'UPDATE_USER_PROFILE'; payload: { userId: string; name?: string; birthday?: string } }
   | { type: 'SUBMIT_FEEDBACK'; payload: { rating: number; message: string } }
-  | { type: 'COMPLETE_TUTORIAL' }
   | { type: 'SET_THEME', payload: 'light' | 'dark' }
   | { type: 'ADD_CATEGORY', payload: Omit<Category, 'id'> }
   | { type: 'UPDATE_CATEGORY', payload: Category }
@@ -220,11 +204,4 @@ export type Action =
   | { type: 'CLEAR_CART' }
   | { type: 'SET_MENU_DATA'; payload: { drinks: Drink[]; categories: Category[]; modifierGroups: ModifierGroup[] } }
   | { type: 'SET_FEEDBACK'; payload: Feedback[] }
-  | { type: 'ADD_KB_ARTICLE'; payload: Omit<KnowledgeArticle, 'id'> }
-  | { type: 'UPDATE_KB_ARTICLE'; payload: KnowledgeArticle }
-  | { type: 'DELETE_KB_ARTICLE'; payload: string } // article id
-  | { type: 'OPEN_KB_MODAL'; payload?: { articleId: string | null } }
-  | { type: 'CLOSE_KB_MODAL' }
-  | { type: 'SET_TUTORIAL_STEPS', payload: TutorialStep[] }
-  | { type: 'UPDATE_TUTORIAL_STEPS', payload: TutorialStep[] }
   | { type: 'SET_PERMISSION_ERROR'; payload: string | null };

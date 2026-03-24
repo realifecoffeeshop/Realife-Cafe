@@ -23,7 +23,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         }
         
         const user = state.users.find(
-            c => c.name.toLowerCase() === trimmedName.toLowerCase()
+            c => c?.name?.toLowerCase() === trimmedName.toLowerCase()
         );
         
         dispatch({ type: 'LOGIN', payload: { name: trimmedName } });
@@ -50,7 +50,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             return;
         }
 
-        const existingUser = state.users.find(c => c.name.toLowerCase() === trimmedName.toLowerCase());
+        const existingUser = state.users.find(c => c?.name?.toLowerCase() === trimmedName.toLowerCase());
         if (existingUser) {
             addToast('A user with this name already exists. Please log in.', 'error');
             return;
@@ -69,35 +69,63 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     const modalTitle = viewMode === 'login' ? "Login or Continue as Guest" : "Register Account";
 
     const renderContent = () => (
-        <>
-            <div className="flex border-b dark:border-zinc-700">
-                <button onClick={() => setViewMode('login')} className={`flex-1 py-2 text-center font-medium ${viewMode === 'login' ? 'text-stone-800 dark:text-white border-b-2 border-stone-700 dark:border-white' : 'text-stone-500'}`}>Login</button>
-                <button onClick={() => setViewMode('register')} className={`flex-1 py-2 text-center font-medium ${viewMode === 'register' ? 'text-stone-800 dark:text-white border-b-2 border-stone-700 dark:border-white' : 'text-stone-500'}`}>Register</button>
+        <div className="space-y-6">
+            <div className="flex p-1 bg-stone-100 dark:bg-zinc-900 rounded-2xl border border-stone-200 dark:border-zinc-700 shadow-sm">
+                <button 
+                    onClick={() => setViewMode('login')} 
+                    className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${viewMode === 'login' ? 'bg-brand-primary text-white shadow-md' : 'text-stone-400 hover:text-stone-600'}`}
+                >
+                    Login
+                </button>
+                <button 
+                    onClick={() => setViewMode('register')} 
+                    className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${viewMode === 'register' ? 'bg-brand-primary text-white shadow-md' : 'text-stone-400 hover:text-stone-600'}`}
+                >
+                    Register
+                </button>
             </div>
+            
             {viewMode === 'login' ? (
-                 <form onSubmit={handleLogin} className="pt-4 space-y-4">
+                 <form onSubmit={handleLogin} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-stone-700 dark:text-zinc-300">Name</label>
-                        <input type="text" value={name} onChange={e => setName(e.target.value)} required className="mt-1 w-full p-2 border rounded-md border-stone-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-stone-900 dark:text-white" placeholder="Enter your name..."/>
-                        <p className="text-xs text-stone-500 dark:text-zinc-400 mt-1">Enter an existing name to log in, or a new name to continue as a guest.</p>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 mb-2">Your Name</label>
+                        <input 
+                            type="text" 
+                            value={name} 
+                            onChange={e => setName(e.target.value)} 
+                            required 
+                            className="w-full p-3 border rounded-xl bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 dark:text-white focus:ring-2 focus:ring-brand-primary/20 focus:outline-none transition-all" 
+                            placeholder="e.g., John Doe"
+                        />
+                        <p className="text-xs text-stone-500 dark:text-zinc-400 mt-2 italic font-serif">Enter your name to access your profile and history.</p>
                     </div>
-                    <button type="submit" className="w-full bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 py-2 rounded-md hover:bg-[#947D6A] dark:hover:bg-zinc-200 transition-colors font-semibold">Continue</button>
+                    <button type="submit" className="w-full bg-brand-primary text-white py-4 rounded-2xl font-bold text-lg hover:bg-stone-700 transition-all shadow-lg transform active:scale-95">
+                        Continue to Menu
+                    </button>
                 </form>
             ) : (
-                <form onSubmit={handleRegister} className="pt-4 space-y-4">
+                <form onSubmit={handleRegister} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-stone-700 dark:text-zinc-300">Choose a Name</label>
-                        <input type="text" value={name} onChange={e => setName(e.target.value)} required className="mt-1 w-full p-2 border rounded-md border-stone-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-stone-900 dark:text-white"/>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 mb-2">Choose a Name</label>
+                        <input 
+                            type="text" 
+                            value={name} 
+                            onChange={e => setName(e.target.value)} 
+                            required 
+                            className="w-full p-3 border rounded-xl bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 dark:text-white focus:ring-2 focus:ring-brand-primary/20 focus:outline-none transition-all"
+                        />
                     </div>
-                    <button type="submit" className="w-full bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 py-2 rounded-md hover:bg-[#947D6A] dark:hover:bg-zinc-200 transition-colors font-semibold">Create Account</button>
+                    <button type="submit" className="w-full bg-brand-primary text-white py-4 rounded-2xl font-bold text-lg hover:bg-stone-700 transition-all shadow-lg transform active:scale-95">
+                        Create Account
+                    </button>
                 </form>
             )}
-        </>
+        </div>
     );
 
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} helpArticleId="kb-10">
+        <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle}>
             <div className="space-y-4">
                 {renderContent()}
             </div>

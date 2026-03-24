@@ -24,31 +24,35 @@ const QRCodeGenerator: React.FC = () => {
     };
 
     return (
-        <div className="p-6 space-y-8">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-stone-900 dark:text-white">Customer App QR Code</h2>
+        <div className="p-8 space-y-10">
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 pb-10 border-b border-stone-100 dark:border-zinc-800">
+                <div>
+                    <h2 className="text-3xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">Customer App QR Code</h2>
+                    <p className="text-stone-400 dark:text-zinc-500 mt-2 font-medium">Generate and print QR codes for table ordering.</p>
+                </div>
                 <button 
                     onClick={handlePrint}
-                    className="flex items-center space-x-2 bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 px-4 py-2 rounded-md hover:bg-[#947D6A] dark:hover:bg-zinc-200 transition-colors font-semibold shadow-sm"
+                    className="flex items-center space-x-3 bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-8 py-3.5 rounded-2xl hover:bg-stone-800 dark:hover:bg-stone-100 transition-all font-bold shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 group"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
-                    <span>Print QR Code</span>
+                    <span className="font-serif italic text-base">Print QR Code</span>
                 </button>
-            </div>
+            </header>
 
-            <div className="flex flex-col lg:flex-row gap-8">
+            <div className="flex flex-col lg:flex-row gap-12">
                 {/* Display/Print Area */}
                 <div className="flex-1 flex justify-center">
                     <div 
                         ref={printRef} 
-                        className="bg-white p-12 rounded-xl shadow-lg border border-stone-200 text-center max-w-md w-full"
-                        style={{ fontFamily: 'system-ui, sans-serif' }}
+                        className="bg-white p-16 rounded-[3rem] shadow-2xl border border-stone-100 text-center max-w-md w-full relative overflow-hidden"
+                        style={{ fontFamily: 'serif' }}
                     >
-                        <div className="mb-6 flex justify-center grayscale">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-stone-900"></div>
+                        <div className="mb-12 flex justify-center grayscale opacity-90 scale-110">
                             {/* Rendering a simplified version of the logo for print stability */}
-                            <svg width="200" height="50" viewBox="0 0 340 75" xmlns="http://www.w3.org/2000/svg">
+                            <svg width="240" height="60" viewBox="0 0 340 75" xmlns="http://www.w3.org/2000/svg">
                                 <defs>
                                     <path id="p-t1" d="M 0 0 L 34 34 L 0 34 Z" />
                                     <path id="p-t2" d="M 0 0 L 34 0 L 34 34 Z" />
@@ -62,49 +66,67 @@ const QRCodeGenerator: React.FC = () => {
                                         <use href="#p-t2" transform="translate(34, 34) scale(-1, -1)" />
                                     </g>
                                 </g>
-                                <text x="80" y="48" fontFamily="sans-serif" fontSize="48" fontWeight="bold" fill="#1c1917">realife</text>
+                                <text x="80" y="48" fontFamily="serif" fontSize="48" fontWeight="bold" fill="#1c1917">realife</text>
                                 <text x="82" y="70" fontFamily="sans-serif" fontSize="20" fontWeight="300" fill="#57534e" letterSpacing="6">CAFE</text>
                             </svg>
                         </div>
                         
-                        <h3 className="text-2xl font-bold text-stone-900 mb-2">Scan to Order</h3>
-                        <p className="text-stone-600 mb-6">Skip the queue! Scan this code to view our menu and order directly from your phone.</p>
+                        <h3 className="text-4xl font-serif font-bold text-stone-900 mb-4 tracking-tight">Scan to Order</h3>
+                        <p className="text-stone-400 mb-12 leading-relaxed text-lg font-medium italic">Skip the queue! Scan this code to view our menu and order directly from your phone.</p>
                         
-                        <div className="border-4 border-stone-900 rounded-lg p-2 inline-block mb-6">
+                        <div className="border-[12px] border-stone-900 rounded-[2.5rem] p-6 inline-block mb-12 shadow-2xl bg-white">
                             <img src={qrCodeUrl} alt="Scan to Order" className="w-64 h-64 object-contain" />
                         </div>
                         
-                        <div className="text-sm text-stone-400 mt-4">
+                        <div className="text-[10px] font-bold text-stone-300 uppercase tracking-[0.3em] mt-6 border-t border-stone-50 pt-6">
                             <p>No app download required.</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Instructions Side */}
-                <div className="flex-1 bg-stone-50 dark:bg-zinc-800 p-6 rounded-xl border border-stone-200 dark:border-zinc-700">
-                    <h3 className="text-lg font-bold text-stone-900 dark:text-white mb-4">How it works</h3>
-                    <ul className="space-y-4">
-                        <li className="flex items-start">
-                            <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-[#A58D79] text-white font-bold mr-3">1</span>
-                            <p className="text-stone-700 dark:text-zinc-300 pt-1">Print the QR code card on the left.</p>
+                <div className="flex-1 bg-stone-50/50 dark:bg-zinc-900/50 p-12 rounded-[2.5rem] border border-stone-100 dark:border-zinc-800 shadow-inner">
+                    <h3 className="text-2xl font-serif font-bold text-stone-900 dark:text-white mb-10 tracking-tight">How it works</h3>
+                    <ul className="space-y-10">
+                        <li className="flex items-start group">
+                            <span className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-2xl bg-stone-900 text-white dark:bg-white dark:text-stone-900 font-bold mr-6 shadow-xl group-hover:scale-110 transition-transform font-serif italic text-lg">1</span>
+                            <div className="pt-1">
+                                <h4 className="font-serif font-bold text-stone-900 dark:text-white mb-2 text-lg tracking-tight">Print the Card</h4>
+                                <p className="text-stone-400 dark:text-zinc-500 text-sm leading-relaxed font-medium">Print the QR code card on the left using your office printer.</p>
+                            </div>
                         </li>
-                        <li className="flex items-start">
-                            <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-[#A58D79] text-white font-bold mr-3">2</span>
-                            <p className="text-stone-700 dark:text-zinc-300 pt-1">Place it on tables or at the counter.</p>
+                        <li className="flex items-start group">
+                            <span className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-2xl bg-stone-900 text-white dark:bg-white dark:text-stone-900 font-bold mr-6 shadow-xl group-hover:scale-110 transition-transform font-serif italic text-lg">2</span>
+                            <div className="pt-1">
+                                <h4 className="font-serif font-bold text-stone-900 dark:text-white mb-2 text-lg tracking-tight">Place on Tables</h4>
+                                <p className="text-stone-400 dark:text-zinc-500 text-sm leading-relaxed font-medium">Place the printed cards on tables or at the counter for easy access.</p>
+                            </div>
                         </li>
-                        <li className="flex items-start">
-                            <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-[#A58D79] text-white font-bold mr-3">3</span>
-                            <p className="text-stone-700 dark:text-zinc-300 pt-1">Customers scan the code with their camera.</p>
+                        <li className="flex items-start group">
+                            <span className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-2xl bg-stone-900 text-white dark:bg-white dark:text-stone-900 font-bold mr-6 shadow-xl group-hover:scale-110 transition-transform font-serif italic text-lg">3</span>
+                            <div className="pt-1">
+                                <h4 className="font-serif font-bold text-stone-900 dark:text-white mb-2 text-lg tracking-tight">Customer Scan</h4>
+                                <p className="text-stone-400 dark:text-zinc-500 text-sm leading-relaxed font-medium">Customers scan the code with their camera app to open the menu.</p>
+                            </div>
                         </li>
-                        <li className="flex items-start">
-                            <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-[#A58D79] text-white font-bold mr-3">4</span>
-                            <p className="text-stone-700 dark:text-zinc-300 pt-1">The app opens in <strong>Full Screen Mode</strong> for an immersive ordering experience.</p>
+                        <li className="flex items-start group">
+                            <span className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-2xl bg-stone-900 text-white dark:bg-white dark:text-stone-900 font-bold mr-6 shadow-xl group-hover:scale-110 transition-transform font-serif italic text-lg">4</span>
+                            <div className="pt-1">
+                                <h4 className="font-serif font-bold text-stone-900 dark:text-white mb-2 text-lg tracking-tight">Immersive Experience</h4>
+                                <p className="text-stone-400 dark:text-zinc-500 text-sm leading-relaxed font-medium">The app opens in <strong>Full Screen Mode</strong> for a seamless ordering experience.</p>
+                            </div>
                         </li>
                     </ul>
                     
-                    <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800">
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
-                            <strong>Note:</strong> The generated QR code appends <code>?fullscreen=true</code> to your URL. This triggers a "Tap to Start" screen for customers, ensuring the app enters full-screen mode immediately.
+                    <div className="mt-12 p-8 bg-amber-50/50 dark:bg-amber-900/10 rounded-3xl border border-amber-100/50 dark:border-amber-900/20 shadow-sm">
+                        <div className="flex items-center gap-4 mb-3">
+                            <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                                <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                            <span className="font-serif font-bold text-amber-900 dark:text-amber-200 text-base tracking-tight">Technical Note</span>
+                        </div>
+                        <p className="text-xs text-amber-700/80 dark:text-amber-400/80 leading-relaxed font-medium italic">
+                            The generated QR code appends <code>?fullscreen=true</code> to your URL. This triggers a "Tap to Start" screen for customers, ensuring the app enters full-screen mode immediately.
                         </p>
                     </div>
                 </div>

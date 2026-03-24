@@ -7,6 +7,7 @@ export interface AggregatedByType {
     totalQuantity: number;
     variations: {
         selectedModifiers: { [key: string]: SelectedModifier[] };
+        selectedVariantId?: string;
         quantity: number;
     }[];
     sourceOrders: {
@@ -39,13 +40,22 @@ const GroupedByTypeCard: React.FC<GroupedByTypeCardProps> = ({ item }) => {
           <ul className="space-y-1 text-sm max-h-32 overflow-y-auto pr-2">
               {item.variations.map((variation, index) => (
                   <li key={index} className="flex justify-between items-center text-stone-700 dark:text-zinc-300">
-                      <span><strong>{variation.quantity}x</strong> - {
-                        Object.keys(variation.selectedModifiers || {}).length > 0 
-                          ? Object.values(variation.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => 
-                              sm.quantity > 1 ? `${sm.quantity}x ${sm.option?.name || 'Unknown'}` : (sm.option?.name || 'Unknown')
-                            ).join(', ')
-                          : <span className="italic text-stone-500 dark:text-zinc-500">Standard</span>
-                      }</span>
+                      <span>
+                        <strong>{variation.quantity}x</strong> - {
+                          variation.selectedVariantId && item.drink?.variants && (
+                            <span className="font-bold italic mr-1">
+                              {item.drink.variants.find(v => v.id === variation.selectedVariantId)?.name}
+                            </span>
+                          )
+                        }
+                        {
+                          Object.keys(variation.selectedModifiers || {}).length > 0 
+                            ? Object.values(variation.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => 
+                                sm.quantity > 1 ? `${sm.quantity}x ${sm.option?.name || 'Unknown'}` : (sm.option?.name || 'Unknown')
+                              ).join(', ')
+                            : !variation.selectedVariantId && <span className="italic text-stone-500 dark:text-zinc-500">Standard</span>
+                        }
+                      </span>
                   </li>
               ))}
           </ul>

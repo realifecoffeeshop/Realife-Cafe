@@ -10,8 +10,6 @@ import Logo from '../shared/Logo';
 
 const OrderModal = lazy(() => import('./OrderModal'));
 const CartFlyout = lazy(() => import('./CartFlyout'));
-const TutorialGuide = lazy(() => import('./TutorialGuide'));
-const TutorialStep = lazy(() => import('./TutorialStep'));
 
 import { addOrder } from '../../firebase/firestoreService';
 import { COFFEE_JOKES } from '../../constants';
@@ -32,21 +30,34 @@ const CategoryButton: React.FC<{
     imageUrl?: string;
     isSelected: boolean; 
     onClick: (id: string) => void 
-}> = memo(({ id, name, imageUrl, isSelected, onClick }) => (
-    <button
-        onClick={() => onClick(id)}
-        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-300 border ${
-            isSelected
-            ? 'bg-[#A58D79] text-white border-[#A58D79] shadow-md transform scale-105'
-            : 'bg-white dark:bg-zinc-800 text-stone-600 dark:text-zinc-300 border-stone-200 dark:border-zinc-700 hover:border-[#A58D79] hover:bg-stone-50 dark:hover:bg-zinc-700'
-        }`}
-    >
-        {imageUrl && (
-            <img src={imageUrl} alt="" className="w-6 h-6 rounded-md object-cover" />
-        )}
-        {name}
-    </button>
-));
+}> = memo(({ id, name, imageUrl, isSelected, onClick }) => {
+    // Optimization: Use smaller width for category icons if they are from Unsplash
+    const optimizedIcon = imageUrl?.includes('unsplash.com') 
+        ? `${imageUrl}${imageUrl.includes('?') ? '&' : '?' }w=100&q=40`
+        : imageUrl;
+
+    return (
+        <button
+            onClick={() => onClick(id)}
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-full transition-all duration-500 border ${
+                isSelected
+                ? 'bg-stone-900 text-white border-stone-900 dark:bg-white dark:text-stone-900 dark:border-white shadow-lg transform scale-105'
+                : 'bg-white dark:bg-zinc-800 text-stone-600 dark:text-zinc-400 border-stone-100 dark:border-zinc-700 hover:border-stone-300 dark:hover:border-zinc-500 hover:bg-stone-50 dark:hover:bg-zinc-700/50 shadow-sm'
+            }`}
+        >
+            {optimizedIcon && (
+                <img 
+                    src={optimizedIcon} 
+                    alt="" 
+                    className="w-6 h-6 rounded-lg object-cover shadow-sm" 
+                    loading="lazy"
+                    decoding="async"
+                />
+            )}
+            <span className="font-serif tracking-tight">{name}</span>
+        </button>
+    );
+});
 
 const MenuControls: React.FC<{
     searchTerm: string;
@@ -57,14 +68,17 @@ const MenuControls: React.FC<{
     viewMode: 'compact' | 'detailed';
     setViewMode: (mode: 'compact' | 'detailed') => void;
 }> = memo(({ searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, visibleCategories, viewMode, setViewMode }) => (
-    <div className="space-y-6">
-        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-            <h2 className="text-3xl font-bold text-stone-800 dark:text-white">Our Menu</h2>
+    <div className="space-y-8">
+        <div className="flex flex-col md:flex-row justify-between md:items-end gap-6 border-b border-stone-100 dark:border-zinc-800 pb-8">
+            <div>
+                <h2 className="text-4xl md:text-5xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">Our Menu</h2>
+                <p className="text-stone-500 dark:text-zinc-400 mt-2 font-serif italic">Handcrafted with passion and precision.</p>
+            </div>
             <div className="flex items-center gap-4">
-                <div className="flex bg-white dark:bg-zinc-800 rounded-lg p-1 border border-stone-200 dark:border-zinc-700 shadow-sm">
+                <div className="flex bg-white dark:bg-zinc-800 rounded-full p-1.5 border border-stone-100 dark:border-zinc-700 shadow-sm">
                     <button
                         onClick={() => setViewMode('compact')}
-                        className={`p-2 rounded-md transition-all ${viewMode === 'compact' ? 'bg-stone-100 dark:bg-zinc-700 text-[#A58D79] dark:text-white shadow-inner' : 'text-stone-400 hover:text-stone-600 dark:hover:text-zinc-300'}`}
+                        className={`p-2.5 rounded-full transition-all duration-300 ${viewMode === 'compact' ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900 shadow-md' : 'text-stone-400 hover:text-stone-600 dark:hover:text-zinc-300'}`}
                         title="Compact View"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -73,7 +87,7 @@ const MenuControls: React.FC<{
                     </button>
                     <button
                         onClick={() => setViewMode('detailed')}
-                        className={`p-2 rounded-md transition-all ${viewMode === 'detailed' ? 'bg-stone-100 dark:bg-zinc-700 text-[#A58D79] dark:text-white shadow-inner' : 'text-stone-400 hover:text-stone-600 dark:hover:text-zinc-300'}`}
+                        className={`p-2.5 rounded-full transition-all duration-300 ${viewMode === 'detailed' ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900 shadow-md' : 'text-stone-400 hover:text-stone-600 dark:hover:text-zinc-300'}`}
                         title="Detailed View"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -81,21 +95,26 @@ const MenuControls: React.FC<{
                         </svg>
                     </button>
                 </div>
-                <input 
-                    type="text"
-                    placeholder="Search for a drink..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white w-full md:w-64"
-                    aria-label="Search menu"
-                />
+                <div className="relative group">
+                    <input 
+                        type="text"
+                        placeholder="Search our menu..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-11 pr-6 py-3 border-none rounded-full bg-white dark:bg-zinc-800 text-stone-900 dark:text-white w-full md:w-56 focus:w-72 transition-all duration-500 shadow-sm focus:shadow-md outline-none ring-1 ring-stone-100 dark:ring-zinc-700 focus:ring-stone-200 dark:focus:ring-zinc-600"
+                        aria-label="Search menu"
+                    />
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-stone-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
             </div>
         </div>
-        <div id="menu-categories" className="flex flex-wrap items-center gap-2">
+        <div id="menu-categories" className="flex flex-wrap items-center gap-3">
             <CategoryButton 
                 id="all" 
-                name="All" 
-                    isSelected={selectedCategory === 'all'} 
+                name="All Items" 
+                isSelected={selectedCategory === 'all'} 
                 onClick={setSelectedCategory} 
             />
             {visibleCategories.map((cat) => (
@@ -115,7 +134,7 @@ const MenuControls: React.FC<{
 const CustomerView: React.FC = () => {
   const { state, dispatch, firebaseUser } = useApp();
   const { addToast } = useToast();
-  const { currentUser, cart, tutorialSteps } = state;
+  const { currentUser, cart } = state;
   const [selectedDrink, setSelectedDrink] = useState<Drink | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CARD);
@@ -130,9 +149,6 @@ const CustomerView: React.FC = () => {
   const [pickupOption, setPickupOption] = useState<'now' | 'later'>('now');
   const [pickupDate, setPickupDate] = useState(new Date().toISOString().split('T')[0]);
   const [pickupTime, setPickupTime] = useState('09:00');
-  const [isTutorialActive, setIsTutorialActive] = useState(false);
-  const [tutorialStep, setTutorialStep] = useState(0);
-  const [isFirstLogin, setIsFirstLogin] = useState(false);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -169,15 +185,7 @@ const CustomerView: React.FC = () => {
     if (params.get('fullscreen') === 'true') {
         setShowFullscreenPrompt(true);
     }
-
-    const tutorialShown = sessionStorage.getItem('tutorial-shown');
-    if (currentUser && currentUser.hasCompletedTutorial === false && !tutorialShown) {
-        setIsFirstLogin(true);
-        sessionStorage.setItem('tutorial-shown', 'true');
-    } else {
-        setIsFirstLogin(false);
-    }
-  }, [currentUser]);
+  }, []);
 
   const enterFullscreen = () => {
     const elem = document.documentElement;
@@ -193,54 +201,15 @@ const CustomerView: React.FC = () => {
     window.history.replaceState({}, '', url);
   };
 
-  const startTutorial = () => {
-    setTutorialStep(0);
-    setIsTutorialActive(true);
-    setIsFirstLogin(false);
-  };
-
-  const nextStep = useCallback(() => {
-    setTutorialStep(prev => {
-        if (prev < tutorialSteps.length - 1) {
-            return prev + 1;
-        } else {
-            return prev; // Should handle exit elsewhere
-        }
-    });
-    // Check if it was the last step in a separate effect or check index
-    if (tutorialStep >= tutorialSteps.length - 1) {
-         setIsTutorialActive(false);
-         setTutorialStep(0);
-         if (currentUser && !currentUser.hasCompletedTutorial) {
-            dispatch({ type: 'COMPLETE_TUTORIAL' });
-            addToast("Tutorial complete! You can access it again any time from the help button.", "success");
-         }
-    }
-  }, [tutorialStep, tutorialSteps, currentUser, dispatch, addToast]);
-
-  const exitTutorial = (completed = false) => {
-    setIsTutorialActive(false);
-    setTutorialStep(0);
-    if (completed && currentUser && !currentUser.hasCompletedTutorial) {
-        dispatch({ type: 'COMPLETE_TUTORIAL' });
-        addToast("Tutorial complete! You can access it again any time from the help button.", "success");
-    }
-  };
-
   const weeklyJoke = useMemo(() => {
+    if (!state.isMenuLoaded) return null;
     const week = getWeekNumber(new Date());
     return COFFEE_JOKES[week % COFFEE_JOKES.length];
-  }, []);
+  }, [state.isMenuLoaded]);
   
   const handleSelectDrink = useCallback((drink: Drink) => {
-    if (isTutorialActive && tutorialSteps[tutorialStep]?.waitForAction) {
-        // Simple logic for tutorial progression
-        setTimeout(() => {
-             setTutorialStep(prev => Math.min(prev + 1, tutorialSteps.length - 1));
-        }, 300);
-    }
     setSelectedDrink(drink);
-  }, [isTutorialActive, tutorialStep, tutorialSteps]);
+  }, []);
 
   const handleQuickAdd = useCallback((drink: Drink) => {
     const initialSelections: { [groupId: string]: SelectedModifier[] } = {};
@@ -287,16 +256,10 @@ const CustomerView: React.FC = () => {
         dispatch({ type: 'ADD_ITEM_TO_CART', payload: { ...item, id: `cart-item-${Date.now()}` } });
     }
 
-    if (isTutorialActive && tutorialSteps[tutorialStep]?.waitForAction) {
-        setTimeout(() => {
-             setTutorialStep(prev => Math.min(prev + 1, tutorialSteps.length - 1));
-        }, 300);
-    }
-
     // Reset editing state
     setSelectedDrink(null);
     setEditingCartItem(null);
-  }, [editingCartItem, dispatch, isTutorialActive, tutorialStep, tutorialSteps]);
+  }, [editingCartItem, dispatch]);
 
 
   const removeFromCart = useCallback((itemId: string) => {
@@ -458,24 +421,41 @@ const CustomerView: React.FC = () => {
   }
 
   const handleCartOpen = () => {
-    if (isTutorialActive && tutorialSteps[tutorialStep]?.waitForAction) {
-        setTimeout(() => {
-             setTutorialStep(prev => Math.min(prev + 1, tutorialSteps.length - 1));
-        }, 300);
-    }
     setIsCartOpen(true);
   }
 
-  const currentStepConfig = isTutorialActive ? tutorialSteps[tutorialStep] : null;
-
   return (
     <div className="bg-[#F5F3EF] dark:bg-zinc-900 text-stone-800 dark:text-zinc-200 transition-colors duration-300 min-h-screen w-full">
-        <div className="w-full px-4 md:px-8 py-4 md:py-8">
-            <div className="text-center mb-8">
-                <h1 id="customer-view-heading" className="text-4xl md:text-5xl font-bold text-stone-900 dark:text-zinc-100 tracking-tight">Welcome to Realife Cafe</h1>
-                <p className="mt-3 text-lg text-stone-600 dark:text-zinc-300">Your weekly dose of happiness, one cup at a time.</p>
+        <div className="w-full max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
+            <div className="text-center mb-16">
+                <h1 id="customer-view-heading" className="text-5xl md:text-7xl font-serif font-bold text-stone-900 dark:text-zinc-100 tracking-tight mb-4">Realife Cafe</h1>
+                <div className="flex items-center justify-center gap-4 mb-6">
+                    <div className="h-px w-12 bg-stone-300 dark:bg-zinc-700"></div>
+                    <span className="text-stone-400 dark:text-zinc-500 uppercase tracking-widest text-xs font-semibold">Est. 2024</span>
+                    <div className="h-px w-12 bg-stone-300 dark:bg-zinc-700"></div>
+                </div>
+                <p className="text-xl md:text-2xl font-serif italic text-stone-600 dark:text-zinc-400 max-w-2xl mx-auto">"Your weekly dose of happiness, one cup at a time."</p>
             </div>
 
+            <div className="mb-16">
+                <div className="bg-white dark:bg-zinc-900 p-10 rounded-[2.5rem] shadow-2xl border border-stone-100 dark:border-zinc-800 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full -mr-32 -mt-32 transition-transform duration-1000 group-hover:scale-110"></div>
+                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-stone-500/5 rounded-full -ml-24 -mb-24 transition-transform duration-1000 group-hover:scale-110"></div>
+                    
+                    <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
+                        <div className="bg-amber-50 dark:bg-amber-900/20 p-6 rounded-3xl shadow-inner transform -rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div className="flex-1 text-center md:text-left">
+                            <h3 className="text-xs font-bold text-stone-400 dark:text-zinc-500 uppercase tracking-[0.3em] mb-3">Barista's Weekly Wit</h3>
+                            <p className="text-3xl md:text-4xl font-serif italic text-stone-900 dark:text-white leading-tight">"{weeklyJoke}"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <MenuControls 
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
@@ -485,13 +465,8 @@ const CustomerView: React.FC = () => {
                 viewMode={viewMode}
                 setViewMode={setViewMode}
             />
-
-             <div className="my-6 p-4 bg-white dark:bg-zinc-800 border-l-4 border-amber-500 text-stone-800 dark:text-zinc-200 rounded-r-lg shadow">
-                <p className="font-semibold">Weekly Coffee Joke:</p>
-                <p className="italic">"{weeklyJoke}"</p>
-              </div>
             
-            <div id="menu-grid">
+            <div id="menu-grid" className="menu-grid-container">
                 {state.drinks.length === 0 ? (
                     <MenuSkeleton />
                 ) : (
@@ -513,6 +488,7 @@ const CustomerView: React.FC = () => {
                                         drink={drink} 
                                         onSelect={handleSelectDrink} 
                                         onQuickAdd={handleQuickAdd}
+                                        priority={index < 4}
                                     />
                                 )}
                             </div>
@@ -526,7 +502,7 @@ const CustomerView: React.FC = () => {
         <button
             id="cart-button"
             onClick={handleCartOpen}
-            className={`fixed bottom-6 right-24 bg-[#A58D79] dark:bg-white text-white dark:text-zinc-800 w-16 h-16 rounded-full shadow-lg flex items-center justify-center hover:bg-[#947D6A] dark:hover:bg-neutral-200 transition-transform hover:scale-110 z-30 ${cart.length > 0 ? 'animate-pulse-cart' : ''}`}
+            className={`fixed bottom-6 right-24 bg-brand-primary dark:bg-white text-white dark:text-zinc-800 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center hover:bg-stone-700 dark:hover:bg-neutral-200 transition-all duration-300 hover:scale-110 z-30 ${cart.length > 0 ? 'animate-pulse-cart' : ''}`}
             aria-label={`Open cart with ${cartItemCount} items`}
         >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
@@ -575,19 +551,6 @@ const CustomerView: React.FC = () => {
                 onSaveItem={handleSaveCartItem}
                 cartItemToEdit={editingCartItem}
             />
-        </Suspense>
-
-        <Suspense fallback={null}>
-            <TutorialGuide isPulsing={isFirstLogin && !isTutorialActive} onClick={startTutorial} />
-            {isTutorialActive && currentStepConfig && (
-                <TutorialStep
-                    key={tutorialStep}
-                    step={currentStepConfig}
-                    isLastStep={tutorialStep === tutorialSteps.length - 1}
-                    onNext={!currentStepConfig.waitForAction ? () => setTutorialStep(prev => prev + 1) : () => {}}
-                    onExit={() => exitTutorial(false)}
-                />
-            )}
         </Suspense>
         
         {/* Fullscreen Trigger Modal */}

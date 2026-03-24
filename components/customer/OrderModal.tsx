@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Drink, ModifierGroup, ModifierOption, CartItem, SelectedModifier } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
@@ -18,6 +18,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
   const { currentUser } = state;
   const [quantity, setQuantity] = useState(1);
   const [selectedModifiers, setSelectedModifiers] = useState<{ [groupId: string]: SelectedModifier[] }>({});
+  const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(undefined);
   const [totalPrice, setTotalPrice] = useState(0);
   const [customName, setCustomName] = useState('');
 
@@ -27,6 +28,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
       if (cartItemToEdit) {
         // Populate from existing item
         setSelectedModifiers(cartItemToEdit.selectedModifiers || {});
+        setSelectedVariantId(cartItemToEdit.selectedVariantId);
         setQuantity(cartItemToEdit.quantity);
         setCustomName(cartItemToEdit.customName || '');
       } else {
@@ -45,6 +47,13 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
           }
         });
         setSelectedModifiers(initialSelections);
+        
+        if (activeDrink.variants && activeDrink.variants.length > 0) {
+          setSelectedVariantId(activeDrink.variants[0].id);
+        } else {
+          setSelectedVariantId(undefined);
+        }
+        
         setQuantity(1);
         setCustomName('');
       }
@@ -55,7 +64,15 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
   useEffect(() => {
     const activeDrink = cartItemToEdit?.drink || drink;
     if (activeDrink) {
-      let price = typeof activeDrink.basePrice === 'number' && !isNaN(activeDrink.basePrice) ? activeDrink.basePrice : 0;
+      let basePrice = activeDrink.basePrice;
+      if (selectedVariantId && activeDrink.variants) {
+        const variant = activeDrink.variants.find(v => v.id === selectedVariantId);
+        if (variant) {
+          basePrice = variant.price;
+        }
+      }
+      
+      let price = typeof basePrice === 'number' && !isNaN(basePrice) ? basePrice : 0;
       Object.values(selectedModifiers || {}).forEach((mods: SelectedModifier[]) => {
         mods.forEach(sm => {
           if (!sm.option) return;
@@ -65,9 +82,15 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
       });
       setTotalPrice(price * quantity);
     }
-  }, [drink, cartItemToEdit, selectedModifiers, quantity]);
+  }, [drink, cartItemToEdit, selectedModifiers, quantity, selectedVariantId]);
   
   const activeDrink = cartItemToEdit?.drink || drink;
+
+  const drinkModifierGroups = useMemo(() => 
+    activeDrink ? state.modifierGroups.filter(mg => activeDrink.modifierGroups.includes(mg.id)) : [],
+    [state.modifierGroups, activeDrink?.modifierGroups]
+  );
+
   if (!activeDrink) return null;
   
   const modalTitle = `Customise ${customName.trim() ? `${customName.trim()} (${activeDrink.name || 'Drink'})` : (activeDrink.name || 'Drink')}`;
@@ -136,10 +159,11 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
   
   const trimmedCustomName = customName.trim();
   const currentCartItem: CartItem = {
-      id: cartItemToEdit?.id || `${activeDrink.id}-${JSON.stringify(selectedModifiers)}-${trimmedCustomName}`,
+      id: cartItemToEdit?.id || `${activeDrink.id}-${selectedVariantId || 'base'}-${JSON.stringify(selectedModifiers)}-${trimmedCustomName}`,
       drink: activeDrink,
       quantity,
       selectedModifiers,
+      selectedVariantId,
       finalPrice: totalPrice,
       ...(trimmedCustomName && { customName: trimmedCustomName }),
   };
@@ -155,52 +179,76 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
     addToast(`${currentCartItem.customName || currentCartItem.drink?.name || 'Drink'} saved to favourites!`, 'success');
   };
 
-  const drinkModifierGroups = state.modifierGroups.filter(mg => activeDrink.modifierGroups.includes(mg.id));
-
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} helpArticleId="kb-1">
-      <div className="space-y-6 text-stone-800 dark:text-zinc-200 order-modal-content">
-        <div id="modifiers-section" className="space-y-6">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
+      <div className="space-y-8 text-stone-800 dark:text-zinc-200 order-modal-content p-2">
+        <div id="variants-section" className="space-y-8">
+          {activeDrink.variants && activeDrink.variants.length > 0 && (
+            <div className="border-b border-stone-100 dark:border-zinc-700/50 pb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-serif text-xl font-bold text-stone-900 dark:text-white">Select Size / Variant</h4>
+                <span className="text-[10px] uppercase tracking-widest bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded-full text-amber-700 dark:text-amber-400 font-bold">Required</span>
+              </div>
+              <div className="flex flex-wrap gap-4">
+                {activeDrink.variants.map(variant => (
+                  <button
+                    key={variant.id}
+                    onClick={() => setSelectedVariantId(variant.id)}
+                    className={`px-6 py-3 text-sm font-bold rounded-2xl border transition-all duration-500 ${
+                      selectedVariantId === variant.id
+                        ? 'bg-stone-900 text-white border-stone-900 shadow-xl transform scale-105'
+                        : 'bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 text-stone-500 dark:text-zinc-400 hover:border-stone-900 dark:hover:border-white hover:bg-stone-50 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    {variant.name} <span className="ml-2 opacity-60 font-serif italic">(${(variant.price || 0).toFixed(2)})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div id="modifiers-section" className="space-y-8">
           {drinkModifierGroups.map(group => (
-            <div key={group.id}>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-semibold">{group?.name || 'Group'}</h4>
+            <div key={group.id} className="border-b border-stone-100 dark:border-zinc-700/50 pb-6 last:border-0">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-serif text-xl font-bold text-stone-900 dark:text-white">{group?.name || 'Group'}</h4>
                 {group?.isRequired ? (
-                  <span className="text-xs bg-stone-200 dark:bg-zinc-700 px-2 py-0.5 rounded text-stone-600 dark:text-zinc-400">Required</span>
+                  <span className="text-[10px] uppercase tracking-widest bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded-full text-amber-700 dark:text-amber-400 font-bold">Required</span>
                 ) : (
-                  <span className="text-xs text-stone-400 dark:text-zinc-500 italic">Optional</span>
+                  <span className="text-[10px] uppercase tracking-widest text-stone-400 dark:text-zinc-500 font-semibold">Optional</span>
                 )}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {group.options.map(option => {
-                  const selection = (selectedModifiers[group.id] || []).find(s => s.option.id === option.id);
+              <div className="flex flex-wrap gap-4">
+                {group?.options?.map(option => {
+                  const selection = (selectedModifiers[group.id] || []).find(s => s?.option?.id === option?.id);
                   const isSelected = !!selection;
                   
                   return (
-                    <div key={option.id} className="flex items-center space-x-2">
+                    <div key={option?.id} className="flex items-center gap-3">
                       <button
                         onClick={() => handleModifierChange(group.id, option)}
-                        className={`px-4 py-2 text-sm rounded-full border transition-colors ${
+                        className={`px-6 py-3 text-sm font-bold rounded-2xl border transition-all duration-500 ${
                           isSelected
-                            ? 'bg-[#A58D79] text-white border-[#A58D79] dark:bg-zinc-100 dark:text-zinc-800 dark:border-zinc-100'
-                            : 'bg-stone-100 dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 hover:bg-stone-200 dark:hover:bg-zinc-600'
+                            ? 'bg-stone-900 text-white border-stone-900 shadow-xl transform scale-105'
+                            : 'bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 text-stone-500 dark:text-zinc-400 hover:border-stone-900 dark:hover:border-white hover:bg-stone-50 dark:hover:bg-zinc-800'
                         }`}
                       >
-                        {option?.name || 'Option'} {option?.price > 0 && `(+$${option.price.toFixed(2)})`}
+                        {option?.name || 'Option'} {option?.price > 0 && <span className="ml-2 opacity-60 font-serif italic">(+${(option?.price || 0).toFixed(2)})</span>}
                       </button>
                       
-                      {isSelected && group.allowQuantity && (
-                        <div className="flex items-center space-x-2 bg-stone-100 dark:bg-zinc-800 rounded-full px-2 py-1 border border-stone-200 dark:border-zinc-700">
+                      {isSelected && group?.allowQuantity && (
+                        <div className="flex items-center gap-3 bg-stone-50 dark:bg-zinc-900 rounded-2xl px-3 py-1.5 border border-stone-100 dark:border-zinc-800 shadow-inner">
                           <button 
-                            onClick={(e) => { e.stopPropagation(); handleModifierQuantityChange(group.id, option.id, -1); }}
-                            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-600 dark:text-zinc-400"
+                            onClick={(e) => { e.stopPropagation(); handleModifierQuantityChange(group.id, option?.id, -1); }}
+                            className="w-8 h-8 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-800 text-stone-900 dark:text-white hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all shadow-sm"
                           >
                             -
                           </button>
-                          <span className="text-xs font-bold min-w-[1rem] text-center">{selection.quantity}</span>
+                          <span className="text-sm font-bold min-w-[1.5rem] text-center">{selection?.quantity || 1}</span>
                           <button 
-                            onClick={(e) => { e.stopPropagation(); handleModifierQuantityChange(group.id, option.id, 1); }}
-                            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-600 dark:text-zinc-400"
+                            onClick={(e) => { e.stopPropagation(); handleModifierQuantityChange(group.id, option?.id, 1); }}
+                            className="w-8 h-8 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-800 text-stone-900 dark:text-white hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all shadow-sm"
                           >
                             +
                           </button>
@@ -214,41 +262,41 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
           ))}
         </div>
 
-        <div id="quantity-and-name-section" className="space-y-4">
-            <div>
-                <label htmlFor="customName" className="font-semibold block mb-2">Individual Drink Name (Optional)</label>
+        <div id="quantity-and-name-section" className="space-y-8 pt-6">
+            <div className="space-y-2">
+                <label htmlFor="customName" className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Individual Drink Name</label>
                 <input
                     id="customName"
                     type="text"
                     value={customName}
                     onChange={(e) => setCustomName(e.target.value)}
                     placeholder={`e.g., "Sarah's Latte"`}
-                    className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"
+                    className="w-full p-4 border rounded-2xl bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 focus:outline-none transition-all font-serif italic"
                 />
             </div>
             
-            <div className="flex items-center justify-between">
-              <h4 className="font-semibold">Quantity</h4>
-              <div className="flex items-center space-x-3">
-                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-3 py-1 rounded-md bg-stone-200 dark:bg-zinc-600 hover:bg-stone-300 dark:hover:bg-zinc-500">-</button>
-                <span>{quantity}</span>
-                <button onClick={() => setQuantity(q => q + 1)} className="px-3 py-1 rounded-md bg-stone-200 dark:bg-zinc-600 hover:bg-stone-300 dark:hover:bg-zinc-500">+</button>
+            <div className="flex items-center justify-between bg-stone-50 dark:bg-zinc-900/30 p-6 rounded-3xl border border-stone-100 dark:border-zinc-800">
+              <h4 className="font-serif text-xl font-bold text-stone-900 dark:text-white">Quantity</h4>
+              <div className="flex items-center gap-6">
+                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all border border-stone-100 dark:border-zinc-700 font-bold text-xl">-</button>
+                <span className="text-2xl font-serif font-bold w-8 text-center">{quantity}</span>
+                <button onClick={() => setQuantity(q => q + 1)} className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all border border-stone-100 dark:border-zinc-700 font-bold text-xl">+</button>
               </div>
             </div>
         </div>
 
-        <div className="pt-4 border-t dark:border-zinc-700">
-            <div className="flex justify-between items-center text-lg font-bold">
-                <span>Total:</span>
-                <span>${totalPrice.toFixed(2)}</span>
+        <div className="pt-10 border-t border-stone-100 dark:border-zinc-800">
+            <div className="flex justify-between items-center mb-8">
+                <span className="text-stone-400 dark:text-zinc-500 font-bold uppercase tracking-[0.2em] text-[10px]">Total Amount</span>
+                <span className="text-4xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">${totalPrice.toFixed(2)}</span>
             </div>
-            <div className="flex items-center space-x-2 mt-4">
-                <button id="add-to-order-button" onClick={handleSaveItemClick} className="w-full bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 py-3 rounded-lg font-semibold hover:bg-[#947D6A] dark:hover:bg-zinc-200 transition-colors">
+            <div className="flex items-center gap-4">
+                <button id="add-to-order-button" onClick={handleSaveItemClick} className="flex-1 bg-stone-900 text-white dark:bg-white dark:text-stone-900 py-5 rounded-full font-bold text-xl hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl transform active:scale-95">
                     {cartItemToEdit ? 'Update Item' : 'Add to Order'}
                 </button>
                 {currentUser && (
-                    <button onClick={handleSaveFavourite} title="Save as Favourite" className="p-3 bg-stone-100 text-stone-700 dark:bg-zinc-700 dark:text-white rounded-lg hover:bg-stone-200 dark:hover:bg-zinc-600 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                    <button onClick={handleSaveFavourite} title="Save as Favourite" className="p-5 bg-white text-stone-900 dark:bg-zinc-900 dark:text-white rounded-2xl hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all shadow-lg border border-stone-100 dark:border-zinc-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
                     </button>
                 )}
             </div>

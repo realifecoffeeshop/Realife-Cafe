@@ -28,13 +28,12 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ isOpen, onClose, onLinkCl
         'tell-story': <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>,
         'our-team': <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>,
         'serve-with-us': <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>,
-        'knowledge-base': <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>,
     };
 
     return (
         <>
             <div
-                className={`fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                className={`fixed inset-0 bg-stone-900/60 backdrop-blur-md z-40 transition-opacity duration-500 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                 onClick={onClose}
                 aria-hidden="true"
             ></div>
@@ -42,30 +41,27 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ isOpen, onClose, onLinkCl
                 id="hamburger-menu"
                 role="dialog"
                 aria-modal="true"
-                className={`fixed top-0 left-0 h-full w-full max-w-xs bg-white dark:bg-zinc-800 shadow-xl z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+                className={`fixed top-0 left-0 h-full w-full sm:max-w-xs bg-white dark:bg-zinc-900 shadow-2xl z-50 transform transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
             >
-                <div className="flex justify-between items-center p-4 border-b dark:border-zinc-700">
-                    <h2 className="text-xl font-bold text-stone-900 dark:text-white">Menu</h2>
-                    <button onClick={onClose} className="p-2" aria-label="Close menu">
-                        <svg className="w-6 h-6 text-stone-600 dark:text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <div className="flex justify-between items-center px-8 py-8 border-b border-stone-50 dark:border-zinc-800">
+                    <h2 className="text-3xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">Menu</h2>
+                    <button onClick={onClose} className="p-3 rounded-full bg-stone-50 dark:bg-zinc-800 text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all shadow-sm" aria-label="Close menu">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
-                <nav className="p-4">
+                <nav className="p-8 overflow-y-auto h-[calc(100%-100px)] custom-scrollbar">
                     <ul className="space-y-2">
                          {/* Main navigation for smaller screens */}
                         <li className="md:hidden">
-                            <button onClick={() => onNavClick(View.CUSTOMER)} className="w-full flex items-center p-3 text-lg text-stone-700 dark:text-zinc-200 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-700">Customer View</button>
+                            <button onClick={() => onNavClick(View.CUSTOMER)} className="w-full flex items-center px-6 py-4 text-xl font-serif font-bold text-stone-800 dark:text-zinc-100 rounded-2xl hover:bg-stone-50 dark:hover:bg-zinc-800 transition-all border border-transparent hover:border-stone-100 dark:hover:border-zinc-700">Customer View</button>
                         </li>
                         {(currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN) && (
                             <>
                                 <li className="md:hidden">
-                                    <button onClick={() => onNavClick(View.KDS)} className="w-full flex items-center p-3 text-lg text-stone-700 dark:text-zinc-200 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-700">KDS</button>
+                                    <button onClick={() => onNavClick(View.KDS)} className="w-full flex items-center px-6 py-4 text-xl font-serif font-bold text-stone-800 dark:text-zinc-100 rounded-2xl hover:bg-stone-50 dark:hover:bg-zinc-800 transition-all border border-transparent hover:border-stone-100 dark:hover:border-zinc-700">KDS</button>
                                 </li>
-                                <li>
-                                    <button onClick={() => onNavClick(View.BIRTHDAYS)} className="w-full flex items-center p-3 text-lg text-stone-700 dark:text-zinc-200 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-700">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
+                                <li className="md:hidden">
+                                    <button onClick={() => onNavClick(View.BIRTHDAYS)} className="w-full flex items-center px-6 py-4 text-xl font-serif font-bold text-stone-800 dark:text-zinc-100 rounded-2xl hover:bg-stone-50 dark:hover:bg-zinc-800 transition-all border border-transparent hover:border-stone-100 dark:hover:border-zinc-700">
                                         Birthdays
                                     </button>
                                 </li>
@@ -73,38 +69,32 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ isOpen, onClose, onLinkCl
                         )}
                         {currentUser?.role === UserRole.ADMIN && (
                             <li className="md:hidden">
-                                <button onClick={() => onNavClick(View.ADMIN)} className="w-full flex items-center p-3 text-lg text-stone-700 dark:text-zinc-200 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-700">Admin</button>
+                                <button onClick={() => onNavClick(View.ADMIN)} className="w-full flex items-center px-6 py-4 text-xl font-serif font-bold text-stone-800 dark:text-zinc-100 rounded-2xl hover:bg-stone-50 dark:hover:bg-zinc-800 transition-all border border-transparent hover:border-stone-100 dark:hover:border-zinc-700">Admin</button>
                             </li>
                         )}
-                        <li className="border-b dark:border-zinc-700 my-4 md:hidden"></li>
+                        <li className="border-b border-stone-100 dark:border-zinc-800 my-6 md:hidden"></li>
                         
                         {/* Community and info links */}
                         {menuItems.map(item => (
                              <li key={item.id}>
                                 <button
                                     onClick={() => handleLinkClick(item.id)}
-                                    className="w-full flex items-center p-3 text-lg text-stone-700 dark:text-zinc-200 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-700 transition-colors"
+                                    className="w-full flex items-center px-6 py-4 text-xl font-serif font-bold text-stone-800 dark:text-zinc-100 rounded-2xl hover:bg-stone-50 dark:hover:bg-zinc-800 transition-all group border border-transparent hover:border-stone-100 dark:hover:border-zinc-700"
                                 >
-                                    {icons[item.id]}
+                                    <span className="text-stone-400 group-hover:text-stone-900 dark:group-hover:text-white transition-colors">
+                                        {icons[item.id]}
+                                    </span>
                                     {item.label}
                                 </button>
                             </li>
                         ))}
-                         {currentUser?.role === UserRole.ADMIN && (
-                            <>
-                                <li className="border-b dark:border-zinc-700 my-4"></li>
-                                <li>
-                                    <button
-                                        onClick={() => handleLinkClick('knowledge-base')}
-                                        className="w-full flex items-center p-3 text-lg text-stone-700 dark:text-zinc-200 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-700 transition-colors"
-                                    >
-                                        {icons['knowledge-base']}
-                                        Help & Knowledge Base
-                                    </button>
-                                </li>
-                            </>
-                        )}
                     </ul>
+                    
+                    {/* Footer info in menu */}
+                    <div className="mt-12 pt-8 border-t border-stone-100 dark:border-zinc-800">
+                        <p className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 mb-2">Realife Coffee Shop</p>
+                        <p className="text-sm text-stone-500 dark:text-zinc-400 font-serif italic">Handcrafted with passion and precision.</p>
+                    </div>
                 </nav>
             </div>
         </>
