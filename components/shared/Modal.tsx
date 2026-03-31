@@ -7,12 +7,12 @@ interface ModalProps {
   children: ReactNode;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 flex justify-center items-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-zinc-900 rounded-[2rem] shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col border border-stone-100 dark:border-zinc-800 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white dark:bg-zinc-900 rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-stone-100 dark:border-zinc-800 overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center px-8 py-6 border-b border-stone-50 dark:border-zinc-800">
           <div className="flex items-center space-x-3">
             <h2 className="text-xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">{title}</h2>

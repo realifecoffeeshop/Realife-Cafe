@@ -73,9 +73,9 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                 aria-modal="true"
                 aria-labelledby="cart-heading"
             >
-                <header className="flex items-center justify-between p-4 border-b dark:border-zinc-700">
+                <header className="flex items-center justify-between p-2 md:p-4 border-b dark:border-zinc-700">
                     <div className="flex items-center space-x-2">
-                        <h2 id="cart-heading" className="text-3xl font-serif font-bold text-stone-900 dark:text-white">Your Order</h2>
+                        <h2 id="cart-heading" className="text-xl md:text-3xl font-serif font-bold text-stone-900 dark:text-white">Your Order</h2>
                     </div>
                     <button
                         onClick={onClose}
@@ -86,41 +86,41 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                     </button>
                 </header>
 
-                <div className="flex-grow overflow-y-auto p-6 scrollbar-hide">
+                <div className="flex-grow overflow-y-auto p-3 md:p-6 scrollbar-hide">
                     {cart.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-                            <div className="w-20 h-20 bg-stone-100 dark:bg-zinc-700 rounded-full flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
+                            <div className="w-16 h-16 bg-stone-100 dark:bg-zinc-700 rounded-full flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                                 </svg>
                             </div>
-                            <p className="text-stone-500 dark:text-zinc-400 font-serif italic text-lg">"Your cart is waiting for something delicious."</p>
+                            <p className="text-stone-500 dark:text-zinc-400 font-serif italic text-base">"Your cart is waiting for something delicious."</p>
                         </div>
                     ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             {cart.map(item => (
-                                <div key={item.id} className="flex flex-col p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-stone-100 dark:border-zinc-800 group transition-all hover:shadow-2xl hover:-translate-y-1">
+                                <div key={item.id} className="flex flex-col p-3 md:p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-stone-100 dark:border-zinc-800 group transition-all hover:shadow-2xl hover:-translate-y-1">
                                     <div className="flex justify-between items-start">
-                                        <div className="flex-grow pr-4">
-                                            <p className="font-serif font-bold text-2xl text-stone-900 dark:text-white leading-tight">
+                                        <div className="flex-grow pr-3">
+                                            <p className="font-serif font-bold text-lg md:text-2xl text-stone-900 dark:text-white leading-tight">
                                                 {item.quantity}x {item.drink?.name || 'Unknown Drink'}
                                                 {item.selectedVariantId && item.drink?.variants && (
-                                                    <span className="text-sm font-bold text-stone-400 dark:text-zinc-500 ml-2 italic">
+                                                    <span className="text-xs font-bold text-stone-400 dark:text-zinc-500 ml-1 italic">
                                                         ({item.drink.variants.find(v => v.id === item.selectedVariantId)?.name})
                                                     </span>
                                                 )}
                                             </p>
-                                            {item.customName && <p className="text-sm font-bold text-stone-400 dark:text-zinc-500 italic mt-2 tracking-wide">"{item.customName}"</p>}
-                                            <div className="text-xs text-stone-400 dark:text-zinc-500 mt-3 leading-relaxed font-medium uppercase tracking-widest">
+                                            {item.customName && <p className="text-xs font-bold text-stone-400 dark:text-zinc-500 italic mt-1 tracking-wide">"{item.customName}"</p>}
+                                            <div className="text-[10px] text-stone-400 dark:text-zinc-500 mt-2 leading-relaxed font-medium uppercase tracking-widest">
                                                 {Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => 
                                                     sm.quantity > 1 ? `${sm.quantity}x ${sm.option?.name || 'Unknown'}` : (sm.option?.name || 'Unknown')
                                                 ).join(' • ')}
                                             </div>
                                         </div>
-                                        <span className="font-serif font-bold text-2xl text-stone-900 dark:text-white tracking-tighter">${item.finalPrice.toFixed(2)}</span>
+                                        <span className="font-serif font-bold text-xl text-stone-900 dark:text-white tracking-tighter">${item.finalPrice.toFixed(2)}</span>
                                     </div>
                                     
-                                    <div className="flex justify-end items-center space-x-8 mt-6 pt-5 border-t border-stone-50 dark:border-zinc-800/50">
+                                    <div className="flex justify-end items-center space-x-6 mt-4 pt-4 border-t border-stone-50 dark:border-zinc-800/50">
                                         <button 
                                             onClick={() => onEditItem(item)}
                                             className="flex items-center text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all"
@@ -146,42 +146,40 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                             ))}
                         </div>
                     )}
-                </div>
-
-                {cart.length > 0 && (
-                    <footer className="p-10 border-t border-stone-100 dark:border-zinc-800 space-y-8 overflow-y-auto cart-flyout-footer bg-stone-50/50 dark:bg-zinc-900/50 backdrop-blur-xl">
-                        <div className="space-y-4">
-                            <div className="flex justify-between text-stone-400 dark:text-zinc-500 font-bold uppercase tracking-[0.2em] text-[10px]">
+                </div>                {cart.length > 0 && (
+                    <footer className="p-3 md:p-10 border-t border-stone-100 dark:border-zinc-800 space-y-2 md:space-y-8 cart-flyout-footer bg-stone-50/50 dark:bg-zinc-900/50 backdrop-blur-xl shrink-0">
+                        <div className="space-y-1.5 md:space-y-4">
+                            <div className="flex justify-between text-stone-400 dark:text-zinc-500 font-bold uppercase tracking-[0.2em] text-[8px] md:text-[9px]">
                                 <span>Subtotal</span>
                                 <span>${subtotal.toFixed(2)}</span>
                             </div>
 
                             {appliedDiscount && (
-                                <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-[0.1em] text-[10px]">
+                                <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-[0.1em] text-[8px] md:text-[9px]">
                                     <span>{appliedDiscount.id === 'birthday-free-drink' ? '🎂 Birthday Gift' : `Discount (${appliedDiscount.code})`}</span>
                                     <span>- ${ (subtotal - (appliedDiscount.type === 'percentage' ? subtotal * (1 - appliedDiscount.value/100) : subtotal - appliedDiscount.value) ).toFixed(2) }</span>
                                 </div>
                             )}
 
-                            <div className="flex justify-between text-4xl font-serif font-bold text-stone-900 dark:text-white pt-4 border-t border-stone-100 dark:border-zinc-800">
+                            <div className="flex justify-between text-xl md:text-4xl font-serif font-bold text-stone-900 dark:text-white pt-1.5 md:pt-4 border-t border-stone-100 dark:border-zinc-800">
                                 <span>Total</span>
                                 <span className="tracking-tighter">${finalTotal.toFixed(2)}</span>
                             </div>
                         </div>
 
-                        <div className="space-y-8 pt-8 border-t border-stone-100 dark:border-zinc-800">
-                            <div className="space-y-3">
-                                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Pickup Preference</label>
-                                <div className="flex p-1.5 bg-white dark:bg-zinc-900 rounded-2xl border border-stone-100 dark:border-zinc-800 shadow-sm">
+                        <div className="space-y-2 md:space-y-8 pt-2 md:pt-8 border-t border-stone-100 dark:border-zinc-800">
+                            <div className="space-y-1 md:space-y-3">
+                                <label className="block text-[8px] md:text-[9px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Pickup Preference</label>
+                                <div className="flex p-1 bg-white dark:bg-zinc-900 rounded-xl md:rounded-2xl border border-stone-100 dark:border-zinc-800 shadow-sm">
                                     <button
                                         onClick={() => onPickupOptionChange('now')}
-                                        className={`px-6 py-3 text-xs font-bold flex-1 rounded-xl transition-all duration-500 ${pickupOption === 'now' ? 'bg-stone-900 text-white shadow-xl' : 'text-stone-400 hover:text-stone-600'}`}
+                                        className={`px-3 py-2 text-[9px] md:text-[10px] font-bold flex-1 rounded-lg md:rounded-xl transition-all duration-500 ${pickupOption === 'now' ? 'bg-stone-900 text-white shadow-xl' : 'text-stone-400 hover:text-stone-600'}`}
                                     >
                                         Now
                                     </button>
                                     <button
                                         onClick={() => onPickupOptionChange('later')}
-                                        className={`px-6 py-3 text-xs font-bold flex-1 rounded-xl transition-all duration-500 ${pickupOption === 'later' ? 'bg-stone-900 text-white shadow-xl' : 'text-stone-400 hover:text-stone-600'}`}
+                                        className={`px-3 py-2 text-[9px] md:text-[10px] font-bold flex-1 rounded-lg md:rounded-xl transition-all duration-500 ${pickupOption === 'later' ? 'bg-stone-900 text-white shadow-xl' : 'text-stone-400 hover:text-stone-600'}`}
                                     >
                                         Schedule
                                     </button>
@@ -189,65 +187,65 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                             </div>
                             
                             {pickupOption === 'later' && (
-                                <div className="grid grid-cols-2 gap-4 p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-stone-100 dark:border-zinc-800 shadow-inner">
-                                    <div className="space-y-1">
-                                        <label htmlFor="pickup-date" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 mb-1">Date</label>
+                                <div className="grid grid-cols-2 gap-2 p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-stone-100 dark:border-zinc-800 shadow-inner">
+                                    <div className="space-y-0.5">
+                                        <label htmlFor="pickup-date" className="block text-[8px] md:text-[9px] font-bold uppercase tracking-[0.2em] text-stone-400 mb-0.5">Date</label>
                                         <input
                                             id="pickup-date"
                                             type="date"
                                             value={pickupDate}
                                             onChange={(e) => onPickupDateChange(e.target.value)}
                                             min={new Date().toISOString().split('T')[0]}
-                                            className="w-full p-0 text-sm bg-transparent border-none focus:ring-0 dark:text-white font-serif italic"
+                                            className="w-full p-0 text-[10px] md:text-xs bg-transparent border-none focus:ring-0 dark:text-white font-serif italic"
                                         />
                                     </div>
-                                    <div className="border-l border-stone-50 dark:border-zinc-800 pl-4 space-y-1">
-                                        <label htmlFor="pickup-time" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 mb-1">Time</label>
+                                    <div className="border-l border-stone-50 dark:border-zinc-800 pl-2 space-y-0.5">
+                                        <label htmlFor="pickup-time" className="block text-[8px] md:text-[9px] font-bold uppercase tracking-[0.2em] text-stone-400 mb-0.5">Time</label>
                                         <input
                                             id="pickup-time"
                                             type="time"
                                             value={pickupTimeValue}
                                             onChange={(e) => onPickupTimeChange(e.target.value)}
-                                            className="w-full p-0 text-sm bg-transparent border-none focus:ring-0 dark:text-white font-serif italic"
+                                            className="w-full p-0 text-[10px] md:text-xs bg-transparent border-none focus:ring-0 dark:text-white font-serif italic"
                                         />
                                     </div>
                                 </div>
                             )}
 
-                            <div className="space-y-3">
-                                <label htmlFor="customerName-input" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Group Order Name</label>
-                                <input id="customerName-input" type="text" value={customerName} onChange={e => onCustomerNameChange(e.target.value)} placeholder="e.g., Office Morning Run" className="w-full p-4 border rounded-2xl bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-stone-900/10 focus:outline-none transition-all font-serif italic" disabled={isLoggedIn}/>
+                            <div className="space-y-1 md:space-y-3">
+                                <label htmlFor="customerName-input" className="block text-[8px] md:text-[9px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Order Name</label>
+                                <input id="customerName-input" type="text" value={customerName} onChange={e => onCustomerNameChange(e.target.value)} placeholder="e.g., Sarah" className="w-full p-2 md:p-4 border rounded-xl md:rounded-2xl bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-stone-900/10 focus:outline-none transition-all font-serif italic text-xs md:text-sm" disabled={isLoggedIn}/>
                             </div>
 
-                            <div className="flex gap-3">
-                                <input type="text" value={discountCode} onChange={e => onDiscountCodeChange(e.target.value)} placeholder="Promo Code" className="flex-grow p-4 border rounded-2xl bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-stone-900/10 focus:outline-none transition-all font-serif italic"/>
-                                <button onClick={onApplyDiscount} className="px-8 py-4 bg-stone-900 dark:bg-white text-white dark:text-stone-900 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-lg">Apply</button>
+                            <div className="flex gap-1.5">
+                                <input type="text" value={discountCode} onChange={e => onDiscountCodeChange(e.target.value)} placeholder="Promo Code" className="flex-grow p-2 md:p-4 border rounded-xl md:rounded-2xl bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-stone-900/10 focus:outline-none transition-all font-serif italic text-xs md:text-sm"/>
+                                <button onClick={onApplyDiscount} className="px-3 md:px-8 py-2 md:py-4 bg-stone-900 dark:bg-white text-white dark:text-stone-900 rounded-xl md:rounded-2xl font-bold text-[9px] md:text-[10px] uppercase tracking-widest hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-lg">Apply</button>
                             </div>
 
-                            <div className="space-y-3">
-                                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Payment</label>
+                            <div className="space-y-1 md:space-y-3">
+                                <label className="block text-[8px] md:text-[9px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Payment</label>
                                 <div className="relative">
-                                    <select value={paymentMethod} onChange={e => onPaymentMethodChange(e.target.value as PaymentMethod)} className="w-full p-4 border rounded-2xl bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-stone-900/10 focus:outline-none transition-all appearance-none font-serif italic">
+                                    <select value={paymentMethod} onChange={e => onPaymentMethodChange(e.target.value as PaymentMethod)} className="w-full p-2 md:p-4 border rounded-xl md:rounded-2xl bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-stone-900/10 focus:outline-none transition-all appearance-none font-serif italic text-xs md:text-sm">
                                         {Object.values(PaymentMethod).map(method => <option key={method} value={method}>{method}</option>)}
                                     </select>
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-stone-400">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-stone-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 md:h-4 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {error && <p className="text-red-500 text-xs font-bold uppercase tracking-widest text-center bg-red-50 dark:bg-red-900/20 p-4 rounded-2xl border border-red-100 dark:border-red-900/30">{error}</p>}
+                        {error && <p className="text-red-500 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-center bg-red-50 dark:bg-red-900/20 p-2 md:p-3 rounded-xl md:rounded-2xl border border-red-100 dark:border-red-900/30">{error}</p>}
 
                         <button 
                             id="place-order-button" 
                             onClick={onPlaceOrder} 
                             disabled={isSubmitting}
-                            className={`w-full mt-6 bg-stone-900 text-white dark:bg-white dark:text-stone-900 py-6 rounded-full font-bold text-xl hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl transform active:scale-95 flex items-center justify-center ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            className={`w-full mt-1 md:mt-6 bg-stone-900 text-white dark:bg-white dark:text-stone-900 py-3 md:py-6 rounded-full font-bold text-sm md:text-xl hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl transform active:scale-95 flex items-center justify-center ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
                             {isSubmitting ? (
                                 <>
-                                    <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white dark:text-stone-900" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <svg className="animate-spin -ml-1 mr-2 md:mr-3 h-4 w-4 md:h-6 md:w-6 text-white dark:text-stone-900" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>

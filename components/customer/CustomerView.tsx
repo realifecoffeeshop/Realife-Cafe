@@ -142,6 +142,7 @@ const CustomerView: React.FC = () => {
   const [appliedDiscount, setAppliedDiscount] = useState<Discount | null>(null);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = React.useDeferredValue(searchTerm);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [editingCartItem, setEditingCartItem] = useState<CartItem | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -185,6 +186,18 @@ const CustomerView: React.FC = () => {
     if (params.get('fullscreen') === 'true') {
         setShowFullscreenPrompt(true);
     }
+
+    // OPTIMIZATION: Pre-fetch lazy components after initial render
+    const prefetch = async () => {
+        try {
+            // These are lazy loaded, but we can pre-fetch them to avoid delay when needed
+            import('./OrderModal');
+            import('./CartFlyout');
+        } catch (e) {
+            console.warn("Pre-fetch failed", e);
+        }
+    };
+    prefetch();
   }, []);
 
   const enterFullscreen = () => {
@@ -408,12 +421,12 @@ const CustomerView: React.FC = () => {
 
   const filteredDrinks = useMemo(() => {
     return state.drinks.filter(drink => {
-       if (!drink) return false;
-       const matchesSearch = (drink.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+       if (!drink || !drink.name || !drink.category) return false;
+       const matchesSearch = (drink.name || '').toLowerCase().includes(deferredSearchTerm.toLowerCase());
        const matchesCategory = selectedCategory === 'all' || drink.category === selectedCategory;
        return matchesSearch && matchesCategory;
     });
-  }, [state.drinks, searchTerm, selectedCategory]);
+  }, [state.drinks, deferredSearchTerm, selectedCategory]);
   
   const handleModalClose = () => {
       setSelectedDrink(null);
@@ -427,32 +440,25 @@ const CustomerView: React.FC = () => {
   return (
     <div className="bg-[#F5F3EF] dark:bg-zinc-900 text-stone-800 dark:text-zinc-200 transition-colors duration-300 min-h-screen w-full">
         <div className="w-full max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
-            <div className="text-center mb-16">
-                <h1 id="customer-view-heading" className="text-5xl md:text-7xl font-serif font-bold text-stone-900 dark:text-zinc-100 tracking-tight mb-4">Realife Cafe</h1>
-                <div className="flex items-center justify-center gap-4 mb-6">
-                    <div className="h-px w-12 bg-stone-300 dark:bg-zinc-700"></div>
-                    <span className="text-stone-400 dark:text-zinc-500 uppercase tracking-widest text-xs font-semibold">Est. 2024</span>
-                    <div className="h-px w-12 bg-stone-300 dark:bg-zinc-700"></div>
+            {/* Compact Header for Instant Menu Visibility */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
+                <div className="text-center md:text-left">
+                    <h1 id="customer-view-heading" className="text-4xl md:text-6xl font-serif font-bold text-stone-900 dark:text-zinc-100 tracking-tight mb-2">Realife Cafe</h1>
+                    <p className="text-lg font-serif italic text-stone-500 dark:text-zinc-400">"Your weekly dose of happiness, one cup at a time."</p>
                 </div>
-                <p className="text-xl md:text-2xl font-serif italic text-stone-600 dark:text-zinc-400 max-w-2xl mx-auto">"Your weekly dose of happiness, one cup at a time."</p>
+                <div className="hidden md:block">
+                    <div className="bg-white dark:bg-zinc-800 px-6 py-4 rounded-2xl shadow-sm border border-stone-100 dark:border-zinc-800">
+                         <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Barista's Weekly Wit</p>
+                         <p className="text-sm font-serif italic text-stone-900 dark:text-white leading-tight">"{weeklyJoke}"</p>
+                    </div>
+                </div>
             </div>
 
-            <div className="mb-16">
-                <div className="bg-white dark:bg-zinc-900 p-10 rounded-[2.5rem] shadow-2xl border border-stone-100 dark:border-zinc-800 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full -mr-32 -mt-32 transition-transform duration-1000 group-hover:scale-110"></div>
-                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-stone-500/5 rounded-full -ml-24 -mb-24 transition-transform duration-1000 group-hover:scale-110"></div>
-                    
-                    <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
-                        <div className="bg-amber-50 dark:bg-amber-900/20 p-6 rounded-3xl shadow-inner transform -rotate-3 group-hover:rotate-0 transition-transform duration-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <div className="flex-1 text-center md:text-left">
-                            <h3 className="text-xs font-bold text-stone-400 dark:text-zinc-500 uppercase tracking-[0.3em] mb-3">Barista's Weekly Wit</h3>
-                            <p className="text-3xl md:text-4xl font-serif italic text-stone-900 dark:text-white leading-tight">"{weeklyJoke}"</p>
-                        </div>
-                    </div>
+            {/* Mobile-only Weekly Wit - Compact */}
+            <div className="md:hidden mb-8">
+                <div className="bg-stone-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-stone-100 dark:border-zinc-800/50">
+                    <p className="text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-1">Weekly Wit</p>
+                    <p className="text-xs font-serif italic text-stone-600 dark:text-zinc-400">"{weeklyJoke}"</p>
                 </div>
             </div>
             
@@ -466,14 +472,21 @@ const CustomerView: React.FC = () => {
                 setViewMode={setViewMode}
             />
             
-            <div id="menu-grid" className="menu-grid-container">
+            <div id="menu-grid" className="menu-grid-container min-h-[400px]">
                 {state.drinks.length === 0 ? (
-                    <MenuSkeleton />
+                    <MenuSkeleton viewMode={viewMode} />
                 ) : (
-                    <div className={viewMode === 'compact' 
-                        ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4"
-                        : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                    }>
+                    <>
+                        {!state.isMenuLoaded && (
+                            <div className="flex items-center space-x-2 mb-4 text-stone-400 dark:text-zinc-500 text-xs font-bold uppercase tracking-widest animate-pulse">
+                                <div className="w-1.5 h-1.5 bg-stone-400 dark:bg-zinc-500 rounded-full"></div>
+                                <span>Updating Menu...</span>
+                            </div>
+                        )}
+                        <div className={viewMode === 'compact' 
+                            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4"
+                            : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                        }>
                         {filteredDrinks.map((drink, index) => (
                             <div key={drink.id} className={index === 0 ? 'first-drink-card' : ''}>
                                 {viewMode === 'compact' ? (
@@ -494,6 +507,7 @@ const CustomerView: React.FC = () => {
                             </div>
                         ))}
                     </div>
+                    </>
                 )}
             </div>
         </div>

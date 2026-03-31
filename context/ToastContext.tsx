@@ -1,4 +1,4 @@
-import React, { createContext, useState, useCallback, ReactNode, useContext } from 'react';
+import * as React from 'react';
 import ToastContainer from '../components/shared/Toast';
 
 type ToastType = 'success' | 'error' | 'info';
@@ -16,19 +16,24 @@ interface ToastContextType {
   addToast: (message: string, type: ToastType, options?: { duration?: number }) => void;
 }
 
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
+const ToastContext = React.createContext<ToastContextType | undefined>(undefined);
 
 let toastId = 0;
 
-export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+export function ToastProvider({ children }: { children: React.ReactNode }) {
+  // Add a safety check for the React dispatcher to help diagnose issues.
+  if (typeof React.useState !== 'function') {
+    throw new Error('useState is not a function. This usually means multiple React instances are present.');
+  }
+
+  const [toasts, setToasts] = React.useState<ToastMessage[]>([]);
 
   // Fix: Update addToast implementation to handle the optional duration.
-  const addToast = useCallback((message: string, type: ToastType, options?: { duration?: number }) => {
+  const addToast = React.useCallback((message: string, type: ToastType, options?: { duration?: number }) => {
     setToasts((prevToasts) => [...prevToasts, { id: toastId++, message, type, duration: options?.duration }]);
   }, []);
 
-  const removeToast = useCallback((id: number) => {
+  const removeToast = React.useCallback((id: number) => {
     setToasts((prevToasts) => prevToasts.filter((toast) => toast.id !== id));
   }, []);
 
@@ -38,12 +43,12 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </ToastContext.Provider>
   );
-};
+}
 
-export const useToast = () => {
-  const context = useContext(ToastContext);
+export function useToast() {
+  const context = React.useContext(ToastContext);
   if (context === undefined) {
     throw new Error('useToast must be used within a ToastProvider');
   }
   return context;
-};
+}

@@ -29,6 +29,18 @@
       "$feedbackId": {
         ".write": "auth != null"
       }
+    },
+    "stories": {
+      ".read": "auth != null",
+      "$storyId": {
+        ".write": "auth != null"
+      }
+    },
+    "shared-pictures": {
+      ".read": "auth != null",
+      "$pictureId": {
+        ".write": "auth != null"
+      }
     }
   }
 }

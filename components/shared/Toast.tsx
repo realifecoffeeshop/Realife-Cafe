@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import * as React from 'react';
 import { ToastMessage } from '../../context/ToastContext';
 
 interface ToastProps {
@@ -6,8 +6,8 @@ interface ToastProps {
   onClose: (id: number) => void;
 }
 
-const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
-  useEffect(() => {
+const Toast = ({ toast, onClose }: ToastProps) => {
+  React.useEffect(() => {
     // Fix: Use the provided duration for the toast, or default to 3000ms.
     const timer = setTimeout(() => {
       onClose(toast.id);
@@ -60,7 +60,7 @@ interface ToastContainerProps {
   removeToast: (id: number) => void;
 }
 
-const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, removeToast }) => {
+const ToastContainer = ({ toasts, removeToast }: ToastContainerProps) => {
   return (
     <div className="fixed top-5 right-5 z-[100] w-full max-w-xs">
       {toasts.map((toast) => (

@@ -1,5 +1,5 @@
-import { database, isFirebaseConfigured } from './config';
-import { Order, Drink, Category, ModifierGroup, User, Feedback, Customer } from '../types';
+import { database, storage, isFirebaseConfigured } from './config';
+import { Order, Drink, Category, ModifierGroup, User, Feedback, Customer, Story, SharedPicture } from '../types';
 import { INITIAL_DRINKS, INITIAL_CATEGORIES, INITIAL_MODIFIERS } from '../constants';
 
 // NOTE: This service interacts with FIREBASE REALTIME DATABASE, not Firestore,
@@ -724,4 +724,75 @@ export const onFeedbackUpdate = (callback: (feedback: Feedback[]) => void, onErr
         if (onError) onError(error);
     });
     return () => feedbackRef.off('value', listener);
+};
+
+// --- Story Functions ---
+
+export const submitStory = async (story: Omit<Story, 'id' | 'createdAt'>) => {
+    if (!database) return;
+    const storyRef = database.ref('stories').push();
+    const newStory = {
+        ...story,
+        id: storyRef.key,
+        createdAt: Date.now()
+    };
+    await storyRef.set(newStory);
+};
+
+export const onStoriesUpdate = (callback: (stories: Story[]) => void, onError?: (error: Error) => void) => {
+    if (!database) return () => {};
+    const storiesRef = database.ref('stories');
+    const listener = storiesRef.on('value', (snapshot: any) => {
+        const data = snapshot.val();
+        if (data) {
+            const storiesList = Object.values(data) as Story[];
+            callback(storiesList.sort((a, b) => b.createdAt - a.createdAt));
+        } else {
+            callback([]);
+        }
+    }, (error: any) => {
+        if (onError) onError(error);
+    });
+    return () => storiesRef.off('value', listener);
+};
+
+// --- Shared Picture Functions ---
+
+export const uploadSharedPicture = async (file: File, authorName: string, authorId: string) => {
+    if (!storage || !database) throw new Error('Firebase not configured');
+    
+    const fileName = `${Date.now()}_${file.name}`;
+    const storageRef = storage.ref(`shared-pictures/${fileName}`);
+    
+    const snapshot = await storageRef.put(file);
+    const downloadURL = await snapshot.ref.getDownloadURL();
+
+    const pictureRef = database.ref('shared-pictures').push();
+    const pictureData: SharedPicture = {
+        id: pictureRef.key!,
+        imageUrl: downloadURL,
+        authorName,
+        authorId,
+        createdAt: Date.now(),
+    };
+
+    await pictureRef.set(pictureData);
+    return pictureData;
+};
+
+export const onSharedPicturesUpdate = (callback: (pictures: SharedPicture[]) => void, onError?: (error: Error) => void) => {
+    if (!database) return () => {};
+    const picturesRef = database.ref('shared-pictures');
+    const listener = picturesRef.on('value', (snapshot: any) => {
+        const data = snapshot.val();
+        if (data) {
+            const picturesList = Object.values(data) as SharedPicture[];
+            callback(picturesList.sort((a, b) => b.createdAt - a.createdAt));
+        } else {
+            callback([]);
+        }
+    }, (error: any) => {
+        if (onError) onError(error);
+    });
+    return () => picturesRef.off('value', listener);
 };

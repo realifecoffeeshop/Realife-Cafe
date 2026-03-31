@@ -75,7 +75,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 1.2,
     imageUrl: 'https://images.unsplash.com/photo-1541167760496-1628856ab772' + IMG_PARAMS,
     modifierGroups: ['mod-group-1', 'mod-group-2', 'mod-group-3'],
-    description: 'A smooth, creamy coffee made with a shot of espresso and steamed milk.',
+    description: 'One part espresso, two parts steamed milk, and a thin layer of foam (approx. 1cm). A creamy, milk-forward coffee.',
   },
   {
     id: 'drink-2',
@@ -85,7 +85,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 1.1,
     imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a65342d' + IMG_PARAMS,
     modifierGroups: ['mod-group-1', 'mod-group-2', 'mod-group-3'],
-    description: 'The perfect balance of espresso, steamed milk, and a thick layer of foam.',
+    description: 'Equal parts espresso, steamed milk, and thick milk foam (1:1:1 ratio). A classic balanced and frothy delight.',
   },
   {
     id: 'drink-3',
@@ -95,7 +95,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 1.3,
     imageUrl: 'https://images.unsplash.com/photo-1596707442116-232537a7442a' + IMG_PARAMS,
     modifierGroups: ['mod-group-1', 'mod-group-2', 'mod-group-3'],
-    description: 'A rich espresso shot topped with velvety steamed milk for a smooth finish.',
+    description: 'One part espresso with two parts thin, velvety microfoam milk. Richer and more coffee-focused than a latte.',
   },
   {
     id: 'drink-4',
@@ -105,7 +105,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 0.8,
     imageUrl: 'https://images.unsplash.com/photo-1621267860477-1632432a8314' + IMG_PARAMS,
     modifierGroups: ['mod-group-3'],
-    description: 'A pure, intense shot of espresso, also known as an espresso.',
+    description: 'A pure 30ml shot of intense espresso with a rich crema. The foundation of all our coffee drinks.',
   },
   {
     id: 'drink-5',
@@ -115,7 +115,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 0.9,
     imageUrl: 'https://images.unsplash.com/photo-1518004856236-717c5dbb03f1' + IMG_PARAMS,
     modifierGroups: ['mod-group-3'],
-    description: 'A double-shot of espresso pulled over hot water to retain its crema.',
+    description: 'Two shots of espresso pulled over hot water (1:2 ratio) to preserve the delicate crema and aroma.',
   },
   {
     id: 'drink-6',
@@ -125,7 +125,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 0.9,
     imageUrl: 'https://images.unsplash.com/photo-1561737710-60a5b6fcf01b' + IMG_PARAMS,
     modifierGroups: ['mod-group-3'],
-    description: "A bold shot of espresso 'stained' with a small dollop of steamed milk froth.",
+    description: "A shot of espresso 'stained' with a small dollop of steamed milk foam. Bold coffee with a touch of creaminess.",
   },
   {
     id: 'drink-7',
@@ -135,7 +135,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 1.3,
     imageUrl: 'https://images.unsplash.com/photo-1605333240291-05a8d9a43fe4' + IMG_PARAMS,
     modifierGroups: ['mod-group-1', 'mod-group-4', 'mod-group-5'],
-    description: 'Rich, decadent chocolate melted into creamy steamed milk.',
+    description: 'Rich cocoa blended with steamed milk and a light layer of foam. A comforting, sweet classic.',
   },
   {
     id: 'drink-8',
@@ -145,7 +145,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 1.4,
     imageUrl: 'https://images.unsplash.com/photo-1577968897966-3d4325b36def' + IMG_PARAMS,
     modifierGroups: ['mod-group-1', 'mod-group-2', 'mod-group-3', 'mod-group-4'],
-    description: 'A delicious blend of rich chocolate, espresso, and steamed milk.',
+    description: 'A delicious 1:1:1 blend of espresso, chocolate, and steamed milk. The perfect marriage of coffee and cocoa.',
   },
   {
     id: 'drink-22',
@@ -155,7 +155,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 0.8,
     imageUrl: 'https://images.unsplash.com/photo-1593443320739-7356223b3a43' + IMG_PARAMS,
     modifierGroups: ['mod-group-3'],
-    description: 'A shot of espresso diluted with hot water, giving it a similar strength to, but different flavor from, traditionally brewed coffee.',
+    description: 'A shot of espresso diluted with hot water for a lighter body similar to drip coffee.',
   },
   // Teas
   {
@@ -166,7 +166,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 1.4,
     imageUrl: 'https://images.unsplash.com/photo-1573326140384-031e6ab9b48f' + IMG_PARAMS,
     modifierGroups: ['mod-group-1', 'mod-group-2'],
-    description: 'A sweet and spicy blend of black tea, aromatic spices, and steamed milk.',
+    description: 'A fragrant blend of spiced black tea and steamed milk (1:3 ratio). Warm, aromatic, and soothing.',
   },
   {
     id: 'drink-12',
@@ -176,7 +176,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 1.8,
     imageUrl: 'https://images.unsplash.com/photo-1594744453366-e84084724810' + IMG_PARAMS,
     modifierGroups: ['mod-group-1', 'mod-group-2', 'mod-group-3'],
-    description: 'A classic chai latte with an added shot of espresso for an extra kick.',
+    description: 'Our classic spiced chai latte with an added shot of bold espresso for a caffeine kick.',
   },
   {
     id: 'drink-13',
@@ -186,7 +186,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 1.8,
     imageUrl: 'https://images.unsplash.com/photo-1601923161314-54c7a6591741' + IMG_PARAMS,
     modifierGroups: ['mod-group-1'],
-    description: 'Aromatic chai spices and black tea candied in honey, brewed to perfection.',
+    description: 'Premium loose-leaf tea and spices cured in honey, brewed with creamy steamed milk.',
   },
   {
     id: 'drink-14',
@@ -196,7 +196,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 1.5,
     imageUrl: 'https://images.unsplash.com/photo-1563514212933-2023a100db27' + IMG_PARAMS,
     modifierGroups: ['mod-group-1', 'mod-group-2'],
-    description: 'Vibrant Japanese green tea powder whisked with steamed milk.',
+    description: 'High-grade Japanese green tea powder whisked with steamed milk. Earthy, vibrant, and antioxidant-rich.',
   },
   // Iced Drinks
   {
@@ -207,7 +207,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 1.0,
     imageUrl: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735' + IMG_PARAMS,
     modifierGroups: ['mod-group-1', 'mod-group-2', 'mod-group-3'],
-    description: 'Chilled coffee served over ice, perfect for a warm day.',
+    description: 'Chilled espresso mixed with cold milk and served over ice. Refreshing and energizing.',
   },
   {
     id: 'drink-19',
@@ -217,7 +217,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 1.2,
     imageUrl: 'https://images.unsplash.com/photo-1586348943529-beaae6c28db9' + IMG_PARAMS,
     modifierGroups: ['mod-group-1', 'mod-group-2', 'mod-group-3'],
-    description: 'A shot of espresso poured over milk and ice for a refreshing coffee hit.',
+    description: 'A bold shot of espresso poured over cold milk and ice. A crisp, clean, and cool coffee experience.',
   },
   {
     id: 'drink-20',
@@ -227,7 +227,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 1.5,
     imageUrl: 'https://images.unsplash.com/photo-1587882390399-190644f0525d' + IMG_PARAMS,
     modifierGroups: ['mod-group-1', 'mod-group-4'],
-    description: 'Rich chocolate syrup mixed with cold milk, served over ice.',
+    description: 'Decadent chocolate syrup swirled with cold milk and served over plenty of ice.',
   },
   {
     id: 'drink-21',
@@ -237,7 +237,7 @@ export const INITIAL_DRINKS: Drink[] = [
     baseCost: 1.6,
     imageUrl: 'https://images.unsplash.com/photo-1509082025158-6c827339734e' + IMG_PARAMS,
     modifierGroups: ['mod-group-1', 'mod-group-2'],
-    description: 'Vibrant Japanese green tea powder whisked with cold milk and served over ice.',
+    description: 'Vibrant matcha green tea whisked with cold milk and served over ice for a refreshing boost.',
   },
 ];
 

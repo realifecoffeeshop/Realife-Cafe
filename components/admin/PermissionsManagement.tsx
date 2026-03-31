@@ -55,7 +55,9 @@ const PermissionsManagement: React.FC = () => {
                                             user.role === UserRole.KITCHEN ? 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30' :
                                             'bg-stone-50 text-stone-700 border-stone-100 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
                                         }`}>
-                                            {user.role}
+                                            {user.role === UserRole.ADMIN ? 'Administrator' : 
+                                             user.role === UserRole.KITCHEN ? 'Kitchen Staff' : 
+                                             user.role === UserRole.CUSTOMER ? 'Customer' : user.role}
                                         </span>
                                     </td>
                                     <td className="px-8 py-6 text-right">
@@ -68,7 +70,11 @@ const PermissionsManagement: React.FC = () => {
                                                 aria-label={`Change role for ${user.name}`}
                                             >
                                                 {Object.values(UserRole).map(role => (
-                                                    <option key={role} value={role}>{role}</option>
+                                                    <option key={role} value={role}>
+                                                        {role === UserRole.ADMIN ? 'Administrator' : 
+                                                         role === UserRole.KITCHEN ? 'Kitchen Staff' : 
+                                                         role === UserRole.CUSTOMER ? 'Customer' : role}
+                                                    </option>
                                                 ))}
                                             </select>
                                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-400 pointer-events-none" />

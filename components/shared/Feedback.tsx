@@ -3,7 +3,7 @@ import Modal from './Modal';
 import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
 
-const Star: React.FC<{ filled: boolean; onClick: () => void; onMouseEnter: () => void; onMouseLeave: () => void; }> = ({ filled, onClick, onMouseEnter, onMouseLeave }) => (
+const Star = ({ filled, onClick, onMouseEnter, onMouseLeave }: { filled: boolean; onClick: () => void; onMouseEnter: () => void; onMouseLeave: () => void; }) => (
     <svg 
         onClick={onClick}
         onMouseEnter={onMouseEnter}
@@ -19,7 +19,7 @@ const Star: React.FC<{ filled: boolean; onClick: () => void; onMouseEnter: () =>
 );
 
 
-const Feedback: React.FC = () => {
+const Feedback = () => {
     const { dispatch } = useApp();
     const { addToast } = useToast();
     const [isOpen, setIsOpen] = useState(false);

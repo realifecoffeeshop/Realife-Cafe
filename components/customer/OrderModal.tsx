@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { Drink, ModifierGroup, ModifierOption, CartItem, SelectedModifier } from '../../types';
 import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
@@ -306,4 +306,4 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
   );
 };
 
-export default OrderModal;
+export default memo(OrderModal);

@@ -1,6 +1,7 @@
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/database';
+import 'firebase/compat/storage';
 
 // The configuration object for your Firebase project.
 const firebaseConfig = {
@@ -23,6 +24,7 @@ export const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY" && 
 
 let database: firebase.database.Database | undefined;
 let auth: firebase.auth.Auth | undefined;
+let storage: firebase.storage.Storage | undefined;
 
 if (isFirebaseConfigured) {
   try {
@@ -34,6 +36,7 @@ if (isFirebaseConfigured) {
     // Get a reference to the Realtime Database service
     database = app.database();
     auth = app.auth();
+    storage = app.storage();
   } catch (error) {
     console.error("Firebase initialization error. Please check your firebaseConfig object in firebase/config.ts.", error);
   }
@@ -41,4 +44,4 @@ if (isFirebaseConfigured) {
     console.warn("Firebase is not configured. Please update firebase/config.ts to enable real-time features.");
 }
 
-export { database, auth };
+export { database, auth, storage };

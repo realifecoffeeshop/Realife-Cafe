@@ -12,9 +12,22 @@ interface DetailedDrinkCardProps {
 const DetailedDrinkCard: React.FC<DetailedDrinkCardProps> = ({ drink, onSelect, onQuickAdd, priority = false }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
 
+  // Optimization: Use smaller width for detailed view items
+  const getOptimizedUrl = (width: number) => {
+    if (!drink.imageUrl?.includes('unsplash.com')) return drink.imageUrl;
+    const separator = drink.imageUrl.includes('?') ? '&' : '?';
+    // Use slightly higher quality for detailed view but still optimized (70)
+    return `${drink.imageUrl}${separator}w=${width}&q=70&auto=format`;
+  };
+
+  const optimizedImage = getOptimizedUrl(400);
+  const srcSet = drink.imageUrl?.includes('unsplash.com') 
+    ? `${getOptimizedUrl(200)} 200w, ${getOptimizedUrl(400)} 400w, ${getOptimizedUrl(600)} 600w`
+    : undefined;
+
   return (
     <div 
-      className="bg-white dark:bg-zinc-900 rounded-3xl border border-stone-100 dark:border-zinc-800 shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer overflow-hidden flex h-48 group"
+      className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-stone-100 dark:border-zinc-800 shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer overflow-hidden flex h-48 group transform-gpu will-change-transform"
       onClick={() => onSelect(drink)}
     >
       <div className="flex-1 p-8 flex flex-col justify-between">
@@ -56,10 +69,9 @@ const DetailedDrinkCard: React.FC<DetailedDrinkCardProps> = ({ drink, onSelect, 
       <div className="w-40 sm:w-56 h-full relative overflow-hidden bg-stone-100 dark:bg-zinc-950">
         <img 
           className={`w-full h-full object-cover transition-all duration-700 ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-110'} group-hover:scale-110`}
-          src={drink?.imageUrl?.includes('unsplash.com') 
-            ? `${drink.imageUrl}${drink.imageUrl.includes('?') ? '&' : '?' }w=400&q=75&auto=format`
-            : (drink?.imageUrl || 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&q=75&auto=format')
-          } 
+          src={optimizedImage}
+          srcSet={srcSet}
+          sizes="(max-width: 640px) 160px, 224px"
           alt={drink?.name || 'Drink'} 
           loading={priority ? "eager" : "lazy"}
           decoding="async"

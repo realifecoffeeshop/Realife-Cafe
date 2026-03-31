@@ -7,6 +7,8 @@ import { View, UserRole } from './types';
 import Header from './components/shared/Header';
 import Feedback from './components/shared/Feedback';
 import Modal from './components/shared/Modal';
+import SharePictureForm from './components/shared/SharePictureForm';
+import TellStoryForm from './components/shared/TellStoryForm';
 import { isFirebaseConfigured } from './firebase/config';
 
 import CustomerView from './components/customer/CustomerView';
@@ -113,28 +115,24 @@ const AppContent: React.FC = () => {
   }
   
   const handleMenuLinkClick = (section: string) => {
+    // Require login for interactive community features
+    if (!currentUser && (section === 'share-picture' || section === 'tell-story')) {
+        setIsLoginModalOpen(true);
+        addToast('Please log in to share with the community', 'info');
+        return;
+    }
+
     switch(section) {
         case 'share-picture':
             setInfoModalContent({
                 title: 'Share a Picture',
-                content: (
-                    <div>
-                        <p className="text-stone-600 dark:text-zinc-300 mb-4">We'd love to see your moments at Realife Cafe! Upload a picture to share with our community.</p>
-                        <input type="file" accept="image/*" className="w-full text-sm text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-stone-50 dark:file:bg-zinc-600 file:text-stone-700 dark:file:text-zinc-200 hover:file:bg-stone-100 dark:hover:file:bg-zinc-500"/>
-                    </div>
-                )
+                content: <SharePictureForm onSuccess={() => setInfoModalContent(null)} />
             });
             break;
         case 'tell-story':
             setInfoModalContent({
                 title: 'Tell a Story',
-                content: (
-                    <div>
-                        <p className="text-stone-600 dark:text-zinc-300 mb-4">Every cup has a story. What's yours? Share a memory, a moment of joy, or a kind word.</p>
-                        <textarea rows={5} placeholder="Your story here..." className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white" />
-                        <button className="mt-4 w-full bg-[#A58D79] text-white dark:bg-zinc-100 dark:text-zinc-800 py-2 rounded-md hover:bg-[#947D6A] dark:hover:bg-zinc-200 transition-colors font-semibold">Submit</button>
-                    </div>
-                )
+                content: <TellStoryForm onSuccess={() => setInfoModalContent(null)} />
             });
             break;
         case 'our-team':

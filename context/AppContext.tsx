@@ -7,9 +7,9 @@ import { useToast } from './ToastContext';
 import { AppContext, useApp } from './useApp';
 
 const initialState: AppState = {
-  drinks: INITIAL_DRINKS,
-  categories: INITIAL_CATEGORIES,
-  modifierGroups: INITIAL_MODIFIERS,
+  drinks: [],
+  categories: [],
+  modifierGroups: [],
   orders: [],
   discounts: INITIAL_DISCOUNTS,
   users: [
@@ -404,19 +404,33 @@ const appReducer = (state: AppState, action: Action): AppState => {
       };
     case 'CLEAR_CART':
       return { ...state, cart: [] };
-    case 'SET_MENU_DATA':
+    case 'SET_MENU_DATA': {
+        const newDrinks = (action.payload.drinks || []).filter(Boolean).map((drink: any) => ({
+            ...drink,
+            modifierGroups: drink.modifierGroups || [],
+            variants: drink.variants || [],
+            imageUrl: drink.imageUrl || "", // Ensure it's never undefined or null
+        }));
+        const newCategories = (action.payload.categories || []).filter(Boolean);
+        const newModifierGroups = (action.payload.modifierGroups || []).filter(Boolean);
+
+        // OPTIMIZATION: Deep equality check to prevent re-render if data is same as hydrated local data
+        // This prevents a "flicker" or "flash" when Firebase sync completes if nothing changed.
+        if (state.isMenuLoaded && 
+            JSON.stringify(state.drinks) === JSON.stringify(newDrinks) &&
+            JSON.stringify(state.categories) === JSON.stringify(newCategories) &&
+            JSON.stringify(state.modifierGroups) === JSON.stringify(newModifierGroups)) {
+            return state;
+        }
+
         return {
             ...state,
-            drinks: (action.payload.drinks || []).filter(Boolean).map((drink: any) => ({
-                ...drink,
-                modifierGroups: drink.modifierGroups || [],
-                variants: drink.variants || [],
-                imageUrl: drink.imageUrl || "", // Ensure it's never undefined or null
-            })),
-            categories: (action.payload.categories || []).filter(Boolean),
-            modifierGroups: (action.payload.modifierGroups || []).filter(Boolean),
+            drinks: newDrinks,
+            categories: newCategories,
+            modifierGroups: newModifierGroups,
             isMenuLoaded: true, // New flag to track initial load
         };
+    }
     case 'SET_FEEDBACK':
         return { ...state, feedback: action.payload };
     default:
@@ -444,6 +458,9 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         const hydratedState = { ...initial, ...parsed };
         if (!parsed.users) {
             hydratedState.users = initial.users;
+        }
+        if (parsed.drinks && parsed.drinks.length > 0) {
+            hydratedState.isMenuLoaded = true;
         }
         return hydratedState;
       }
@@ -489,33 +506,105 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Effect for persisting non-menu and non-order data to localStorage
   useEffect(() => {
     const timeoutId = setTimeout(() => {
+      // OPTIMIZATION: We restore menu caching (drinks, categories, modifierGroups) 
+      // to localStorage to enable "instant" load on mobile.
+      // We still limit other data to avoid QuotaExceededError.
+      
+      const limitedFeedback = feedback.slice(-20);
+      const limitedUsers = users
+        .filter(u => !u.id.startsWith('guest-'))
+        .slice(0, 50);
+
       const stateToSave = { 
         discounts, 
-        users: users.filter(u => !u.id.startsWith('guest-')), 
+        users: limitedUsers, 
         currentUser, 
-        feedback, 
+        feedback: limitedFeedback, 
         theme,
-        // Persist menu data for instant hydration on next load
         drinks,
         categories,
         modifierGroups
       };
-      localStorage.setItem('cafe-pos-data', JSON.stringify(stateToSave));
-    }, 1000); // Debounce by 1 second
+      
+      try {
+        const serializedState = JSON.stringify(stateToSave);
+        // localStorage limit is usually 5MB. 
+        // We'll try to save the full state first.
+        localStorage.setItem('cafe-pos-data', serializedState);
+      } catch (error) {
+        // If it's a QuotaExceededError or other error
+        console.warn("Failed to save full state to localStorage, trying without images:", error);
+        
+        // Fallback 1: Try to save state without images (images are often the largest part)
+        try {
+          const stateWithoutImages = {
+            ...stateToSave,
+            drinks: drinks.map(d => ({ ...d, imageUrl: undefined })),
+            categories: categories.map(c => ({ ...c, imageUrl: undefined }))
+          };
+          localStorage.setItem('cafe-pos-data', JSON.stringify(stateWithoutImages));
+          console.log("Saved state without images to localStorage.");
+        } catch (imageError) {
+          console.error("Even state without images failed to save:", imageError);
+          
+          // Fallback 2: Try to save only essential session data if full state fails
+          try {
+            const essentialState = { currentUser, theme };
+            localStorage.setItem('cafe-pos-data', JSON.stringify(essentialState));
+            console.log("Saved essential state only to localStorage.");
+          } catch (fallbackError) {
+            console.error("Even essential state failed to save to localStorage:", fallbackError);
+            // If even this fails, we might need to clear some space
+            try {
+              localStorage.removeItem('cafe-pos-data');
+              console.log("Cleared localStorage to prevent further errors.");
+            } catch (clearError) {
+              console.error("Failed to clear localStorage:", clearError);
+            }
+          }
+        }
+      }
+    }, 2000); // Debounce by 2 seconds
     
     return () => clearTimeout(timeoutId);
   }, [discounts, users, currentUser, feedback, theme, drinks, categories, modifierGroups]);
 
-  // Effect to listen for real-time updates from Firebase
+  // Effect to listen for real-time updates from Firebase (Menu only - Public)
+  useEffect(() => {
+    if (database) {
+        let unsubscribeMenu: (() => void) | undefined;
+
+        const setupMenuListener = async () => {
+            // Listeners (respecting auth != null rules if applicable, but menu is usually public)
+            unsubscribeMenu = onMenuUpdate(
+                (menu) => {
+                    dispatch({ type: 'SET_MENU_DATA', payload: menu });
+                }, 
+                (error) => {
+                    if (error.message.toLowerCase().includes('permission_denied')) {
+                         dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/menu'.` });
+                    }
+                }
+            );
+        };
+
+        setupMenuListener();
+
+        return () => {
+            if (unsubscribeMenu) unsubscribeMenu();
+        };
+    }
+  }, [database]);
+
+  // Effect to listen for real-time updates from Firebase (Auth-dependent)
   useEffect(() => {
     if (database && firebaseUser) {
-        let unsubscribeMenu: (() => void) | undefined;
         let unsubscribeOrders: (() => void) | undefined;
         let unsubscribeUsers: (() => void) | undefined;
         let unsubscribeFeedback: (() => void) | undefined;
         let unsubscribeCustomers: (() => void) | undefined;
 
-        const setupListeners = async () => {
+        const setupAuthListeners = async () => {
             // Seeding data (requires write permission, which is auth != null)
             // We only seed if the user is an ADMIN to prevent multiple clients trying to seed at once
             const isAdmin = state.currentUser?.role === UserRole.ADMIN;
@@ -540,18 +629,6 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     }
                 }
             }
-
-            // Listeners (respecting auth != null rules)
-            unsubscribeMenu = onMenuUpdate(
-                (menu) => {
-                    dispatch({ type: 'SET_MENU_DATA', payload: menu });
-                }, 
-                (error) => {
-                    if (error.message.toLowerCase().includes('permission_denied')) {
-                         dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/menu'.` });
-                    }
-                }
-            );
 
             // Only listen to ALL orders if user is Staff or Admin
             const isStaff = state.currentUser?.role === UserRole.ADMIN || state.currentUser?.role === UserRole.KITCHEN;
@@ -610,17 +687,16 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             }
         };
 
-        setupListeners();
+        setupAuthListeners();
 
         return () => {
             if (unsubscribeOrders) unsubscribeOrders();
             if (unsubscribeUsers) unsubscribeUsers();
-            if (unsubscribeMenu) unsubscribeMenu();
             if (unsubscribeFeedback) unsubscribeFeedback();
             if (unsubscribeCustomers) unsubscribeCustomers();
         };
     }
-  }, [firebaseUser, state.currentUser?.role]);
+  }, [database, firebaseUser, state.currentUser?.role]);
 
 
   // Cross-tab sync for non-order/non-menu data

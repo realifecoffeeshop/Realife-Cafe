@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 
-const Logo: React.FC = () => {
+const Logo = () => {
   return (
     <svg 
       width="160" 

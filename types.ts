@@ -127,6 +127,22 @@ export interface Feedback {
     createdAt: number;
 }
 
+export interface Story {
+    id: string;
+    text: string;
+    authorName: string;
+    authorId: string;
+    createdAt: number;
+}
+
+export interface SharedPicture {
+    id: string;
+    imageUrl: string;
+    authorName: string;
+    authorId: string;
+    createdAt: number;
+}
+
 export interface Customer {
     id: string;
     name: string;
