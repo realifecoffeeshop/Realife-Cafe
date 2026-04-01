@@ -173,12 +173,13 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
                 aria-label={`${isComplete ? 'Mark as incomplete' : 'Mark as complete'}: ${item.quantity}x ${item.drink?.name || 'Unknown Drink'}`}
               >
                 <p className={`font-semibold text-base ${isComplete ? '' : 'text-stone-800 dark:text-zinc-200'}`}>
-                  {item.quantity}x {item.drink?.name || 'Unknown Drink'}
+                  <span>{item.quantity}x </span>
                   {item.selectedVariantId && item.drink?.variants && (
-                    <span className="text-sm font-bold text-stone-400 dark:text-zinc-500 ml-2 italic">
-                      ({item.drink.variants.find(v => v.id === item.selectedVariantId)?.name})
+                    <span className="uppercase mr-1">
+                      {item.drink.variants.find(v => v.id === item.selectedVariantId)?.name}
                     </span>
                   )}
+                  <span>{item.drink?.name || 'Unknown Drink'}</span>
                 </p>
                 {item.customName && <p className={`pl-4 font-medium ${isComplete ? '' : 'text-stone-700 dark:text-zinc-300'}`}>- {item.customName}</p>}
                 <ul className={`pl-4 list-disc list-inside ${isComplete ? '' : 'text-stone-600 dark:text-zinc-400'}`}>

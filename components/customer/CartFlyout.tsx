@@ -195,7 +195,7 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                                             type="date"
                                             value={pickupDate}
                                             onChange={(e) => onPickupDateChange(e.target.value)}
-                                            min={new Date().toISOString().split('T')[0]}
+                                            min={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`}
                                             className="w-full p-0 text-[10px] md:text-xs bg-transparent border-none focus:ring-0 dark:text-white font-serif italic"
                                         />
                                     </div>

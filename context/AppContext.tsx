@@ -23,6 +23,7 @@ const initialState: AppState = {
   theme: 'light',
   cart: [],
   permissionError: null,
+  globalError: null,
   isMenuLoaded: false,
 };
 
@@ -30,6 +31,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
   switch (action.type) {
     case 'SET_PERMISSION_ERROR':
       return { ...state, permissionError: action.payload };
+    case 'SET_GLOBAL_ERROR':
+      return { ...state, globalError: action.payload };
     case 'SET_ORDERS':
         return { ...state, orders: action.payload };
     case 'SET_USERS': {
@@ -583,6 +586,8 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 (error) => {
                     if (error.message.toLowerCase().includes('permission_denied')) {
                          dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/menu'.` });
+                    } else {
+                         dispatch({ type: 'SET_GLOBAL_ERROR', payload: `Failed to load menu: ${error.message}` });
                     }
                 }
             );
@@ -641,6 +646,8 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     (error: any) => {
                         if (error.message?.toLowerCase().includes('permission_denied')) {
                             dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/orders'.` });
+                        } else {
+                            dispatch({ type: 'SET_GLOBAL_ERROR', payload: `Failed to sync orders: ${error.message}` });
                         }
                     }
                 );
@@ -712,6 +719,21 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
   }, []);
 
+
+  // Effect for scheduled order activation
+  useEffect(() => {
+    const PREPARATION_LEAD_TIME = 15 * 60 * 1000; // 15 minutes
+    const interval = setInterval(() => {
+        const now = Date.now();
+        state.orders.forEach(order => {
+            if (order.status === 'scheduled' && order.pickupTime && (order.pickupTime - now) <= PREPARATION_LEAD_TIME) {
+                dispatch({ type: 'ACTIVATE_SCHEDULED_ORDER', payload: order.id });
+            }
+        });
+    }, 10000); // Check every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [state.orders, dispatch]);
 
   return <AppContext.Provider value={{ state, dispatch, firebaseUser }}>{children}</AppContext.Provider>;
 };

@@ -109,12 +109,13 @@ const PaymentTicket = memo(({ order, onVerify, onDelete }: { order: Order; onVer
         {order.items.map(item => (
           <div key={item.id} className="text-sm">
             <p className="font-semibold text-base text-stone-800 dark:text-zinc-200">
-              {item.quantity}x {item.drink?.name || 'Unknown Drink'}
+              <span>{item.quantity}x </span>
               {item.selectedVariantId && item.drink?.variants && (
-                <span className="text-sm font-bold text-stone-400 dark:text-zinc-500 ml-2 italic">
-                  ({item.drink.variants.find(v => v.id === item.selectedVariantId)?.name})
+                <span className="uppercase mr-1">
+                  {item.drink.variants.find(v => v.id === item.selectedVariantId)?.name}
                 </span>
               )}
+              <span>{item.drink?.name || 'Unknown Drink'}</span>
             </p>
             {item.customName && <p className="pl-4 font-medium text-stone-700 dark:text-zinc-300">- {item.customName}</p>}
             <ul className="pl-4 list-disc list-inside text-stone-600 dark:text-zinc-400">
@@ -230,19 +231,6 @@ const KDSView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'payment-required' | 'pending' | 'scheduled' | 'history' | 'customers'>(
       paymentRequiredOrdersUnfiltered.length > 0 ? 'payment-required' : 'pending'
   );
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-        const now = Date.now();
-        state.orders.forEach(order => {
-            if (order.status === 'scheduled' && order.pickupTime && (order.pickupTime - now) <= PREPARATION_LEAD_TIME) {
-                dispatch({ type: 'ACTIVATE_SCHEDULED_ORDER', payload: order.id });
-            }
-        });
-    }, 10000); // Check every 10 seconds
-
-    return () => clearInterval(interval);
-  }, [state.orders, dispatch]);
 
   useEffect(() => {
     if (activeTab === 'payment-required' && paymentRequiredOrdersUnfiltered.length === 0 && pendingOrdersBase.length > 0) {
@@ -713,21 +701,49 @@ const KDSView: React.FC = () => {
                 </thead>
                 <tbody>
                     {scheduledOrders.map(order => (
-                        <tr key={order.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700">
-                            <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">{order.customerName || 'Unknown'}</td>
-                            <td className="px-6 py-4">{order.pickupTime && !isNaN(new Date(order.pickupTime).getTime()) ? new Date(order.pickupTime).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}</td>
+                        <tr key={order.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700 hover:bg-stone-50 dark:hover:bg-zinc-700/50 transition-colors">
+                            <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">
+                                <div className="font-bold">{order.customerName || 'Unknown'}</div>
+                                <div className="text-[10px] text-stone-400 dark:text-zinc-500 font-mono">#{(order.id || '').slice(-6)}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                                <div className="font-semibold text-stone-800 dark:text-zinc-200">
+                                    {order.pickupTime && !isNaN(new Date(order.pickupTime).getTime()) ? new Date(order.pickupTime).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+                                </div>
+                            </td>
                             <td className="px-6 py-4 align-top">
-                                <ul className="space-y-2">
+                                <ul className="space-y-3">
                                     {(order.items || []).map(item => (
-                                        <li key={item.id}>
-                                            <div className="font-semibold text-stone-900 dark:text-white">
-                                                {item.quantity}x {item.drink?.name || 'Unknown Drink'}
+                                        <li key={item.id} className="border-l-2 border-stone-200 dark:border-zinc-600 pl-3">
+                                            <div className="font-bold text-stone-900 dark:text-white">
+                                                <span>{item.quantity}x </span>
+                                                {item.selectedVariantId && item.drink?.variants && (
+                                                    <span className="uppercase mr-1">
+                                                        {item.drink.variants.find(v => v.id === item.selectedVariantId)?.name}
+                                                    </span>
+                                                )}
+                                                <span>{item.drink?.name || 'Unknown Drink'}</span>
+                                            </div>
+                                            {item.customName && (
+                                                <div className="text-xs font-medium text-stone-600 dark:text-zinc-400 mt-0.5 italic">
+                                                    For: {item.customName}
+                                                </div>
+                                            )}
+                                            <div className="text-[11px] text-stone-500 dark:text-zinc-500 mt-1 flex flex-wrap gap-1">
+                                                {Object.values(item.selectedModifiers || {}).flatMap(mods => mods || []).filter(sm => sm).map((sm: SelectedModifier) => (
+                                                    <span key={sm.option?.id || Math.random()} className="bg-white dark:bg-zinc-800 px-1 rounded border border-stone-100 dark:border-zinc-700">
+                                                        {sm.quantity > 1 ? `${sm.quantity}x ` : ''}{sm.option?.name || 'Unknown'}
+                                                    </span>
+                                                ))}
                                             </div>
                                         </li>
                                     ))}
                                 </ul>
                             </td>
-                            <td className="px-6 py-4">${(order.finalTotal || 0).toFixed(2)}</td>
+                            <td className="px-6 py-4">
+                                <div className="font-bold text-stone-900 dark:text-white">${(order.finalTotal || 0).toFixed(2)}</div>
+                                <div className="text-[10px] text-stone-400 dark:text-zinc-500 uppercase tracking-tighter">{order.paymentMethod}</div>
+                            </td>
                             <td className="px-6 py-4 text-right space-x-3">
                                 <button 
                                     onClick={() => handleCompleteOrder(order.id)} 
@@ -778,12 +794,13 @@ const KDSView: React.FC = () => {
                                     {(order.items || []).map(item => (
                                         <li key={item.id}>
                                             <div className="font-semibold text-stone-900 dark:text-white">
-                                                {item.quantity}x {item.drink?.name || 'Unknown Drink'}
+                                                {item.quantity}x 
                                                 {item.selectedVariantId && item.drink?.variants && (
-                                                    <span className="text-sm font-bold text-stone-400 dark:text-zinc-500 ml-2 italic">
-                                                        ({item.drink.variants.find(v => v.id === item.selectedVariantId)?.name})
+                                                    <span className="uppercase mx-1">
+                                                        {item.drink.variants.find(v => v.id === item.selectedVariantId)?.name}
                                                     </span>
                                                 )}
+                                                {item.drink?.name || 'Unknown Drink'}
                                                 {item.customName && <span className="font-normal text-stone-600 dark:text-zinc-400"> ({item.customName})</span>}
                                             </div>
                                             <div className="text-xs text-stone-500 dark:text-zinc-400 pl-2">

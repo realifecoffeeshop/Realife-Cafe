@@ -28,6 +28,7 @@ export enum PaymentMethod {
   CARD = 'Credit/Debit Card',
   SERVING = 'Serving',
   CASH = 'Cash',
+  COLLECTION = 'Pay on Collection',
 }
 
 export interface ModifierOption {
@@ -164,6 +165,7 @@ export interface AppState {
   theme: 'light' | 'dark';
   cart: CartItem[];
   permissionError: string | null;
+  globalError: string | null;
   isMenuLoaded: boolean;
 }
 
@@ -220,4 +222,5 @@ export type Action =
   | { type: 'CLEAR_CART' }
   | { type: 'SET_MENU_DATA'; payload: { drinks: Drink[]; categories: Category[]; modifierGroups: ModifierGroup[] } }
   | { type: 'SET_FEEDBACK'; payload: Feedback[] }
-  | { type: 'SET_PERMISSION_ERROR'; payload: string | null };
+  | { type: 'SET_PERMISSION_ERROR'; payload: string | null }
+  | { type: 'SET_GLOBAL_ERROR'; payload: string | null };

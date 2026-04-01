@@ -226,7 +226,8 @@ export const addOrder = async (order: Omit<Order, 'id'>): Promise<void> => {
                     category: drink.category || "",
                     basePrice: Number(drink.basePrice) || 0,
                     baseCost: Number(drink.baseCost) || 0,
-                    modifierGroups: Array.isArray(drink.modifierGroups) ? drink.modifierGroups : []
+                    modifierGroups: Array.isArray(drink.modifierGroups) ? drink.modifierGroups : [],
+                    variants: Array.isArray(drink.variants) ? drink.variants : []
                 };
 
                 // Ensure imageUrl and description are DEFINITELY not present
@@ -238,6 +239,7 @@ export const addOrder = async (order: Omit<Order, 'id'>): Promise<void> => {
                     quantity: Number(item.quantity) || 1,
                     finalPrice: Number(item.finalPrice) || 0,
                     selectedModifiers: sanitizeForFirebase(item.selectedModifiers || {}),
+                    selectedVariantId: item.selectedVariantId || null,
                     customName: item.customName || "",
                     isCompleted: !!item.isCompleted,
                     drink: cleanDrink
@@ -305,7 +307,8 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
                     category: drink.category || "",
                     basePrice: Number(drink.basePrice) || 0,
                     baseCost: Number(drink.baseCost) || 0,
-                    modifierGroups: Array.isArray(drink.modifierGroups) ? drink.modifierGroups : []
+                    modifierGroups: Array.isArray(drink.modifierGroups) ? drink.modifierGroups : [],
+                    variants: Array.isArray(drink.variants) ? drink.variants : []
                 };
 
                 // Ensure imageUrl and description are DEFINITELY not present
@@ -317,6 +320,7 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
                     quantity: Number(item.quantity) || 1,
                     finalPrice: Number(item.finalPrice) || 0,
                     selectedModifiers: sanitizeForFirebase(item.selectedModifiers || {}),
+                    selectedVariantId: item.selectedVariantId || null,
                     customName: item.customName || "",
                     isCompleted: !!item.isCompleted,
                     drink: cleanDrink

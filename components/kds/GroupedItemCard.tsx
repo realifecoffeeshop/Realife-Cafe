@@ -23,12 +23,14 @@ const GroupedItemCard: React.FC<GroupedItemCardProps> = ({ item }) => {
     >
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="font-bold text-lg text-stone-900 dark:text-white">{item.drink?.name || 'Unknown Drink'}</h3>
-          {item.selectedVariantId && item.drink?.variants && (
-            <p className="text-xs font-bold text-stone-400 dark:text-zinc-500 italic">
-              ({item.drink.variants.find(v => v.id === item.selectedVariantId)?.name})
-            </p>
-          )}
+          <h3 className="font-bold text-lg text-stone-900 dark:text-white">
+            {item.selectedVariantId && item.drink?.variants && (
+              <span className="uppercase mr-2">
+                {item.drink.variants.find(v => v.id === item.selectedVariantId)?.name}
+              </span>
+            )}
+            {item.drink?.name || 'Unknown Drink'}
+          </h3>
         </div>
         <span className="bg-zinc-700 text-white font-bold text-xl rounded-full flex items-center justify-center h-10 w-10 flex-shrink-0">
           {item.quantity}

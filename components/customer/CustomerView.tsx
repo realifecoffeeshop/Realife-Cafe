@@ -8,8 +8,10 @@ import DetailedDrinkCard from './DetailedDrinkCard';
 import MenuSkeleton from './MenuSkeleton';
 import Logo from '../shared/Logo';
 
-const OrderModal = lazy(() => import('./OrderModal'));
-const CartFlyout = lazy(() => import('./CartFlyout'));
+import { lazyWithRetry } from '../../lib/utils';
+
+const OrderModal = lazyWithRetry(() => import('./OrderModal'));
+const CartFlyout = lazyWithRetry(() => import('./CartFlyout'));
 
 import { addOrder } from '../../firebase/firestoreService';
 import { COFFEE_JOKES } from '../../constants';
@@ -148,8 +150,15 @@ const CustomerView: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
   const [pickupOption, setPickupOption] = useState<'now' | 'later'>('now');
-  const [pickupDate, setPickupDate] = useState(new Date().toISOString().split('T')[0]);
-  const [pickupTime, setPickupTime] = useState('09:00');
+  const [pickupDate, setPickupDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  });
+  const [pickupTime, setPickupTime] = useState(() => {
+    const now = new Date();
+    const future = new Date(now.getTime() + 30 * 60 * 1000); // Default to 30 mins from now
+    return `${String(future.getHours()).padStart(2, '0')}:${String(future.getMinutes()).padStart(2, '0')}`;
+  });
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -333,11 +342,12 @@ const CustomerView: React.FC = () => {
     let pickupTimestamp: number | undefined = undefined;
     if (pickupOption === 'later') {
         const [hour, minute] = pickupTime.split(':').map(Number);
-        const date = new Date(pickupDate);
-        date.setHours(hour, minute, 0, 0);
+        const [year, month, day] = pickupDate.split('-').map(Number);
+        const date = new Date(year, month - 1, day, hour, minute, 0, 0);
         pickupTimestamp = date.getTime();
 
-        if (pickupTimestamp < Date.now()) {
+        // Add 1-minute buffer to avoid issues with exact time matches
+        if (pickupTimestamp < (Date.now() - 60000)) {
             setError('Please select a pickup time in the future.');
             addToast('Please select a pickup time in the future.', 'error');
             setIsSubmitting(false);
@@ -358,7 +368,8 @@ const CustomerView: React.FC = () => {
     }, 0);
 
     const isAdmin = currentUser?.role === UserRole.ADMIN;
-    const newStatus = isAdmin ? (pickupTimestamp ? 'scheduled' : 'pending') : 'payment-required';
+    const isPayOnCollection = paymentMethod === PaymentMethod.COLLECTION;
+    const newStatus = (isAdmin && !isPayOnCollection) ? (pickupTimestamp ? 'scheduled' : 'pending') : 'payment-required';
     
     const newOrder: Omit<Order, 'id'> = {
         customerName: orderCustomerName,
@@ -392,6 +403,7 @@ const CustomerView: React.FC = () => {
         });
 
         // Reset UI state
+        setIsSubmitting(false);
         if (!currentUser) {
             setCustomerName('');
         }
@@ -404,6 +416,7 @@ const CustomerView: React.FC = () => {
         console.error("Failed to place order:", err);
         setError('There was a problem placing your order. Please try again.');
         addToast('Could not place order. Please check connection and security rules.', 'error');
+        setIsSubmitting(false);
     } finally {
         setIsSubmitting(false);
     }
