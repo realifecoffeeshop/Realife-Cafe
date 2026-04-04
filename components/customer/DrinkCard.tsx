@@ -25,11 +25,13 @@ const DrinkCard: React.FC<DrinkCardProps> = ({ drink, onSelect, onQuickAdd, prio
     ? `${getOptimizedUrl(200)} 200w, ${getOptimizedUrl(300)} 300w, ${getOptimizedUrl(500)} 500w`
     : undefined;
 
+  const isUnavailable = drink.isAvailable === false;
+
   return (
     <div 
-      className="relative rounded-[2rem] shadow-sm hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-500 cursor-pointer group h-64 bg-stone-100 dark:bg-zinc-800 transform-gpu will-change-transform overflow-hidden" 
-      onClick={() => onSelect(drink)}
-      aria-label={`Select ${drink?.name || 'Item'}`}
+      className={`relative rounded-[2rem] shadow-sm hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-500 cursor-pointer group h-56 sm:h-64 bg-stone-100 dark:bg-zinc-800 transform-gpu will-change-transform overflow-hidden ${isUnavailable ? 'grayscale cursor-not-allowed opacity-75' : ''}`} 
+      onClick={() => !isUnavailable && onSelect(drink)}
+      aria-label={`Select ${drink?.name || 'Item'}${isUnavailable ? ' (Unavailable)' : ''}`}
     >
       <div className="absolute inset-0 bg-stone-100 dark:bg-zinc-800">
         <img 
@@ -47,7 +49,7 @@ const DrinkCard: React.FC<DrinkCardProps> = ({ drink, onSelect, onQuickAdd, prio
 
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-500"></div>
       
-      <div className="absolute top-4 left-4">
+      <div className="absolute top-4 left-4 flex gap-2">
         <span className="px-3 py-1.5 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md rounded-xl text-sm font-bold text-stone-900 dark:text-white shadow-lg font-serif">
           {drink.variants && drink.variants.length > 0 ? (
             `from $${Math.min(...drink.variants.map(v => v.price)).toFixed(2)}`
@@ -55,28 +57,35 @@ const DrinkCard: React.FC<DrinkCardProps> = ({ drink, onSelect, onQuickAdd, prio
             `$${drink.basePrice.toFixed(2)}`
           )}
         </span>
+        {isUnavailable && (
+          <span className="px-3 py-1.5 bg-red-500/90 backdrop-blur-md rounded-xl text-[10px] uppercase tracking-widest font-bold text-white shadow-lg font-serif flex items-center">
+            Unavailable
+          </span>
+        )}
       </div>
 
-      <div className="absolute bottom-0 left-0 p-6 w-full">
-        <h3 className="text-2xl font-serif font-bold text-white drop-shadow-2xl leading-tight group-hover:translate-x-1 transition-transform duration-500">{drink?.name || 'Unnamed Drink'}</h3>
+      <div className="absolute bottom-0 left-0 p-4 sm:p-6 w-full">
+        <h3 className="text-lg sm:text-2xl font-serif font-bold text-white drop-shadow-2xl leading-tight group-hover:translate-x-1 transition-transform duration-500">{drink?.name || 'Unnamed Drink'}</h3>
         
-        <div className="mt-2 md:mt-4 flex items-center justify-between opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-500 transform translate-y-0 md:translate-y-4 md:group-hover:translate-y-0">
-          <span className="text-[10px] uppercase tracking-[0.2em] text-white/80 font-bold font-serif italic">View Details</span>
-          {onQuickAdd && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onQuickAdd(drink);
-              }}
-              className="p-2 md:p-2.5 bg-white text-stone-900 rounded-full shadow-2xl hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all duration-300 transform hover:scale-110"
-              aria-label={`Quick add ${drink?.name || 'Item'} to cart`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-          )}
-        </div>
+        {!isUnavailable && (
+          <div className="mt-2 md:mt-4 flex items-center justify-between opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-500 transform translate-y-0 md:translate-y-4 md:group-hover:translate-y-0">
+            <span className="text-[8px] sm:text-[10px] uppercase tracking-[0.2em] text-white/80 font-bold font-serif italic">View Details</span>
+            {onQuickAdd && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onQuickAdd(drink);
+                }}
+                className="p-1.5 sm:p-2.5 bg-white text-stone-900 rounded-full shadow-2xl hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all duration-300 transform hover:scale-110"
+                aria-label={`Quick add ${drink?.name || 'Item'} to cart`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
       </div>
       
       {drink.description && (

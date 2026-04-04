@@ -1,7 +1,12 @@
 import * as React from 'react';
 import { AppState, Action } from '../types';
 
-export const AppContext = React.createContext<{ state: AppState; dispatch: React.Dispatch<Action>; firebaseUser: any | null } | undefined>(undefined);
+export const AppContext = React.createContext<{ 
+  state: AppState; 
+  dispatch: React.Dispatch<Action>; 
+  firebaseUser: any | null;
+  loadHistory: (limit?: number, endAtTimestamp?: number) => Promise<void>;
+} | undefined>(undefined);
 
 export function useApp() {
   const context = React.useContext(AppContext);

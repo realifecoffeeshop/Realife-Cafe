@@ -5,17 +5,50 @@ import { PaymentMethod, Order } from '../../types';
 import { fetchOrdersByDateRange } from '../../firebase/firestoreService';
 import { Loader2 } from 'lucide-react';
 
-const StatCard: React.FC<{ title: string; value: string; }> = memo(({ title, value }) => (
+const StatCard: React.FC<{ title: string; value: string; isLoading?: boolean }> = memo(({ title, value, isLoading }) => (
   <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-zinc-800 group hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
     <h3 className="text-[10px] font-bold text-stone-400 dark:text-zinc-500 uppercase tracking-[0.2em] mb-4 ml-1">{title}</h3>
-    <p className="text-4xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">{value}</p>
+    {isLoading ? (
+      <div className="h-10 w-24 bg-stone-100 dark:bg-zinc-800 animate-pulse rounded-lg"></div>
+    ) : (
+      <p className="text-4xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">{value}</p>
+    )}
     <div className="mt-4 h-1 w-8 bg-stone-100 dark:bg-zinc-800 rounded-full group-hover:w-16 group-hover:bg-stone-900 dark:group-hover:bg-white transition-all duration-500"></div>
   </div>
 ));
 
-const ChartPlaceholder: React.FC<{ message: string; isError?: boolean }> = memo(({ message, isError }) => (
+const ChartPlaceholder: React.FC<{ 
+  message?: string; 
+  isError?: boolean; 
+  isLoading?: boolean;
+  type?: 'bar' | 'pie' | 'horizontal-bar';
+}> = memo(({ message, isError, isLoading, type }) => (
   <div className={`flex flex-col items-center justify-center h-full p-8 text-center ${isError ? 'text-red-500 dark:text-red-400' : 'text-stone-400 dark:text-zinc-500'}`}>
-    {isError ? (
+    {isLoading ? (
+      <div className="w-full h-full flex flex-col items-center justify-center gap-4">
+        {type === 'bar' && (
+          <div className="flex items-end gap-2 h-40 w-full max-w-[240px]">
+            {[40, 70, 50, 90, 60, 80].map((h, i) => (
+              <div key={i} className="flex-1 bg-stone-100 dark:bg-zinc-800/50 animate-pulse rounded-t-md" style={{ height: `${h}%` }}></div>
+            ))}
+          </div>
+        )}
+        {type === 'pie' && (
+          <div className="w-32 h-32 rounded-full border-[12px] border-stone-100 dark:border-zinc-800/50 animate-pulse flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-stone-50 dark:bg-zinc-900"></div>
+          </div>
+        )}
+        {type === 'horizontal-bar' && (
+          <div className="flex flex-col gap-3 w-full max-w-[240px]">
+            {[90, 70, 80, 60, 50].map((w, i) => (
+              <div key={i} className="h-6 bg-stone-100 dark:bg-zinc-800/50 animate-pulse rounded-r-md" style={{ width: `${w}%` }}></div>
+            ))}
+          </div>
+        )}
+        {!type && <Loader2 className="h-10 w-10 animate-spin opacity-20 mb-3" />}
+        <p className="text-sm font-medium italic font-serif mt-2">{isLoading ? 'Fetching data...' : message}</p>
+      </div>
+    ) : isError ? (
       <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
       </svg>
@@ -24,7 +57,7 @@ const ChartPlaceholder: React.FC<{ message: string; isError?: boolean }> = memo(
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
       </svg>
     )}
-    <p className="text-sm font-medium italic font-serif">{message}</p>
+    <p className="text-sm font-medium italic font-serif">{isLoading ? 'Fetching data...' : message}</p>
   </div>
 ));
 
@@ -35,11 +68,14 @@ const PerformanceChart: React.FC<{
   tooltipStyle: any;
   dateError: string | null;
   hasOrders: boolean;
-}> = memo(({ data, isSingleDay, tickColor, tooltipStyle, dateError, hasOrders }) => (
+  isLoading?: boolean;
+}> = memo(({ data, isSingleDay, tickColor, tooltipStyle, dateError, hasOrders, isLoading }) => (
   <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-sm border border-stone-100 dark:border-zinc-700/50">
     <h3 className="text-lg font-serif font-bold mb-6 text-stone-900 dark:text-white">Performance Overview</h3>
     <div style={{ width: '100%', height: 320 }}>
-      {dateError ? (
+      {isLoading ? (
+        <ChartPlaceholder isLoading type="bar" />
+      ) : dateError ? (
           <ChartPlaceholder message={dateError} isError />
       ) : hasOrders ? (
           <ResponsiveContainer>
@@ -70,11 +106,14 @@ const PaymentMethodsChart: React.FC<{
   tooltipStyle: any;
   dateError: string | null;
   colors: string[];
-}> = memo(({ data, tickColor, tooltipStyle, dateError, colors }) => (
+  isLoading?: boolean;
+}> = memo(({ data, tickColor, tooltipStyle, dateError, colors, isLoading }) => (
   <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-sm border border-stone-100 dark:border-zinc-700/50">
       <h3 className="text-lg font-serif font-bold mb-6 text-stone-900 dark:text-white">Payment Methods</h3>
       <div style={{ width: '100%', height: 320 }}>
-          {dateError ? (
+          {isLoading ? (
+              <ChartPlaceholder isLoading type="pie" />
+          ) : dateError ? (
               <ChartPlaceholder message={dateError} isError />
           ) : data.length > 0 ? (
               <ResponsiveContainer>
@@ -114,11 +153,14 @@ const TopItemsChart: React.FC<{
   tickColor: string; 
   tooltipStyle: any;
   dateError: string | null;
-}> = memo(({ data, tickColor, tooltipStyle, dateError }) => (
+  isLoading?: boolean;
+}> = memo(({ data, tickColor, tooltipStyle, dateError, isLoading }) => (
   <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-sm border border-stone-100 dark:border-zinc-700/50">
     <h3 className="text-lg font-serif font-bold mb-6 text-stone-900 dark:text-white">Top 10 Items by Revenue</h3>
     <div style={{ width: '100%', height: 400 }}>
-      {dateError ? (
+      {isLoading ? (
+        <ChartPlaceholder isLoading type="horizontal-bar" />
+      ) : dateError ? (
           <ChartPlaceholder message={dateError} isError />
       ) : data.length > 0 ? (
           <ResponsiveContainer>
@@ -145,11 +187,14 @@ const CategorySalesChart: React.FC<{
   tickColor: string; 
   tooltipStyle: any;
   dateError: string | null;
-}> = memo(({ data, tickColor, tooltipStyle, dateError }) => (
+  isLoading?: boolean;
+}> = memo(({ data, tickColor, tooltipStyle, dateError, isLoading }) => (
   <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-sm border border-stone-100 dark:border-zinc-700/50">
     <h3 className="text-lg font-serif font-bold mb-6 text-stone-900 dark:text-white">Sales by Category</h3>
     <div style={{ width: '100%', height: 400 }}>
-      {dateError ? (
+      {isLoading ? (
+        <ChartPlaceholder isLoading type="bar" />
+      ) : dateError ? (
           <ChartPlaceholder message={dateError} isError />
       ) : data.length > 0 ? (
           <ResponsiveContainer>
@@ -222,8 +267,10 @@ const Dashboard: React.FC = () => {
   }, [fetchedOrders, dateError]);
 
   const totalRevenue = useMemo(() => (filteredOrders || []).reduce((sum, o) => sum + (o.finalTotal || 0), 0), [filteredOrders]);
+  const servingRevenue = useMemo(() => (filteredOrders || []).filter(o => o.paymentMethod === PaymentMethod.SERVING).reduce((sum, o) => sum + (o.finalTotal || 0), 0), [filteredOrders]);
   const totalCost = useMemo(() => (filteredOrders || []).reduce((sum, o) => sum + (o.totalCost || 0), 0), [filteredOrders]);
   const totalProfit = totalRevenue - totalCost;
+  const netAdjustedRevenue = totalRevenue - servingRevenue - totalCost;
   
   const drinksProcessed = useMemo(() => (filteredOrders || []).reduce((sum, o) => sum + (o.items || []).reduce((itemSum, i) => itemSum + (i.quantity || 0), 0), 0), [filteredOrders]);
 
@@ -406,11 +453,53 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Revenue" value={`$${totalRevenue.toFixed(2)}`} />
-        <StatCard title="Total Profit" value={`$${totalProfit.toFixed(2)}`} />
-        <StatCard title="Drinks Processed" value={drinksProcessed.toString()} />
-        <StatCard title="Avg. Time" value={`${avgProcessingTime.toFixed(1)}m`} />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <StatCard title="Total Revenue" value={`$${totalRevenue.toFixed(2)}`} isLoading={isLoading} />
+        <StatCard title="Net Adjusted" value={`$${netAdjustedRevenue.toFixed(2)}`} isLoading={isLoading} />
+        <StatCard title="Total Profit" value={`$${totalProfit.toFixed(2)}`} isLoading={isLoading} />
+        <StatCard title="Drinks Processed" value={drinksProcessed.toString()} isLoading={isLoading} />
+        <StatCard title="Avg. Time" value={`${avgProcessingTime.toFixed(1)}m`} isLoading={isLoading} />
+      </div>
+
+      <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-zinc-800">
+        <h3 className="text-lg font-serif font-bold text-stone-900 dark:text-white mb-6">Financial Summary</h3>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center pb-4 border-b border-stone-50 dark:border-zinc-800">
+            <span className="text-stone-500 dark:text-zinc-400">Total Revenue (Gross)</span>
+            {isLoading ? (
+              <div className="h-6 w-20 bg-stone-100 dark:bg-zinc-800 animate-pulse rounded"></div>
+            ) : (
+              <span className="font-serif font-bold text-stone-900 dark:text-white">${totalRevenue.toFixed(2)}</span>
+            )}
+          </div>
+          <div className="flex justify-between items-center pb-4 border-b border-stone-50 dark:border-zinc-800">
+            <span className="text-stone-500 dark:text-zinc-400">Revenue from 'Serving' Drinks</span>
+            {isLoading ? (
+              <div className="h-6 w-20 bg-stone-100 dark:bg-zinc-800 animate-pulse rounded"></div>
+            ) : (
+              <span className="font-serif font-bold text-red-500">-${servingRevenue.toFixed(2)}</span>
+            )}
+          </div>
+          <div className="flex justify-between items-center pb-4 border-b border-stone-50 dark:border-zinc-800">
+            <span className="text-stone-500 dark:text-zinc-400">Cost of Goods Sold (COGS)</span>
+            {isLoading ? (
+              <div className="h-6 w-20 bg-stone-100 dark:bg-zinc-800 animate-pulse rounded"></div>
+            ) : (
+              <span className="font-serif font-bold text-red-500">-${totalCost.toFixed(2)}</span>
+            )}
+          </div>
+          <div className="flex justify-between items-center pt-2">
+            <span className="text-stone-900 dark:text-white font-bold">Net Adjusted Revenue</span>
+            {isLoading ? (
+              <div className="h-8 w-24 bg-stone-100 dark:bg-zinc-800 animate-pulse rounded"></div>
+            ) : (
+              <span className="text-2xl font-serif font-bold text-stone-900 dark:text-white">${netAdjustedRevenue.toFixed(2)}</span>
+            )}
+          </div>
+          <p className="text-[10px] text-stone-400 dark:text-zinc-500 italic mt-4">
+            * Net Adjusted Revenue = Gross Revenue - Serving Revenue - COGS
+          </p>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -421,6 +510,7 @@ const Dashboard: React.FC = () => {
           tooltipStyle={tooltipStyle} 
           dateError={dateError}
           hasOrders={filteredOrders.length > 0}
+          isLoading={isLoading}
         />
         <PaymentMethodsChart 
           data={paymentMethodData} 
@@ -428,6 +518,7 @@ const Dashboard: React.FC = () => {
           tooltipStyle={tooltipStyle} 
           dateError={dateError}
           colors={COLORS}
+          isLoading={isLoading}
         />
       </div>
 
@@ -437,12 +528,14 @@ const Dashboard: React.FC = () => {
           tickColor={tickColor} 
           tooltipStyle={tooltipStyle} 
           dateError={dateError}
+          isLoading={isLoading}
         />
         <CategorySalesChart 
           data={salesByCategoryData} 
           tickColor={tickColor} 
           tooltipStyle={tooltipStyle} 
           dateError={dateError}
+          isLoading={isLoading}
         />
       </div>
     </div>

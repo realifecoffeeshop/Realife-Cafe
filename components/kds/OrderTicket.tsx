@@ -13,23 +13,34 @@ interface OrderTicketProps {
   onUnmerge?: (id: string) => void;
 }
 
-const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, onToggleItem, isSelected, onSelect, onUnmerge }) => {
+const Timer = memo(({ createdAt, timeColourClass }: { createdAt: number; timeColourClass: (minutes: number) => string }) => {
   const [timeElapsed, setTimeElapsed] = useState('');
+  const [minutesWaiting, setMinutesWaiting] = useState(0);
 
   useEffect(() => {
     const updateTimer = () => {
-      const createdAt = order.createdAt || Date.now();
-      const seconds = Math.floor((Date.now() - createdAt) / 1000);
-      const minutes = Math.floor(seconds / 60);
+      const start = createdAt || Date.now();
+      const seconds = Math.floor((Date.now() - start) / 1000);
+      const mins = Math.floor(seconds / 60);
       const remainingSeconds = seconds % 60;
-      setTimeElapsed(`${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`);
+      
+      setMinutesWaiting(mins);
+      setTimeElapsed(`${mins.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`);
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [order.createdAt]);
-  
+  }, [createdAt]);
+
+  return (
+    <span className={`px-3 py-1 text-sm font-bold rounded-full transition-colors duration-500 ${timeColourClass(minutesWaiting)}`}>
+      {timeElapsed}
+    </span>
+  );
+});
+
+const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, onToggleItem, isSelected, onSelect, onUnmerge }) => {
   const getMinutesWaiting = () => {
       const createdAt = order.createdAt || Date.now();
       return Math.floor((Date.now() - createdAt) / 60000);
@@ -37,12 +48,11 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
   
   const allItemsCompleted = order.items.every(item => item.isCompleted);
 
-  const timeColourClass = () => {
-      const minutes = getMinutesWaiting();
-      if (minutes >= 10) return 'bg-red-500 text-white';
-      if (minutes >= 7) return 'bg-orange-500 text-white';
-      if (minutes >= 5) return 'bg-yellow-400 text-black dark:bg-yellow-500 dark:text-black';
-      return 'bg-green-500 text-white';
+  const timeColourClass = (minutes: number) => {
+      if (minutes >= 10) return 'bg-red-500 text-white shadow-lg shadow-red-500/20';
+      if (minutes >= 7) return 'bg-orange-500 text-white shadow-lg shadow-orange-500/20';
+      if (minutes >= 5) return 'bg-yellow-400 text-black dark:bg-yellow-500 dark:text-black shadow-lg shadow-yellow-500/20';
+      return 'bg-green-500 text-white shadow-lg shadow-green-500/20';
   }
 
   const ticketBorderClass = () => {
@@ -119,9 +129,7 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
               </div>
             </div>
             <div className="flex flex-col items-end">
-              <span className={`px-3 py-1 text-sm font-bold rounded-full ${timeColourClass()}`}>
-                {timeElapsed}
-              </span>
+              <Timer createdAt={order.createdAt} timeColourClass={timeColourClass} />
               {order.mergeId && onUnmerge && (
                 <button 
                   onClick={(e) => {

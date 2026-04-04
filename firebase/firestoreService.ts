@@ -96,6 +96,39 @@ const validateNoUndefined = (data: any, context: string) => {
 
 // --- Order Functions ---
 
+export const onActiveOrdersUpdate = (callback: (orders: Order[]) => void, errorCallback?: (error: any) => void): (() => void) => {
+  if (!isFirebaseConfigured || !database) {
+      console.warn('Firebase not configured. Cannot listen for active order updates.');
+      return () => {};
+  }
+  
+  // Listen to all orders that are NOT completed.
+  // In RTDB, 'completed' comes first alphabetically among our statuses:
+  // 1. completed
+  // 2. payment-required
+  // 3. pending
+  // 4. scheduled
+  // So startAt('payment-required') effectively excludes 'completed'.
+  const ordersRef = database.ref('orders').orderByChild('status').startAt('payment-required');
+  
+  const listener = ordersRef.on('value', (snapshot: any) => {
+    const ordersArray: Order[] = [];
+    if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot: any) => {
+            ordersArray.push({ ...childSnapshot.val(), id: childSnapshot.key });
+        });
+    }
+    callback(ordersArray);
+  }, (error: any) => {
+      if (errorCallback) {
+          errorCallback(error);
+      } else {
+          console.error("Error listening to active orders ref:", error);
+      }
+  });
+  return () => ordersRef.off('value', listener);
+};
+
 export const onOrdersUpdate = (callback: (orders: Order[]) => void, errorCallback?: (error: any) => void): (() => void) => {
   if (!isFirebaseConfigured || !database) {
       console.warn('Firebase not configured. Cannot listen for order updates.');
@@ -126,31 +159,46 @@ export const onOrdersUpdate = (callback: (orders: Order[]) => void, errorCallbac
   return () => ordersRef.off('value', listener);
 };
 
-export const fetchOrderHistory = async (limit: number = 100, beforeTimestamp?: number): Promise<Order[]> => {
+export const fetchOrderHistory = async (limit: number = 50, endAtTimestamp?: number): Promise<Order[]> => {
     if (!isFirebaseConfigured || !database) {
         console.warn('Firebase not configured. Cannot fetch order history.');
         return [];
     }
     
     try {
-        let query = database.ref('orders').orderByChild('createdAt');
+        // We want completed orders, sorted by completedAt descending.
+        // RTDB only supports one orderByChild. 
+        // We'll filter by status 'completed' and then sort client-side, 
+        // or orderByChild('completedAt') if we want time-based pagination.
         
-        if (beforeTimestamp) {
-            // Fetch orders created before the given timestamp
-            query = query.endAt(beforeTimestamp - 1);
+        let query = database.ref('orders').orderByChild('status').equalTo('completed');
+        
+        // Note: RTDB doesn't allow multiple filters easily. 
+        // If we want pagination by date, we should orderByChild('completedAt').
+        // But then we can't filter by status='completed' in the same query.
+        // Given the constraints, we'll fetch the last N orders and filter client-side if needed,
+        // or just rely on the fact that only completed orders have a completedAt timestamp.
+        
+        let historyQuery = database.ref('orders').orderByChild('completedAt');
+        
+        if (endAtTimestamp) {
+            historyQuery = historyQuery.endAt(endAtTimestamp - 1);
         }
         
-        const snapshot = await query.limitToLast(limit).once('value');
+        const snapshot = await historyQuery.limitToLast(limit).once('value');
         const ordersArray: Order[] = [];
         
         if (snapshot.exists()) {
             snapshot.forEach((childSnapshot: any) => {
-                ordersArray.push({ ...childSnapshot.val(), id: childSnapshot.key });
+                const order = childSnapshot.val();
+                if (order.status === 'completed') {
+                    ordersArray.push({ ...order, id: childSnapshot.key });
+                }
             });
         }
         
-        // Sort descending by createdAt
-        return ordersArray.sort((a, b) => b.createdAt - a.createdAt);
+        // Sort descending by completedAt
+        return ordersArray.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
     } catch (error: any) {
         if (isPermissionError(error)) {
             console.warn("Firebase Permission Denied: Could not fetch order history.");
@@ -248,20 +296,14 @@ export const addOrder = async (order: Omit<Order, 'id'>): Promise<void> => {
         };
 
         // 2. Second layer: Deep sanitization for RTDB types
-        const sanitized = sanitizeForFirebase(orderToSanitize);
+        const finalOrder = sanitizeForFirebase(orderToSanitize);
         
-        // 3. Third layer: JSON safeguard - this converts all 'undefined' to 'null'
-        const finalOrder = JSON.parse(JSON.stringify(sanitized, (key, value) => {
-            if (value === undefined) return null;
-            return value;
-        }));
-        
-        // 4. Final validation
+        // 3. Final validation
         validateNoUndefined(finalOrder, 'addOrder');
         
         console.log("[Firebase] Final order to set:", JSON.parse(JSON.stringify(finalOrder)));
         
-        // 5. Atomic push and set
+        // 4. Atomic push and set
         const newOrderRef = ordersRef.push();
         await newOrderRef.set(finalOrder);
     } catch (error: any) {
@@ -329,15 +371,9 @@ export const updateOrder = async (orderId: string, updates: Partial<Order>): Pro
         }
 
         // 2. Second layer: Deep sanitization
-        const sanitized = sanitizeForFirebase(orderUpdates);
+        const finalUpdates = sanitizeForFirebase(orderUpdates);
         
-        // 3. Third layer: JSON safeguard - this converts all 'undefined' to 'null'
-        const finalUpdates = JSON.parse(JSON.stringify(sanitized, (key, value) => {
-            if (value === undefined) return null;
-            return value;
-        }));
-        
-        // 4. Final validation
+        // 3. Final validation
         validateNoUndefined(finalUpdates, `updateOrder/${orderId}`);
         
         const orderRef = database.ref(`orders/${orderId}`);
@@ -576,6 +612,28 @@ export const onUsersUpdate = (callback: (users: User[]) => void, errorCallback?:
         }
     });
     return () => usersRef.off('value', listener);
+};
+
+export const onUserUpdate = (userId: string, callback: (user: User | null) => void, errorCallback?: (error: any) => void): (() => void) => {
+    if (!isFirebaseConfigured || !database) {
+        console.warn('Firebase not configured. Cannot listen for user updates.');
+        return () => {};
+    }
+    const userRef = database.ref(`users/${userId}`);
+    const listener = userRef.on('value', (snapshot: any) => {
+        if (snapshot.exists()) {
+            callback({ ...snapshot.val(), id: snapshot.key });
+        } else {
+            callback(null);
+        }
+    }, (error: any) => {
+        if (errorCallback) {
+            errorCallback(error);
+        } else {
+            console.error(`Error listening for user ${userId} updates:`, error);
+        }
+    });
+    return () => userRef.off('value', listener);
 };
 
 export const saveUser = async (user: User): Promise<void> => {

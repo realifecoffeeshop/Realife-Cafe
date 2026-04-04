@@ -123,6 +123,8 @@ const ViewErrorBoundary: React.FC<{ children: React.ReactNode; viewName: string 
   </ErrorBoundary>
 );
 
+import { motion, AnimatePresence } from 'framer-motion';
+
 const AppContent: React.FC = () => {
   const { state, dispatch } = useApp();
   const { addToast } = useToast();
@@ -187,62 +189,71 @@ const AppContent: React.FC = () => {
                 content: <p className="text-stone-600 dark:text-zinc-300">We're a passionate group of coffee lovers, baristas, and community builders dedicated to making your day better, one cup at a time.</p>
             });
             break;
-        case 'serve-with-us':
-            setInfoModalContent({
-                title: 'Serve With Us',
-                content: <p className="text-stone-600 dark:text-zinc-300">Interested in joining the Realife Cafe family? We're always looking for enthusiastic people to help us spread warmth and great coffee. Contact us at careers@realifecafe.com.</p>
-            });
-            break;
     }
   };
   
   const renderCurrentView = () => {
-    switch (currentView) {
-      case View.CUSTOMER:
-        return (
-          <ViewErrorBoundary viewName="Menu">
-            <CustomerView />
-          </ViewErrorBoundary>
-        );
-      case View.KDS:
-        return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? (
-          <ViewErrorBoundary viewName="KDS">
-            <React.Suspense fallback={<LoadingSpinner />}>
-              <KDSView />
-            </React.Suspense>
-          </ViewErrorBoundary>
-        ) : <AccessDenied />;
-      case View.ADMIN:
-        return currentUser?.role === UserRole.ADMIN ? (
-          <ViewErrorBoundary viewName="Admin Dashboard">
-            <React.Suspense fallback={<LoadingSpinner />}>
-              <AdminView />
-            </React.Suspense>
-          </ViewErrorBoundary>
-        ) : <AccessDenied />;
-      case View.PROFILE:
-        return currentUser ? (
-          <ViewErrorBoundary viewName="Profile">
-            <React.Suspense fallback={<LoadingSpinner />}>
-              <ProfileView />
-            </React.Suspense>
-          </ViewErrorBoundary>
-        ) : <AccessDenied />;
-      case View.BIRTHDAYS:
-        return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? (
-          <ViewErrorBoundary viewName="Birthdays">
-            <React.Suspense fallback={<LoadingSpinner />}>
-              <BirthdaysView />
-            </React.Suspense>
-          </ViewErrorBoundary>
-        ) : <AccessDenied />;
-      default:
-        return (
-          <ViewErrorBoundary viewName="Menu">
-            <CustomerView />
-          </ViewErrorBoundary>
-        );
-    }
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentView}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="h-full"
+        >
+          {(() => {
+            switch (currentView) {
+              case View.CUSTOMER:
+                return (
+                  <ViewErrorBoundary viewName="Menu">
+                    <CustomerView />
+                  </ViewErrorBoundary>
+                );
+              case View.KDS:
+                return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? (
+                  <ViewErrorBoundary viewName="KDS">
+                    <React.Suspense fallback={<LoadingSpinner />}>
+                      <KDSView />
+                    </React.Suspense>
+                  </ViewErrorBoundary>
+                ) : <AccessDenied />;
+              case View.ADMIN:
+                return currentUser?.role === UserRole.ADMIN ? (
+                  <ViewErrorBoundary viewName="Admin Dashboard">
+                    <React.Suspense fallback={<LoadingSpinner />}>
+                      <AdminView />
+                    </React.Suspense>
+                  </ViewErrorBoundary>
+                ) : <AccessDenied />;
+              case View.PROFILE:
+                return currentUser ? (
+                  <ViewErrorBoundary viewName="Profile">
+                    <React.Suspense fallback={<LoadingSpinner />}>
+                      <ProfileView />
+                    </React.Suspense>
+                  </ViewErrorBoundary>
+                ) : <AccessDenied />;
+              case View.BIRTHDAYS:
+                return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? (
+                  <ViewErrorBoundary viewName="Birthdays">
+                    <React.Suspense fallback={<LoadingSpinner />}>
+                      <BirthdaysView />
+                    </React.Suspense>
+                  </ViewErrorBoundary>
+                ) : <AccessDenied />;
+              default:
+                return (
+                  <ViewErrorBoundary viewName="Menu">
+                    <CustomerView />
+                  </ViewErrorBoundary>
+                );
+            }
+          })()}
+        </motion.div>
+      </AnimatePresence>
+    );
   };
 
   return (
@@ -269,7 +280,7 @@ const AppContent: React.FC = () => {
         onLoginClick={() => setIsLoginModalOpen(true)}
         onMenuLinkClick={handleMenuLinkClick}
       />
-      <main className="flex-grow">
+      <main className="flex-grow overflow-hidden">
         {renderCurrentView()}
       </main>
       <Feedback />

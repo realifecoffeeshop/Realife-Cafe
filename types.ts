@@ -36,6 +36,7 @@ export interface ModifierOption {
   name: string;
   price: number;
   cost: number;
+  isAvailable?: boolean;
 }
 
 export interface ModifierGroup {
@@ -59,6 +60,7 @@ export interface DrinkVariant {
   name: string;
   price: number;
   cost: number;
+  isAvailable?: boolean;
 }
 
 export interface Drink {
@@ -71,6 +73,7 @@ export interface Drink {
   modifierGroups: string[]; // array of modifier group ids
   description?: string;
   variants?: DrinkVariant[];
+  isAvailable?: boolean;
 }
 
 export interface SelectedModifier {
@@ -100,6 +103,7 @@ export interface Order {
   finalTotal: number;
   paymentMethod: PaymentMethod;
   status: 'pending' | 'completed' | 'scheduled' | 'payment-required';
+  isVerified?: boolean;
   createdAt: number;
   completedAt?: number;
   pickupTime?: number;
@@ -119,6 +123,7 @@ export interface User {
     role: UserRole;
     favourites: CartItem[];
     birthday?: string; // ISO date string YYYY-MM-DD
+    loyaltyPoints: number;
 }
 
 export interface Feedback {
@@ -150,6 +155,7 @@ export interface Customer {
     favouriteDrinks: CartItem[];
     lastOrderDate?: number;
     notes?: string;
+    loyaltyPoints: number;
 }
 
 export interface AppState {
@@ -157,6 +163,7 @@ export interface AppState {
   categories: Category[];
   modifierGroups: ModifierGroup[];
   orders: Order[];
+  historicalOrders: Order[];
   discounts: Discount[];
   users: User[];
   customers: Customer[];
@@ -167,12 +174,15 @@ export interface AppState {
   permissionError: string | null;
   globalError: string | null;
   isMenuLoaded: boolean;
+  isOrdersLoaded: boolean;
 }
 
 export type Action =
   | { type: '_HYDRATE_STATE_FROM_STORAGE' }
   | { type: 'SET_ORDERS', payload: Order[] }
+  | { type: 'SET_HISTORICAL_ORDERS', payload: Order[] }
   | { type: 'SET_USERS', payload: User[] }
+  | { type: 'SET_CURRENT_USER', payload: User }
   | { type: 'PLACE_ORDER'; payload: { 
         customerName: string;
         customerId: string;
@@ -180,6 +190,7 @@ export type Action =
         discountApplied: Discount | null;
         finalTotal: number;
         paymentMethod: PaymentMethod;
+        isVerified: boolean;
         pickupTime?: number;
     } }
   | { type: 'COMPLETE_ORDER'; payload: string } // order id
@@ -208,6 +219,7 @@ export type Action =
   | { type: 'LOGIN'; payload: { name: string } }
   | { type: 'LOGOUT' }
   | { type: 'ADD_FAVOURITE'; payload: CartItem }
+  | { type: 'UPDATE_FAVOURITE'; payload: CartItem }
   | { type: 'REMOVE_FAVOURITE'; payload: string } // cart item id
   | { type: 'UPDATE_USER_ROLE'; payload: { userId: string; role: UserRole } }
   | { type: 'UPDATE_USER_PROFILE'; payload: { userId: string; name?: string; birthday?: string } }

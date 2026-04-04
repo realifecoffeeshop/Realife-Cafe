@@ -1,7 +1,7 @@
 import React, { useReducer, useEffect, ReactNode, Dispatch, useState, useRef, useContext } from 'react';
-import { AppState, Action, Order, User, UserRole, Feedback, Category, Customer } from '../types';
+import { AppState, Action, Order, User, UserRole, Feedback, Category, Customer, PaymentMethod } from '../types';
 import { INITIAL_DISCOUNTS, INITIAL_DRINKS, INITIAL_CATEGORIES, INITIAL_MODIFIERS } from '../constants';
-import { updateOrder, deleteOrder, onOrdersUpdate, onMenuUpdate, saveMenu, seedInitialMenu, onUsersUpdate, updateUser, saveUser, seedInitialUsers, isPermissionError, submitFeedback, onFeedbackUpdate, onCustomersUpdate, saveCustomer, deleteCustomer } from '../firebase/firestoreService';
+import { updateOrder, deleteOrder, onOrdersUpdate, onActiveOrdersUpdate, fetchOrderHistory, onMenuUpdate, saveMenu, seedInitialMenu, onUsersUpdate, onUserUpdate, updateUser, saveUser, seedInitialUsers, isPermissionError, submitFeedback, onFeedbackUpdate, onCustomersUpdate, saveCustomer, deleteCustomer } from '../firebase/firestoreService';
 import { database, auth, isFirebaseConfigured } from '../firebase/config';
 import { useToast } from './ToastContext';
 import { AppContext, useApp } from './useApp';
@@ -11,11 +11,12 @@ const initialState: AppState = {
   categories: [],
   modifierGroups: [],
   orders: [],
+  historicalOrders: [],
   discounts: INITIAL_DISCOUNTS,
   users: [
-      { id: 'admin-user', name: 'admin', role: UserRole.ADMIN, favourites: [] },
-      { id: 'kitchen-user', name: 'kitchen', role: UserRole.KITCHEN, favourites: [] },
-      { id: 'jp1-admin-user', name: 'JP1', role: UserRole.ADMIN, favourites: [] },
+      { id: 'admin-user', name: 'admin', role: UserRole.ADMIN, favourites: [], loyaltyPoints: 0 },
+      { id: 'kitchen-user', name: 'kitchen', role: UserRole.KITCHEN, favourites: [], loyaltyPoints: 0 },
+      { id: 'jp1-admin-user', name: 'JP1', role: UserRole.ADMIN, favourites: [], loyaltyPoints: 0 },
   ],
   customers: [],
   currentUser: null,
@@ -25,6 +26,7 @@ const initialState: AppState = {
   permissionError: null,
   globalError: null,
   isMenuLoaded: false,
+  isOrdersLoaded: false,
 };
 
 const appReducer = (state: AppState, action: Action): AppState => {
@@ -33,16 +35,25 @@ const appReducer = (state: AppState, action: Action): AppState => {
       return { ...state, permissionError: action.payload };
     case 'SET_GLOBAL_ERROR':
       return { ...state, globalError: action.payload };
-    case 'SET_ORDERS':
-        return { ...state, orders: action.payload };
+    case 'SET_ORDERS': {
+        return { ...state, orders: action.payload, isOrdersLoaded: true };
+    }
+    case 'SET_HISTORICAL_ORDERS':
+        return { ...state, historicalOrders: action.payload };
     case 'SET_USERS': {
         const updatedCurrentUser = state.currentUser 
             ? (action.payload || []).find(u => u && u.id === state.currentUser?.id) || state.currentUser 
             : null;
-        return { ...state, users: action.payload || [], currentUser: updatedCurrentUser };
+        
+        // Ensure favourites is always an array
+        const normalizedUsers = (action.payload || []).map(u => u ? { ...u, favourites: u.favourites || [] } : u);
+        const normalizedCurrentUser = updatedCurrentUser ? { ...updatedCurrentUser, favourites: updatedCurrentUser.favourites || [] } : null;
+
+        return { ...state, users: normalizedUsers, currentUser: normalizedCurrentUser };
     }
-    case 'SET_CUSTOMERS':
+    case 'SET_CUSTOMERS': {
         return { ...state, customers: action.payload };
+    }
     case '_HYDRATE_STATE_FROM_STORAGE': {
         try {
             const localData = localStorage.getItem('cafe-pos-data');
@@ -50,16 +61,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
                 const parsed: Partial<AppState> = JSON.parse(localData);
                 
                 // Only update if there are actual changes to avoid unnecessary re-renders
-                const hasChanges = 
-                    (parsed.theme && parsed.theme !== state.theme) ||
-                    (parsed.users && JSON.stringify(parsed.users) !== JSON.stringify(state.users)) ||
-                    (parsed.discounts && JSON.stringify(parsed.discounts) !== JSON.stringify(state.discounts)) ||
-                    (parsed.drinks && JSON.stringify(parsed.drinks) !== JSON.stringify(state.drinks)) ||
-                    (parsed.categories && JSON.stringify(parsed.categories) !== JSON.stringify(state.categories)) ||
-                    (parsed.modifierGroups && JSON.stringify(parsed.modifierGroups) !== JSON.stringify(state.modifierGroups));
-
-                if (!hasChanges) return state;
-
+                // We'll trust the hydration payload if it exists to avoid expensive stringify on every boot
                 return {
                     ...state,
                     discounts: parsed.discounts ?? state.discounts,
@@ -94,6 +96,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
         id: action.payload.userId,
         role: isInitialAdmin ? UserRole.ADMIN : UserRole.CUSTOMER,
         favourites: [],
+        loyaltyPoints: 0,
       };
       
       saveUser(newUser).catch(err => console.error("Failed to save new user to Firebase:", err));
@@ -103,6 +106,18 @@ const appReducer = (state: AppState, action: Action): AppState => {
         users: [...state.users, newUser],
         currentUser: newUser,
       };
+    }
+    case 'SET_CURRENT_USER': {
+        const normalizedUser = action.payload ? { ...action.payload, favourites: action.payload.favourites || [] } : null;
+        if (!normalizedUser) return { ...state, currentUser: null };
+
+        return { 
+            ...state, 
+            currentUser: normalizedUser,
+            users: state.users.some(u => u.id === normalizedUser.id)
+                ? state.users.map(u => u.id === normalizedUser.id ? normalizedUser : u)
+                : [...state.users, normalizedUser]
+        };
     }
     case 'LOGIN': {
       const user = (state.users || []).find(
@@ -115,6 +130,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
             id: `guest-${Date.now()}`,
             role: UserRole.CUSTOMER,
             favourites: [],
+            loyaltyPoints: 0,
         };
         return { ...state, currentUser: guestUser };
       }
@@ -126,7 +142,14 @@ const appReducer = (state: AppState, action: Action): AppState => {
     }
     case 'ADD_FAVOURITE': {
       if (!state.currentUser) return state;
-      const updatedFavourites = [...state.currentUser.favourites, action.payload];
+      const currentFavourites = state.currentUser.favourites || [];
+      
+      // Prevent duplicates based on ID (which is derived from configuration)
+      if (currentFavourites.some(fav => fav.id === action.payload.id)) {
+          return state;
+      }
+
+      const updatedFavourites = [...currentFavourites, action.payload];
       const updatedUser = {
         ...state.currentUser,
         favourites: updatedFavourites
@@ -146,7 +169,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
     }
     case 'REMOVE_FAVOURITE': {
        if (!state.currentUser) return state;
-       const updatedFavourites = state.currentUser.favourites.filter(fav => fav.id !== action.payload);
+       const currentFavourites = state.currentUser.favourites || [];
+       const updatedFavourites = currentFavourites.filter(fav => fav.id !== action.payload);
        const updatedUser = {
            ...state.currentUser,
            favourites: updatedFavourites
@@ -156,6 +180,29 @@ const appReducer = (state: AppState, action: Action): AppState => {
        if (!state.currentUser.id.startsWith('guest-')) {
            updateUser(state.currentUser.id, { favourites: updatedFavourites })
              .catch(err => console.error("Failed to remove favourite in Firebase:", err));
+       }
+
+       return {
+           ...state,
+           currentUser: updatedUser,
+           users: state.users.map(c => c.id === updatedUser.id ? updatedUser : c)
+       };
+    }
+    case 'UPDATE_FAVOURITE': {
+       if (!state.currentUser) return state;
+       const currentFavourites = state.currentUser.favourites || [];
+       const updatedFavourites = currentFavourites.map(fav => 
+           fav.id === action.payload.id ? action.payload : fav
+       );
+       const updatedUser = {
+           ...state.currentUser,
+           favourites: updatedFavourites
+       };
+
+       // Update Firebase
+       if (!state.currentUser.id.startsWith('guest-')) {
+           updateUser(state.currentUser.id, { favourites: updatedFavourites })
+             .catch(err => console.error("Failed to update favourite in Firebase:", err));
        }
 
        return {
@@ -203,7 +250,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
 
         const nextStatus = (orderToVerify.pickupTime && orderToVerify.pickupTime > Date.now()) ? 'scheduled' : 'pending';
         
-        updateOrder(action.payload, { status: nextStatus, createdAt: Date.now() })
+        updateOrder(action.payload, { status: nextStatus, isVerified: true, createdAt: Date.now() })
             .catch(err => console.error("Failed to verify payment:", err));
         
         return state;
@@ -250,7 +297,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
         return state;
     }
     case 'ADD_CUSTOMER': {
-        const newCustomer = action.payload;
+        const newCustomer = { ...action.payload, loyaltyPoints: action.payload.loyaltyPoints || 0 };
         saveCustomer(newCustomer).catch(err => console.error("Failed to save new customer:", err));
         return { ...state, customers: [...state.customers, newCustomer] };
     }
@@ -263,10 +310,43 @@ const appReducer = (state: AppState, action: Action): AppState => {
         deleteCustomer(action.payload).catch(err => console.error("Failed to delete customer:", err));
         return { ...state, customers: state.customers.filter(c => c.id !== action.payload) };
     }
-    case 'COMPLETE_ORDER':
+    case 'COMPLETE_ORDER': {
+      const orderId = action.payload;
+      const order = state.orders.find(o => o.id === orderId);
+      
+      if (order && order.customerId) {
+          const eligibleMethods = [PaymentMethod.CARD, PaymentMethod.CASH, PaymentMethod.COLLECTION];
+          if (eligibleMethods.includes(order.paymentMethod)) {
+              const pointsEarned = order.items.reduce((sum, item) => sum + item.quantity, 0);
+              
+              // Update User if exists
+              const user = state.users.find(u => u.id === order.customerId);
+              if (user) {
+                  let newPoints = (user.loyaltyPoints || 0) + pointsEarned;
+                  if (newPoints >= 15) {
+                      newPoints = 0; // Clear points when free drink earned
+                  }
+                  updateUser(user.id, { loyaltyPoints: newPoints })
+                    .catch(err => console.error("Failed to update user loyalty points:", err));
+              }
+
+              // Update Customer if exists
+              const customer = state.customers.find(c => c.id === order.customerId);
+              if (customer) {
+                  let newPoints = (customer.loyaltyPoints || 0) + pointsEarned;
+                  if (newPoints >= 15) {
+                      newPoints = 0;
+                  }
+                  saveCustomer({ ...customer, loyaltyPoints: newPoints })
+                    .catch(err => console.error("Failed to update customer loyalty points:", err));
+              }
+          }
+      }
+
       updateOrder(action.payload, { status: 'completed', completedAt: Date.now() })
         .catch(err => console.error("Failed to complete order:", err));
       return state;
+    }
     case 'DELETE_ORDER':
       deleteOrder(action.payload)
         .catch(err => console.error("Failed to delete order:", err));
@@ -275,10 +355,14 @@ const appReducer = (state: AppState, action: Action): AppState => {
       updateOrder(action.payload, { status: 'pending', completedAt: undefined })
         .catch(err => console.error("Failed to re-queue order:", err));
       return state;
-    case 'ACTIVATE_SCHEDULED_ORDER':
-      updateOrder(action.payload, { status: 'pending' })
+    case 'ACTIVATE_SCHEDULED_ORDER': {
+      const order = state.orders.find(o => o.id === action.payload);
+      if (!order) return state;
+      const nextStatus = order.isVerified ? 'pending' : 'payment-required';
+      updateOrder(action.payload, { status: nextStatus })
         .catch(err => console.error("Failed to activate scheduled order:", err));
       return state;
+    }
     case 'ADD_DRINK':
       const newDrink = { ...action.payload, imageUrl: action.payload.imageUrl || "" };
       return { ...state, drinks: [...state.drinks, newDrink] };
@@ -417,15 +501,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
         const newCategories = (action.payload.categories || []).filter(Boolean);
         const newModifierGroups = (action.payload.modifierGroups || []).filter(Boolean);
 
-        // OPTIMIZATION: Deep equality check to prevent re-render if data is same as hydrated local data
-        // This prevents a "flicker" or "flash" when Firebase sync completes if nothing changed.
-        if (state.isMenuLoaded && 
-            JSON.stringify(state.drinks) === JSON.stringify(newDrinks) &&
-            JSON.stringify(state.categories) === JSON.stringify(newCategories) &&
-            JSON.stringify(state.modifierGroups) === JSON.stringify(newModifierGroups)) {
-            return state;
-        }
-
+        // OPTIMIZATION: We skip deep equality check here because Firebase data is the source of truth
+        // and we want to ensure the UI is in sync. The isMenuLoaded flag handles initial load.
         return {
             ...state,
             drinks: newDrinks,
@@ -434,8 +511,9 @@ const appReducer = (state: AppState, action: Action): AppState => {
             isMenuLoaded: true, // New flag to track initial load
         };
     }
-    case 'SET_FEEDBACK':
+    case 'SET_FEEDBACK': {
         return { ...state, feedback: action.payload };
+    }
     default:
       return state;
   }
@@ -531,39 +609,16 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       
       try {
         const serializedState = JSON.stringify(stateToSave);
-        // localStorage limit is usually 5MB. 
-        // We'll try to save the full state first.
         localStorage.setItem('cafe-pos-data', serializedState);
       } catch (error) {
-        // If it's a QuotaExceededError or other error
-        console.warn("Failed to save full state to localStorage, trying without images:", error);
-        
-        // Fallback 1: Try to save state without images (images are often the largest part)
-        try {
-          const stateWithoutImages = {
-            ...stateToSave,
-            drinks: drinks.map(d => ({ ...d, imageUrl: undefined })),
-            categories: categories.map(c => ({ ...c, imageUrl: undefined }))
-          };
-          localStorage.setItem('cafe-pos-data', JSON.stringify(stateWithoutImages));
-          console.log("Saved state without images to localStorage.");
-        } catch (imageError) {
-          console.error("Even state without images failed to save:", imageError);
-          
-          // Fallback 2: Try to save only essential session data if full state fails
+        console.warn("Failed to save state to localStorage:", error);
+        if (error instanceof Error && error.name === 'QuotaExceededError') {
+          // If quota exceeded, try to save only essential session data
           try {
             const essentialState = { currentUser, theme };
             localStorage.setItem('cafe-pos-data', JSON.stringify(essentialState));
-            console.log("Saved essential state only to localStorage.");
           } catch (fallbackError) {
-            console.error("Even essential state failed to save to localStorage:", fallbackError);
-            // If even this fails, we might need to clear some space
-            try {
-              localStorage.removeItem('cafe-pos-data');
-              console.log("Cleared localStorage to prevent further errors.");
-            } catch (clearError) {
-              console.error("Failed to clear localStorage:", clearError);
-            }
+            localStorage.removeItem('cafe-pos-data');
           }
         }
       }
@@ -600,6 +655,24 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         };
     }
   }, [database]);
+
+  // Effect to listen for real-time updates for the current user's profile
+  useEffect(() => {
+    if (database && firebaseUser) {
+        const unsubscribe = onUserUpdate(
+            firebaseUser.uid,
+            (user) => {
+                if (user) {
+                    dispatch({ type: 'SET_CURRENT_USER', payload: user });
+                }
+            },
+            (error) => {
+                console.error("Failed to sync current user profile:", error);
+            }
+        );
+        return () => unsubscribe();
+    }
+  }, [database, firebaseUser]);
 
   // Effect to listen for real-time updates from Firebase (Auth-dependent)
   useEffect(() => {
@@ -639,7 +712,8 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             const isStaff = state.currentUser?.role === UserRole.ADMIN || state.currentUser?.role === UserRole.KITCHEN;
             
             if (isStaff) {
-                unsubscribeOrders = onOrdersUpdate(
+                console.log("[AppContext] Staff detected, setting up real-time order listeners...");
+                unsubscribeOrders = onActiveOrdersUpdate(
                     (orders: Order[]) => {
                         dispatch({ type: 'SET_ORDERS', payload: orders });
                     },
@@ -720,12 +794,17 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   }, []);
 
 
+  const ordersRef = useRef(state.orders);
+  useEffect(() => {
+    ordersRef.current = state.orders;
+  }, [state.orders]);
+
   // Effect for scheduled order activation
   useEffect(() => {
     const PREPARATION_LEAD_TIME = 15 * 60 * 1000; // 15 minutes
     const interval = setInterval(() => {
         const now = Date.now();
-        state.orders.forEach(order => {
+        ordersRef.current.forEach(order => {
             if (order.status === 'scheduled' && order.pickupTime && (order.pickupTime - now) <= PREPARATION_LEAD_TIME) {
                 dispatch({ type: 'ACTIVATE_SCHEDULED_ORDER', payload: order.id });
             }
@@ -733,9 +812,25 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }, 10000); // Check every 10 seconds
 
     return () => clearInterval(interval);
-  }, [state.orders, dispatch]);
+  }, [dispatch]);
 
-  return <AppContext.Provider value={{ state, dispatch, firebaseUser }}>{children}</AppContext.Provider>;
+  const loadHistory = async (limit: number = 50, endAtTimestamp?: number) => {
+    try {
+      const history = await fetchOrderHistory(limit, endAtTimestamp);
+      if (endAtTimestamp) {
+        // Append to existing history
+        dispatch({ type: 'SET_HISTORICAL_ORDERS', payload: [...state.historicalOrders, ...history] });
+      } else {
+        // Initial load
+        dispatch({ type: 'SET_HISTORICAL_ORDERS', payload: history });
+      }
+    } catch (error) {
+      console.error("Failed to load history:", error);
+      addToast("Failed to load history", "error");
+    }
+  };
+
+  return <AppContext.Provider value={{ state, dispatch, firebaseUser, loadHistory }}>{children}</AppContext.Provider>;
 };
 
 export { AppProvider };

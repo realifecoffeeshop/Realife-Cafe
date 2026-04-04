@@ -1,11 +1,12 @@
 
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, memo } from 'react';
 import { useApp } from '../../context/useApp';
-import { Customer, CartItem, Drink } from '../../types';
+import { Customer, CartItem, Drink, SelectedModifier, Order } from '../../types';
 import { useToast } from '../../context/ToastContext';
-
 import { addOrder } from '../../firebase/firestoreService';
-import { SelectedModifier, Order } from '../../types';
+import OrderModal from '../customer/OrderModal';
+import ConfirmationModal from '../shared/ConfirmationModal';
+import { Plus, Trash2, Edit2 } from 'lucide-react';
 
 const CustomerDirectory: React.FC = () => {
   const { state, dispatch } = useApp();
@@ -14,7 +15,18 @@ const CustomerDirectory: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddingCustomer, setIsAddingCustomer] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  
+  // States for OrderModal (adding/editing favorites)
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [selectedDrinkForModal, setSelectedDrinkForModal] = useState<Drink | null>(null);
+  const [cartItemToEdit, setCartItemToEdit] = useState<CartItem | null>(null);
+  const [activeCustomerForFav, setActiveCustomerForFav] = useState<Customer | null>(null);
+  
+  // State for drink selection list
+  const [isSelectingDrink, setIsSelectingDrink] = useState(false);
+
+  // State for delete confirmation
+  const [favToDelete, setFavToDelete] = useState<{ customer: Customer, favId: string } | null>(null);
 
   const filteredCustomers = customers.filter(c => 
     (c?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
@@ -26,7 +38,8 @@ const CustomerDirectory: React.FC = () => {
       id: `cust-${Date.now()}`,
       name: newCustomerName,
       favouriteDrinks: [],
-      notes: ''
+      notes: '',
+      loyaltyPoints: 0
     };
     dispatch({ type: 'ADD_CUSTOMER', payload: newCustomer });
     setNewCustomerName('');
@@ -41,6 +54,62 @@ const CustomerDirectory: React.FC = () => {
 
   const handleUpdateNotes = (customer: Customer, notes: string) => {
     dispatch({ type: 'UPDATE_CUSTOMER', payload: { ...customer, notes } });
+  };
+
+  const handleRemoveFavourite = (customer: Customer, favId: string) => {
+    if (!favId) {
+      addToast('Could not identify favourite to remove', 'error');
+      return;
+    }
+    const updatedFavourites = customer.favouriteDrinks.filter(f => f.id !== favId);
+    if (updatedFavourites.length === customer.favouriteDrinks.length) {
+      // If nothing was removed, maybe the ID didn't match. 
+      // This could happen if IDs were not stable before.
+      addToast('Favourite not found', 'error');
+      return;
+    }
+    dispatch({ type: 'UPDATE_CUSTOMER', payload: { ...customer, favouriteDrinks: updatedFavourites } });
+    addToast('Favourite removed', 'info');
+  };
+
+  const handleOpenAddFavourite = (customer: Customer) => {
+    setActiveCustomerForFav(customer);
+    setIsSelectingDrink(true);
+  };
+
+  const handleSelectDrinkForFav = (drink: Drink) => {
+    setSelectedDrinkForModal(drink);
+    setCartItemToEdit(null);
+    setIsOrderModalOpen(true);
+    setIsSelectingDrink(false);
+  };
+
+  const handleEditFavourite = (customer: Customer, fav: CartItem) => {
+    setActiveCustomerForFav(customer);
+    setSelectedDrinkForModal(fav.drink);
+    setCartItemToEdit(fav);
+    setIsOrderModalOpen(true);
+  };
+
+  const handleSaveFavourite = (item: CartItem) => {
+    if (!activeCustomerForFav) return;
+
+    let updatedFavourites = [...(activeCustomerForFav.favouriteDrinks || [])];
+    
+    if (cartItemToEdit) {
+      // Editing existing - preserve the stable ID
+      const updatedItem = { ...item, id: cartItemToEdit.id };
+      updatedFavourites = updatedFavourites.map(f => f.id === cartItemToEdit.id ? updatedItem : f);
+    } else {
+      // Adding new - assign a stable ID
+      updatedFavourites.push({ ...item, id: `fav-${Date.now()}` });
+    }
+
+    dispatch({ type: 'UPDATE_CUSTOMER', payload: { ...activeCustomerForFav, favouriteDrinks: updatedFavourites } });
+    setIsOrderModalOpen(false);
+    setActiveCustomerForFav(null);
+    setCartItemToEdit(null);
+    setSelectedDrinkForModal(null);
   };
 
   const handleQuickOrder = async (customer: Customer, item: CartItem) => {
@@ -121,7 +190,19 @@ const CustomerDirectory: React.FC = () => {
         {filteredCustomers.map(customer => (
           <div key={customer.id} className="bg-white dark:bg-zinc-800 p-4 rounded-xl shadow-sm border border-stone-100 dark:border-zinc-700 hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-2">
-              <h3 className="font-bold text-lg text-stone-900 dark:text-white">{customer.name || 'Unknown'}</h3>
+              <div className="flex flex-col">
+                <h3 className="font-bold text-lg text-stone-900 dark:text-white">{customer.name || 'Unknown'}</h3>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                    <svg className="h-2.5 w-2.5 text-amber-600 dark:text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  </div>
+                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                    {customer.loyaltyPoints || 0} Points
+                  </span>
+                </div>
+              </div>
               <button 
                 onClick={() => handleDeleteCustomer(customer.id)}
                 className="text-red-500 hover:text-red-700 p-1"
@@ -143,20 +224,54 @@ const CustomerDirectory: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 block">Favourite Drinks</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-xs font-bold text-stone-500 uppercase tracking-wider block">Favourite Drinks</label>
+                <button 
+                  onClick={() => handleOpenAddFavourite(customer)}
+                  className="text-[10px] font-bold text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white flex items-center gap-1 bg-stone-100 dark:bg-zinc-700 px-2 py-0.5 rounded transition-colors"
+                >
+                  <Plus className="h-3 w-3" /> Add
+                </button>
+              </div>
               {customer.favouriteDrinks && customer.favouriteDrinks.length > 0 ? (
                 <div className="space-y-2">
-                  {customer.favouriteDrinks.map(fav => (
-                    <div key={fav.id} className="flex justify-between items-center bg-stone-50 dark:bg-zinc-900 p-2 rounded-lg group">
-                      <span className="text-sm font-medium">{fav.quantity}x {fav.drink?.name || 'Drink'}</span>
-                      <button 
-                        onClick={() => handleQuickOrder(customer, fav)}
-                        className="text-xs bg-stone-200 dark:bg-zinc-700 px-2 py-1 rounded hover:bg-stone-300 dark:hover:bg-zinc-600 transition-colors opacity-0 group-hover:opacity-100"
-                      >
-                        Quick Order
-                      </button>
-                    </div>
-                  ))}
+                  {customer.favouriteDrinks.map((fav, idx) => {
+                    const stableFavId = fav.id || `fav-${idx}`;
+                    return (
+                      <div key={stableFavId} className="flex flex-col bg-stone-50 dark:bg-zinc-900 p-2 rounded-lg group border border-transparent hover:border-stone-200 dark:hover:border-zinc-700 transition-all">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium truncate pr-2">{fav.quantity}x {fav.drink?.name || 'Drink'}</span>
+                          <div className="flex items-center gap-1.5">
+                            <button 
+                              onClick={() => handleQuickOrder(customer, fav)}
+                              className="text-[10px] bg-stone-800 text-white px-2.5 py-1 rounded-md hover:bg-stone-700 transition-colors font-bold"
+                            >
+                              Order
+                            </button>
+                            <button 
+                              onClick={() => handleEditFavourite(customer, fav)}
+                              className="p-1.5 text-stone-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-md transition-all"
+                              title="Edit Favourite"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                            <button 
+                              onClick={() => setFavToDelete({ customer, favId: stableFavId })}
+                              className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
+                              title="Remove Favourite"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                        {fav.selectedModifiers && Object.values(fav.selectedModifiers).some(m => m.length > 0) && (
+                          <div className="text-[10px] text-stone-400 dark:text-zinc-500 mt-1 truncate">
+                            {Object.values(fav.selectedModifiers).flatMap(m => m).map(m => m.option.name).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-xs text-stone-400 italic">No favourites saved yet.</p>
@@ -166,6 +281,61 @@ const CustomerDirectory: React.FC = () => {
         ))}
       </div>
       
+      {/* Drink Selection Modal for Adding Favourites */}
+      {isSelectingDrink && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="p-4 border-b dark:border-zinc-700 flex justify-between items-center">
+              <h3 className="font-bold text-lg">Select a Drink</h3>
+              <button onClick={() => setIsSelectingDrink(false)} className="text-stone-400 hover:text-stone-600">
+                <Plus className="h-6 w-6 rotate-45" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-4 space-y-2">
+              {drinks.filter(d => d.isAvailable !== false).map(drink => (
+                <button
+                  key={drink.id}
+                  onClick={() => handleSelectDrinkForFav(drink)}
+                  className="w-full text-left p-3 rounded-xl hover:bg-stone-50 dark:hover:bg-zinc-700 transition-colors flex justify-between items-center border border-transparent hover:border-stone-100 dark:hover:border-zinc-600"
+                >
+                  <span className="font-medium">{drink.name}</span>
+                  <span className="text-xs text-stone-400">${drink.basePrice.toFixed(2)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* OrderModal for configuring the favourite */}
+      {isOrderModalOpen && selectedDrinkForModal && (
+        <OrderModal
+          isOpen={isOrderModalOpen}
+          onClose={() => {
+            setIsOrderModalOpen(false);
+            setCartItemToEdit(null);
+            setSelectedDrinkForModal(null);
+          }}
+          drink={selectedDrinkForModal}
+          cartItemToEdit={cartItemToEdit}
+          onSaveItem={handleSaveFavourite}
+        />
+      )}
+
+      <ConfirmationModal
+        isOpen={!!favToDelete}
+        onClose={() => setFavToDelete(null)}
+        onConfirm={() => {
+          if (favToDelete) {
+            handleRemoveFavourite(favToDelete.customer, favToDelete.favId);
+          }
+        }}
+        title="Remove Favourite"
+        message={`Are you sure you want to remove this favourite drink for ${favToDelete?.customer.name}?`}
+        confirmButtonText="Remove"
+        variant="danger"
+      />
+
       {filteredCustomers.length === 0 && !isAddingCustomer && (
         <div className="text-center py-12 bg-stone-50 dark:bg-zinc-900 rounded-xl border-2 border-dashed border-stone-200 dark:border-zinc-800">
           <p className="text-stone-500">No customers found in directory.</p>
@@ -175,4 +345,4 @@ const CustomerDirectory: React.FC = () => {
   );
 };
 
-export default CustomerDirectory;
+export default memo(CustomerDirectory);

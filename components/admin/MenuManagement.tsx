@@ -21,10 +21,12 @@ const ModifierGroupForm: React.FC<{
     const [defaultOptionId, setDefaultOptionId] = useState(group.defaultOptionId || '');
     const { addToast } = useToast();
 
-    const handleOptionChange = (index: number, field: keyof ModifierOption, value: string | number) => {
+    const handleOptionChange = (index: number, field: keyof ModifierOption, value: string | number | boolean) => {
         const newOptions = [...options];
         if (field === 'name') {
             newOptions[index].name = value as string;
+        } else if (field === 'isAvailable') {
+            newOptions[index].isAvailable = value as boolean;
         } else {
             const parsed = parseFloat(value as string);
             (newOptions[index] as any)[field] = isNaN(parsed) ? 0 : parsed;
@@ -33,7 +35,7 @@ const ModifierGroupForm: React.FC<{
     };
 
     const addOption = () => {
-        setOptions([...options, { id: `new-opt-${Date.now()}`, name: '', price: 0, cost: 0 }]);
+        setOptions([...options, { id: `new-opt-${Date.now()}`, name: '', price: 0, cost: 0, isAvailable: true }]);
     };
 
     const removeOption = (index: number) => {
@@ -150,6 +152,18 @@ const ModifierGroupForm: React.FC<{
                             <div className="relative">
                                 <span className="absolute left-0 top-1/2 -translate-y-1/2 text-stone-400 font-serif font-bold text-xs">$</span>
                                 <input type="number" step="0.01" value={option?.cost || 0} onChange={(e) => handleOptionChange(index, 'cost', e.target.value)} placeholder="0.00" className="w-full bg-transparent border-none pl-3 p-0 text-stone-900 dark:text-white font-serif font-bold text-base focus:ring-0 placeholder-stone-300"/>
+                            </div>
+                        </div>
+                        <div className="col-span-1 sm:col-span-1 space-y-1">
+                            <label className="text-[8px] font-bold uppercase tracking-widest text-stone-400">Avail.</label>
+                            <div className="flex items-center h-6">
+                                <button
+                                    type="button"
+                                    onClick={() => handleOptionChange(index, 'isAvailable', option.isAvailable !== false ? false : true)}
+                                    className={`w-8 h-4 rounded-full transition-all duration-300 relative ${option.isAvailable !== false ? 'bg-green-500' : 'bg-stone-300 dark:bg-zinc-700'}`}
+                                >
+                                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all duration-300 ${option.isAvailable !== false ? 'left-4.5' : 'left-0.5'}`} />
+                                </button>
                             </div>
                         </div>
                         <div className="col-span-1 flex justify-end">
@@ -306,6 +320,7 @@ const MenuManagement: React.FC = () => {
             description: drinkFormState.description || '',
             modifierGroups: drinkFormState.modifierGroups || [],
             variants: drinkFormState.variants || [],
+            isAvailable: drinkFormState.isAvailable !== false,
         };
 
         // Optimistic update
@@ -596,14 +611,26 @@ const MenuManagement: React.FC = () => {
                     <form onSubmit={handleSaveDrink} className="space-y-8">
                         <div className="space-y-3">
                             <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Drink Name</label>
-                            <input 
-                                name="name" 
-                                value={drinkFormState.name || ''} 
-                                onChange={handleFormChange} 
-                                required 
-                                className="w-full bg-stone-50 dark:bg-zinc-800 border-none rounded-2xl px-6 py-4 text-stone-900 dark:text-white placeholder-stone-300 dark:placeholder-zinc-600 focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 transition-all font-serif font-bold text-lg"
-                                placeholder="e.g. Honey Lavender Latte"
-                            />
+                            <div className="flex gap-4">
+                                <input 
+                                    name="name" 
+                                    value={drinkFormState.name || ''} 
+                                    onChange={handleFormChange} 
+                                    required 
+                                    className="flex-1 bg-stone-50 dark:bg-zinc-800 border-none rounded-2xl px-6 py-4 text-stone-900 dark:text-white placeholder-stone-300 dark:placeholder-zinc-600 focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 transition-all font-serif font-bold text-lg"
+                                    placeholder="e.g. Honey Lavender Latte"
+                                />
+                                <div className="flex flex-col items-center justify-center px-4 bg-stone-50 dark:bg-zinc-800 rounded-2xl border border-stone-100 dark:border-zinc-700">
+                                    <label className="text-[8px] font-bold uppercase tracking-widest text-stone-400 mb-1">Available</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDrinkFormState({ ...drinkFormState, isAvailable: drinkFormState.isAvailable !== false ? false : true })}
+                                        className={`w-10 h-5 rounded-full transition-all duration-300 relative ${drinkFormState.isAvailable !== false ? 'bg-green-500' : 'bg-stone-300 dark:bg-zinc-700'}`}
+                                    >
+                                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${drinkFormState.isAvailable !== false ? 'left-5.5' : 'left-0.5'}`} />
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -820,7 +847,23 @@ const MenuManagement: React.FC = () => {
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="sm:col-span-1 flex justify-end">
+                                            <div className="sm:col-span-1 space-y-2">
+                                                <label className="text-[8px] font-bold uppercase tracking-widest text-stone-400">Avail.</label>
+                                                <div className="flex items-center h-[48px]">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const next = [...(drinkFormState.variants || [])];
+                                                            next[index].isAvailable = variant.isAvailable !== false ? false : true;
+                                                            setDrinkFormState({ ...drinkFormState, variants: next });
+                                                        }}
+                                                        className={`w-10 h-5 rounded-full transition-all duration-300 relative ${variant.isAvailable !== false ? 'bg-green-500' : 'bg-stone-300 dark:bg-zinc-700'}`}
+                                                    >
+                                                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${variant.isAvailable !== false ? 'left-5.5' : 'left-0.5'}`} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                    <div className="sm:col-span-1 flex justify-end">
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {

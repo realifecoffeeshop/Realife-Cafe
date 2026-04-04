@@ -26,6 +26,8 @@ const getWeekNumber = (d: Date): number => {
 };
 
 
+import { motion, AnimatePresence } from 'framer-motion';
+
 const CategoryButton: React.FC<{ 
     id: string; 
     name: string; 
@@ -39,11 +41,13 @@ const CategoryButton: React.FC<{
         : imageUrl;
 
     return (
-        <button
+        <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => onClick(id)}
-            className={`flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-full transition-all duration-500 border ${
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-full transition-all duration-300 border ${
                 isSelected
-                ? 'bg-stone-900 text-white border-stone-900 dark:bg-white dark:text-stone-900 dark:border-white shadow-lg transform scale-105'
+                ? 'bg-stone-900 text-white border-stone-900 dark:bg-white dark:text-stone-900 dark:border-white shadow-lg'
                 : 'bg-white dark:bg-zinc-800 text-stone-600 dark:text-zinc-400 border-stone-100 dark:border-zinc-700 hover:border-stone-300 dark:hover:border-zinc-500 hover:bg-stone-50 dark:hover:bg-zinc-700/50 shadow-sm'
             }`}
         >
@@ -57,7 +61,7 @@ const CategoryButton: React.FC<{
                 />
             )}
             <span className="font-serif tracking-tight">{name}</span>
-        </button>
+        </motion.button>
     );
 });
 
@@ -70,7 +74,7 @@ const MenuControls: React.FC<{
     viewMode: 'compact' | 'detailed';
     setViewMode: (mode: 'compact' | 'detailed') => void;
 }> = memo(({ searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, visibleCategories, viewMode, setViewMode }) => (
-    <div className="space-y-8">
+    <div className="space-y-8 mb-12">
         <div className="flex flex-col md:flex-row justify-between md:items-end gap-6 border-b border-stone-100 dark:border-zinc-800 pb-8">
             <div>
                 <h2 className="text-4xl md:text-5xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">Our Menu</h2>
@@ -112,7 +116,7 @@ const MenuControls: React.FC<{
                 </div>
             </div>
         </div>
-        <div id="menu-categories" className="flex flex-wrap items-center gap-3">
+        <div id="menu-categories" className="flex flex-wrap items-center gap-4">
             <CategoryButton 
                 id="all" 
                 name="All Items" 
@@ -369,7 +373,8 @@ const CustomerView: React.FC = () => {
 
     const isAdmin = currentUser?.role === UserRole.ADMIN;
     const isPayOnCollection = paymentMethod === PaymentMethod.COLLECTION;
-    const newStatus = (isAdmin && !isPayOnCollection) ? (pickupTimestamp ? 'scheduled' : 'pending') : 'payment-required';
+    const isVerified = isAdmin && !isPayOnCollection;
+    const newStatus = pickupTimestamp ? 'scheduled' : (isVerified ? 'pending' : 'payment-required');
     
     const newOrder: Omit<Order, 'id'> = {
         customerName: orderCustomerName,
@@ -381,6 +386,7 @@ const CustomerView: React.FC = () => {
         finalTotal,
         paymentMethod,
         status: newStatus,
+        isVerified,
         createdAt: Date.now(),
         ...(pickupTimestamp && { pickupTime: pickupTimestamp }),
     };
@@ -398,6 +404,7 @@ const CustomerView: React.FC = () => {
             discountApplied: appliedDiscount,
             finalTotal,
             paymentMethod,
+            isVerified,
             pickupTime: pickupTimestamp,
           },
         });
@@ -438,7 +445,7 @@ const CustomerView: React.FC = () => {
        const matchesSearch = (drink.name || '').toLowerCase().includes(deferredSearchTerm.toLowerCase());
        const matchesCategory = selectedCategory === 'all' || drink.category === selectedCategory;
        return matchesSearch && matchesCategory;
-    });
+     });
   }, [state.drinks, deferredSearchTerm, selectedCategory]);
   
   const handleModalClose = () => {
@@ -454,10 +461,10 @@ const CustomerView: React.FC = () => {
     <div className="bg-[#F5F3EF] dark:bg-zinc-900 text-stone-800 dark:text-zinc-200 transition-colors duration-300 min-h-screen w-full">
         <div className="w-full max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
             {/* Compact Header for Instant Menu Visibility */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-8 mb-8 md:mb-12">
                 <div className="text-center md:text-left">
-                    <h1 id="customer-view-heading" className="text-4xl md:text-6xl font-serif font-bold text-stone-900 dark:text-zinc-100 tracking-tight mb-2">Realife Cafe</h1>
-                    <p className="text-lg font-serif italic text-stone-500 dark:text-zinc-400">"Your weekly dose of happiness, one cup at a time."</p>
+                    <h1 id="customer-view-heading" className="text-3xl sm:text-4xl md:text-6xl font-serif font-bold text-stone-900 dark:text-zinc-100 tracking-tight mb-2">Realife Cafe</h1>
+                    <p className="text-base sm:text-lg font-serif italic text-stone-500 dark:text-zinc-400">"Your weekly dose of happiness, one cup at a time."</p>
                 </div>
                 <div className="hidden md:block">
                     <div className="bg-white dark:bg-zinc-800 px-6 py-4 rounded-2xl shadow-sm border border-stone-100 dark:border-zinc-800">
@@ -496,49 +503,68 @@ const CustomerView: React.FC = () => {
                                 <span>Updating Menu...</span>
                             </div>
                         )}
-                        <div className={viewMode === 'compact' 
-                            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4"
-                            : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                        }>
-                        {filteredDrinks.map((drink, index) => (
-                            <div key={drink.id} className={index === 0 ? 'first-drink-card' : ''}>
-                                {viewMode === 'compact' ? (
-                                    <DrinkCard 
-                                        drink={drink} 
-                                        onSelect={handleSelectDrink} 
-                                        onQuickAdd={handleQuickAdd}
-                                        priority={index < 6}
-                                    />
-                                ) : (
-                                    <DetailedDrinkCard 
-                                        drink={drink} 
-                                        onSelect={handleSelectDrink} 
-                                        onQuickAdd={handleQuickAdd}
-                                        priority={index < 4}
-                                    />
-                                )}
-                            </div>
-                        ))}
-                    </div>
+                        <motion.div 
+                            layout
+                            className={viewMode === 'compact' 
+                                ? "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-4 lg:gap-6"
+                                : "grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6"
+                            }
+                        >
+                            <AnimatePresence mode="popLayout">
+                                {filteredDrinks.map((drink, index) => (
+                                    <motion.div 
+                                        key={drink.id}
+                                        layout
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.9 }}
+                                        transition={{ duration: 0.2, delay: index * 0.02 }}
+                                        className={index === 0 ? 'first-drink-card' : ''}
+                                    >
+                                        {viewMode === 'compact' ? (
+                                            <DrinkCard 
+                                                drink={drink} 
+                                                onSelect={handleSelectDrink} 
+                                                onQuickAdd={handleQuickAdd}
+                                                priority={index < 6}
+                                            />
+                                        ) : (
+                                            <DetailedDrinkCard 
+                                                drink={drink} 
+                                                onSelect={handleSelectDrink} 
+                                                onQuickAdd={handleQuickAdd}
+                                                priority={index < 4}
+                                            />
+                                        )}
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
+                        </motion.div>
                     </>
                 )}
             </div>
         </div>
 
         {/* Floating Cart Button */}
-        <button
+        <motion.button
             id="cart-button"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             onClick={handleCartOpen}
-            className={`fixed bottom-6 right-24 bg-brand-primary dark:bg-white text-white dark:text-zinc-800 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center hover:bg-stone-700 dark:hover:bg-neutral-200 transition-all duration-300 hover:scale-110 z-30 ${cart.length > 0 ? 'animate-pulse-cart' : ''}`}
+            className={`fixed bottom-6 right-24 bg-brand-primary dark:bg-white text-white dark:text-zinc-800 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center hover:bg-stone-700 dark:hover:bg-neutral-200 transition-all duration-300 z-30 ${cart.length > 0 ? 'animate-pulse-cart' : ''}`}
             aria-label={`Open cart with ${cartItemCount} items`}
         >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
             {cartItemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                <motion.span 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center"
+                >
                     {cartItemCount}
-                </span>
+                </motion.span>
             )}
-        </button>
+        </motion.button>
         
         <Suspense fallback={null}>
             <CartFlyout
@@ -581,21 +607,52 @@ const CustomerView: React.FC = () => {
         </Suspense>
         
         {/* Fullscreen Trigger Modal */}
-        {showFullscreenPrompt && (
-            <div className="fixed inset-0 bg-[#A58D79] z-50 flex flex-col items-center justify-center text-white p-6">
-                 <div className="mb-8 transform scale-150">
-                    <Logo />
-                 </div>
-                 <h2 className="text-3xl font-bold mb-4 text-center">Ready to Order?</h2>
-                 <p className="mb-8 text-center text-lg max-w-md">Tap below to enter full-screen mode for the best experience.</p>
-                 <button 
-                    onClick={enterFullscreen}
-                    className="bg-white text-stone-900 px-8 py-4 rounded-full font-bold text-xl shadow-lg hover:bg-stone-100 transition-transform transform hover:scale-105"
-                 >
-                    Start Ordering
-                 </button>
-            </div>
-        )}
+        <AnimatePresence>
+            {showFullscreenPrompt && (
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-[#A58D79] z-50 flex flex-col items-center justify-center text-white p-6"
+                >
+                    <motion.div 
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1.5, opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="mb-8"
+                    >
+                        <Logo />
+                    </motion.div>
+                    <motion.h2 
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="text-3xl font-bold mb-4 text-center"
+                    >
+                        Ready to Order?
+                    </motion.h2>
+                    <motion.p 
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.4 }}
+                        className="mb-8 text-center text-lg max-w-md"
+                    >
+                        Tap below to enter full-screen mode for the best experience.
+                    </motion.p>
+                    <motion.button 
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.5 }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={enterFullscreen}
+                        className="bg-white text-stone-900 px-8 py-4 rounded-full font-bold text-xl shadow-lg hover:bg-stone-100 transition-all"
+                    >
+                        Start Ordering
+                    </motion.button>
+                </motion.div>
+            )}
+        </AnimatePresence>
     </div>
   );
 };

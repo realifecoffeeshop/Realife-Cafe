@@ -3,6 +3,7 @@ import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
 import { CartItem, ModifierOption } from '../../types';
 import ErrorBoundary from '../shared/ErrorBoundary';
+import OrderModal from './OrderModal';
 
 const ProfileView: React.FC = () => {
   const { state, dispatch } = useApp();
@@ -47,12 +48,18 @@ const ProfileView: React.FC = () => {
   }
   
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingFavourite, setEditingFavourite] = useState<CartItem | null>(null);
 
   const handleRemoveFavourite = (favouriteId: string) => {
     dispatch({ type: 'REMOVE_FAVOURITE', payload: favouriteId });
     addToast('Favourite removed.', 'success');
     setSwipedFavouriteId(null);
     setConfirmDeleteId(null);
+  };
+
+  const handleUpdateFavourite = (updatedItem: CartItem) => {
+    dispatch({ type: 'UPDATE_FAVOURITE', payload: updatedItem });
+    setEditingFavourite(null);
   };
 
   return (
@@ -63,6 +70,56 @@ const ProfileView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Left Column: Profile Info */}
         <div className="space-y-8">
+          {/* Loyalty Rewards Section */}
+          <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold mb-4 text-stone-900 dark:text-white">Loyalty Rewards</h2>
+            <div className="flex flex-col items-center justify-center p-4 bg-stone-50 dark:bg-zinc-700/30 rounded-xl border border-stone-100 dark:border-zinc-700">
+              <div className="relative w-32 h-32 flex items-center justify-center mb-4">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="58"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="transparent"
+                    className="text-stone-200 dark:text-zinc-700"
+                  />
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="58"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="transparent"
+                    strokeDasharray={364.4}
+                    strokeDashoffset={364.4 - (364.4 * (currentUser.loyaltyPoints || 0)) / 15}
+                    strokeLinecap="round"
+                    className="text-[#A58D79] transition-all duration-1000 ease-out"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-3xl font-bold text-stone-800 dark:text-white">{currentUser.loyaltyPoints || 0}</span>
+                  <span className="text-[10px] uppercase tracking-widest text-stone-500 dark:text-zinc-400">Points</span>
+                </div>
+              </div>
+              <p className="text-sm text-center text-stone-600 dark:text-zinc-300 font-medium">
+                {currentUser.loyaltyPoints >= 15 
+                  ? "You've earned a FREE drink! 🎉" 
+                  : `${15 - (currentUser.loyaltyPoints || 0)} more drinks until your next free one!`}
+              </p>
+              <div className="mt-4 w-full bg-stone-200 dark:bg-zinc-700 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-[#A58D79] h-full transition-all duration-1000" 
+                  style={{ width: `${Math.min(((currentUser.loyaltyPoints || 0) / 15) * 100, 100)}%` }}
+                />
+              </div>
+              <p className="mt-4 text-[10px] text-stone-400 dark:text-zinc-500 text-center uppercase tracking-tighter">
+                15 drinks = 1 free drink. Points clear after reward.
+              </p>
+            </div>
+          </div>
+
           <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-bold mb-4 text-stone-900 dark:text-white">Personal Information</h2>
             <div className="space-y-4">
@@ -141,10 +198,17 @@ const ProfileView: React.FC = () => {
                                  <div className="absolute top-0 right-0 h-full flex">
                                      <button 
                                          onClick={(e) => { e.stopPropagation(); handleReorder(fav); }}
-                                         className="w-24 h-full flex items-center justify-center bg-stone-700 text-white font-semibold transition-colors hover:bg-stone-600"
+                                         className="w-20 h-full flex items-center justify-center bg-stone-700 text-white font-semibold transition-colors hover:bg-stone-600 text-xs"
                                          aria-label={`Re-order ${fav.customName || fav.drink?.name || 'Item'}`}
                                      >
                                          Re-order
+                                     </button>
+                                     <button 
+                                         onClick={(e) => { e.stopPropagation(); setEditingFavourite(fav); }}
+                                         className="w-20 h-full flex items-center justify-center bg-amber-600 text-white font-semibold transition-colors hover:bg-amber-700 text-xs"
+                                         aria-label={`Edit ${fav.customName || fav.drink?.name || 'Item'}`}
+                                     >
+                                         Edit
                                      </button>
                                      <button
                                          onClick={(e) => { 
@@ -155,7 +219,7 @@ const ProfileView: React.FC = () => {
                                              setConfirmDeleteId(fav.id);
                                            }
                                          }}
-                                         className={`w-24 h-full flex items-center justify-center text-white font-semibold transition-colors ${confirmDeleteId === fav.id ? 'bg-red-800 hover:bg-red-900' : 'bg-red-600 hover:bg-red-700'}`}
+                                         className={`w-20 h-full flex items-center justify-center text-white font-semibold transition-colors text-xs ${confirmDeleteId === fav.id ? 'bg-red-800 hover:bg-red-900' : 'bg-red-600 hover:bg-red-700'}`}
                                          aria-label={`Remove ${fav.customName || fav.drink?.name || 'Item'} from favourites`}
                                      >
                                         {confirmDeleteId === fav.id ? 'Confirm?' : 'Remove'}
@@ -165,7 +229,7 @@ const ProfileView: React.FC = () => {
                                  {/* --- Swipeable Content - sits on top --- */}
                                  <div
                                      className={`relative p-4 transition-transform duration-300 ease-in-out cursor-pointer z-10 ${swipedFavouriteId === fav.id ? 'bg-stone-50 dark:bg-zinc-700/50' : 'bg-white dark:bg-zinc-800'}`}
-                                     style={{ transform: swipedFavouriteId === fav.id ? 'translateX(-192px)' : 'translateX(0)' }}
+                                     style={{ transform: swipedFavouriteId === fav.id ? 'translateX(-240px)' : 'translateX(0)' }}
                                      onClick={() => {
                                        handleSwipe(fav.id);
                                        if (confirmDeleteId) setConfirmDeleteId(null);
@@ -196,6 +260,16 @@ const ProfileView: React.FC = () => {
           </ErrorBoundary>
         </div>
       </div>
+      
+      {editingFavourite && (
+        <OrderModal
+          isOpen={!!editingFavourite}
+          onClose={() => setEditingFavourite(null)}
+          drink={editingFavourite.drink}
+          cartItemToEdit={editingFavourite}
+          onSaveItem={handleUpdateFavourite}
+        />
+      )}
     </div>
   </ErrorBoundary>
 );

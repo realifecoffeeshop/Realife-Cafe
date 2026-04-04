@@ -57,9 +57,23 @@
         "role": { "type": "string", "enum": ["admin", "kitchen", "customer"] },
         "favourites": { "type": "array", "items": { "$ref": "Drink" } },
         "hasCompletedTutorial": { "type": "boolean" },
-        "birthday": { "type": "string" }
+        "birthday": { "type": "string" },
+        "loyaltyPoints": { "type": "number" }
       },
-      "required": ["name", "role"]
+      "required": ["name", "role", "loyaltyPoints"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Represents a customer in the directory",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "favouriteDrinks": { "type": "array", "items": { "$ref": "Drink" } },
+        "lastOrderDate": { "type": "number" },
+        "notes": { "type": "string" },
+        "loyaltyPoints": { "type": "number" }
+      },
+      "required": ["name", "loyaltyPoints"]
     }
   },
   "firestore": {
