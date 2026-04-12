@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
+        target: 'es2015',
         rollupOptions: {
           output: {
             manualChunks: {

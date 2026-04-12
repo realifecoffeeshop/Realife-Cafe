@@ -45,7 +45,7 @@ const Feedback = () => {
             <button
                 onClick={() => setIsOpen(true)}
                 title="Share Feedback"
-                className="fixed bottom-6 right-6 bg-[#A58D79] dark:bg-white text-white dark:text-zinc-800 w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-[#947D6A] dark:hover:bg-neutral-200 transition-transform hover:scale-110"
+                className="fixed bottom-6 left-6 bg-[#A58D79] text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:bg-[#947D6A] transition-all hover:scale-110 z-30 border-2 border-white/10 dark:border-white/20"
                 aria-label="Open feedback form"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

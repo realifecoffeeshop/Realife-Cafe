@@ -22,6 +22,7 @@ interface CartFlyoutProps {
     onRemoveItem: (id: string) => void;
     onEditItem: (item: CartItem) => void;
     isLoggedIn: boolean;
+    isAdmin?: boolean;
     pickupOption: 'now' | 'later';
     onPickupOptionChange: (option: 'now' | 'later') => void;
     pickupDate: string;
@@ -50,6 +51,7 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
     onRemoveItem,
     onEditItem,
     isLoggedIn,
+    isAdmin,
     pickupOption,
     onPickupOptionChange,
     pickupDate,
@@ -215,7 +217,7 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
 
                             <div className="space-y-2 md:space-y-3">
                                 <label htmlFor="customerName-input" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Order Name</label>
-                                <input id="customerName-input" type="text" value={customerName} onChange={e => onCustomerNameChange(e.target.value)} placeholder="e.g., Sarah" className="w-full p-3 md:p-4 border rounded-xl md:rounded-2xl bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-stone-900/10 focus:outline-none transition-all font-serif italic text-sm" disabled={isLoggedIn}/>
+                                <input id="customerName-input" type="text" value={customerName} onChange={e => onCustomerNameChange(e.target.value)} placeholder="e.g., Sarah" className="w-full p-3 md:p-4 border rounded-xl md:rounded-2xl bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-stone-900/10 focus:outline-none transition-all font-serif italic text-sm" disabled={isLoggedIn && !isAdmin}/>
                             </div>
 
                             <div className="flex gap-2">

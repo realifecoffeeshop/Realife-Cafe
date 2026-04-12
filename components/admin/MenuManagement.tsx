@@ -10,9 +10,10 @@ import { saveMenu } from '../../firebase/firestoreService';
 // A sub-component for the Modifier Group form to keep the main component cleaner
 const ModifierGroupForm: React.FC<{
     group: ModifierGroup;
+    isSaving: boolean;
     onSave: (group: ModifierGroup) => void;
     onClose: () => void;
-}> = ({ group, onSave, onClose }) => {
+}> = ({ group, isSaving, onSave, onClose }) => {
     const [name, setName] = useState(group.name || '');
     const [options, setOptions] = useState<ModifierOption[]>((group.options || []).map(o => ({...o})));
     const [isRequired, setIsRequired] = useState(group.isRequired || false);
@@ -185,9 +186,10 @@ const ModifierGroupForm: React.FC<{
                 </button>
                 <button 
                     type="submit" 
-                    className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic"
+                    disabled={isSaving}
+                    className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Save Group
+                    {isSaving ? 'Saving...' : 'Save Group'}
                 </button>
             </div>
         </form>
@@ -206,6 +208,7 @@ const MenuManagement: React.FC = () => {
     const [imageSource, setImageSource] = useState<'url' | 'upload'>('url');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState<{ type: 'category' | 'drink' | 'modifier'; id: string } | null>(null);
     const [showSyncConfirm, setShowSyncConfirm] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     
     useEffect(() => {
         if (editingDrink) {
@@ -305,11 +308,14 @@ const MenuManagement: React.FC = () => {
 
     const handleSaveDrink = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (isSaving) return;
+        
         if (!drinkFormState || !drinkFormState.name || !drinkFormState.name.trim()) {
             addToast('Drink name cannot be empty.', 'error');
             return;
         }
 
+        setIsSaving(true);
         const drink: Drink = {
             id: editingDrink?.id || `drink-${Date.now()}`,
             name: drinkFormState.name.trim(),
@@ -332,12 +338,13 @@ const MenuManagement: React.FC = () => {
                 : [...state.drinks, drink];
             await saveMenu({ drinks: updatedDrinks, categories: state.categories, modifierGroups: state.modifierGroups });
             addToast(`Drink '${drink.name}' saved successfully!`, 'success');
+            setEditingDrink(null);
         } catch (error) {
             console.error("Failed to save drink to Firebase:", error);
             addToast('Failed to save to database.', 'error');
+        } finally {
+            setIsSaving(false);
         }
-        
-        setEditingDrink(null);
     }
     
     const handleDeleteDrink = (id: string) => {
@@ -359,6 +366,9 @@ const MenuManagement: React.FC = () => {
     };
 
     const handleSaveModifierGroup = async (group: ModifierGroup) => {
+        if (isSaving) return;
+        setIsSaving(true);
+        
         const isNew = group.id.startsWith('new-group-');
         const actionType = isNew ? 'ADD_MODIFIER_GROUP' : 'UPDATE_MODIFIER_GROUP';
         const payload = { ...group };
@@ -373,10 +383,12 @@ const MenuManagement: React.FC = () => {
                 : state.modifierGroups.map(g => g.id === payload.id ? payload : g);
             await saveMenu({ drinks: state.drinks, categories: state.categories, modifierGroups: updatedGroups });
             addToast(`Modifier group '${group.name}' saved successfully!`, 'success');
+            setEditingModifierGroup(null);
         } catch (error) {
             addToast('Failed to save modifier group to database.', 'error');
+        } finally {
+            setIsSaving(false);
         }
-        setEditingModifierGroup(null);
     };
 
     const handleDeleteModifierGroup = (id: string) => {
@@ -399,12 +411,15 @@ const MenuManagement: React.FC = () => {
     
     const handleSaveCategory = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (isSaving) return;
+        
         const trimmedName = categoryName.trim();
         if (!trimmedName) {
             addToast('Category name cannot be empty.', 'error');
             return;
         }
         
+        setIsSaving(true);
         if (editingCategory?.id) {
             // Update
             dispatch({ type: 'UPDATE_CATEGORY', payload: { id: editingCategory.id, name: trimmedName } });
@@ -412,8 +427,11 @@ const MenuManagement: React.FC = () => {
                 const updatedCategories = state.categories.map(c => c.id === editingCategory.id ? { ...c, name: trimmedName } : c);
                 await saveMenu({ drinks: state.drinks, categories: updatedCategories, modifierGroups: state.modifierGroups });
                 addToast(`Category '${trimmedName}' updated.`, 'success');
+                setEditingCategory(null);
             } catch (error) {
                 addToast('Failed to update category in database.', 'error');
+            } finally {
+                setIsSaving(false);
             }
         } else {
             // Add
@@ -423,11 +441,13 @@ const MenuManagement: React.FC = () => {
                 const updatedCategories = [...state.categories, newCategory];
                 await saveMenu({ drinks: state.drinks, categories: updatedCategories, modifierGroups: state.modifierGroups });
                 addToast(`Category '${trimmedName}' added.`, 'success');
+                setEditingCategory(null);
             } catch (error) {
                 addToast('Failed to add category to database.', 'error');
+            } finally {
+                setIsSaving(false);
             }
         }
-        setEditingCategory(null);
     };
 
     const handleDeleteCategory = (id: string) => {
@@ -891,9 +911,10 @@ const MenuManagement: React.FC = () => {
                             </button>
                             <button 
                                 type="submit" 
-                                className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic"
+                                disabled={isSaving}
+                                className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Save Product
+                                {isSaving ? 'Saving...' : (editingDrink?.id ? 'Update Product' : 'Save Product')}
                             </button>
                         </div>
                     </form>
@@ -923,9 +944,10 @@ const MenuManagement: React.FC = () => {
                         </button>
                         <button 
                             type="submit" 
-                            className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic"
+                            disabled={isSaving}
+                            className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Save Category
+                            {isSaving ? 'Saving...' : (editingCategory?.id ? 'Update Category' : 'Save Category')}
                         </button>
                     </div>
                 </form>
@@ -936,6 +958,7 @@ const MenuManagement: React.FC = () => {
                 {editingModifierGroup && (
                     <ModifierGroupForm 
                         group={editingModifierGroup} 
+                        isSaving={isSaving}
                         onSave={handleSaveModifierGroup} 
                         onClose={() => setEditingModifierGroup(null)} 
                     />

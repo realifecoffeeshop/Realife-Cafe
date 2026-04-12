@@ -8,7 +8,11 @@ import OrderModal from '../customer/OrderModal';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import { Plus, Trash2, Edit2 } from 'lucide-react';
 
-const CustomerDirectory: React.FC = () => {
+interface CustomerDirectoryProps {
+  onSelectCustomer?: (customer: Customer) => void;
+}
+
+const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ onSelectCustomer }) => {
   const { state, dispatch } = useApp();
   const { customers, drinks } = state;
   const { addToast } = useToast();
@@ -190,7 +194,10 @@ const CustomerDirectory: React.FC = () => {
         {filteredCustomers.map(customer => (
           <div key={customer.id} className="bg-white dark:bg-zinc-800 p-4 rounded-xl shadow-sm border border-stone-100 dark:border-zinc-700 hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-2">
-              <div className="flex flex-col">
+              <div 
+                className={`flex flex-col ${onSelectCustomer ? 'cursor-pointer hover:opacity-80' : ''}`}
+                onClick={() => onSelectCustomer?.(customer)}
+              >
                 <h3 className="font-bold text-lg text-stone-900 dark:text-white">{customer.name || 'Unknown'}</h3>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <div className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">

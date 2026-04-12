@@ -8,9 +8,31 @@ import OrderModal from './OrderModal';
 const ProfileView: React.FC = () => {
   const { state, dispatch } = useApp();
   const { addToast } = useToast();
-  const { currentUser, orders } = state;
+  const { currentUser, orders, cart, discounts } = state;
   const [swipedFavouriteId, setSwipedFavouriteId] = useState<string | null>(null);
   const [birthday, setBirthday] = useState(currentUser?.birthday || '');
+  const [editingCartItem, setEditingCartItem] = useState<CartItem | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingFavourite, setEditingFavourite] = useState<CartItem | null>(null);
+
+  const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.finalPrice, 0), [cart]);
+  
+  const appliedDiscount = useMemo(() => {
+    const isBirthday = currentUser?.birthday && new Date(currentUser.birthday).getMonth() === new Date().getMonth() && new Date(currentUser.birthday).getDate() === new Date().getDate();
+    if (isBirthday && cart.length > 0) {
+      return { id: 'birthday-free-drink', code: 'BIRTHDAY_FREE', type: 'percentage', value: 100 } as any;
+    }
+    return null;
+  }, [currentUser, cart]);
+
+  const finalTotal = useMemo(() => {
+    let total = subtotal;
+    if (appliedDiscount) {
+      if (appliedDiscount.type === 'percentage') total *= (100 - appliedDiscount.value) / 100;
+      else total -= appliedDiscount.value;
+    }
+    return Math.max(0, total);
+  }, [subtotal, appliedDiscount]);
 
   const handleUpdateBirthday = () => {
     if (!currentUser) return;
@@ -47,8 +69,6 @@ const ProfileView: React.FC = () => {
     );
   }
   
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [editingFavourite, setEditingFavourite] = useState<CartItem | null>(null);
 
   const handleRemoveFavourite = (favouriteId: string) => {
     dispatch({ type: 'REMOVE_FAVOURITE', payload: favouriteId });
@@ -62,6 +82,22 @@ const ProfileView: React.FC = () => {
     setEditingFavourite(null);
   };
 
+  const handleRemoveFromCart = (itemId: string) => {
+    dispatch({ type: 'REMOVE_ITEM_FROM_CART', payload: itemId });
+    addToast('Item removed from cart.', 'success');
+  };
+
+  const handleEditCartItem = (item: CartItem) => {
+    setEditingCartItem(item);
+  };
+
+  const handleSaveCartItem = (item: CartItem) => {
+    if (editingCartItem) {
+      dispatch({ type: 'UPDATE_CART_ITEM', payload: { ...item, id: editingCartItem.id } });
+    }
+    setEditingCartItem(null);
+  };
+
   return (
     <ErrorBoundary>
       <div className="container mx-auto p-4 md:p-8 text-stone-800 dark:text-zinc-200">
@@ -70,6 +106,96 @@ const ProfileView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Left Column: Profile Info */}
         <div className="space-y-8">
+          {/* Current Cart Section */}
+          <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md border-l-4 border-[#A58D79]">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-stone-900 dark:text-white flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Current Order
+              </h2>
+              {cart.length > 0 && (
+                <span className="bg-stone-900 dark:bg-white text-white dark:text-stone-900 text-xs font-bold px-2 py-1 rounded-full">
+                  {cart.length}
+                </span>
+              )}
+            </div>
+
+            {cart.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-stone-500 dark:text-zinc-400 italic font-serif">Your cart is empty.</p>
+                <button 
+                  onClick={() => window.location.href = '/'} 
+                  className="mt-4 text-sm font-bold text-[#A58D79] hover:underline"
+                >
+                  Browse Menu
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="max-h-60 overflow-y-auto pr-2 space-y-3 scrollbar-hide">
+                  {cart.map(item => (
+                    <div key={item.id} className="p-3 bg-stone-50 dark:bg-zinc-900/50 rounded-xl border border-stone-100 dark:border-zinc-800 group">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-grow">
+                          <p className="font-bold text-sm leading-tight">
+                            {item.quantity}x {item.drink?.name}
+                          </p>
+                          {item.customName && <p className="text-[10px] text-stone-400 italic mt-0.5">"{item.customName}"</p>}
+                        </div>
+                        <span className="font-bold text-sm">${item.finalPrice.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-end gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => handleEditCartItem(item)}
+                          className="text-[10px] font-bold uppercase text-stone-400 hover:text-stone-900 dark:hover:text-white"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleRemoveFromCart(item.id)}
+                          className="text-[10px] font-bold uppercase text-red-400 hover:text-red-600"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="pt-4 border-t border-stone-100 dark:border-zinc-700 space-y-2">
+                  <div className="flex justify-between text-xs font-bold text-stone-400 uppercase tracking-widest">
+                    <span>Subtotal</span>
+                    <span>${subtotal.toFixed(2)}</span>
+                  </div>
+                  {appliedDiscount && (
+                    <div className="flex justify-between text-xs font-bold text-emerald-600 uppercase tracking-widest">
+                      <span>Discount</span>
+                      <span>- ${(subtotal - finalTotal).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-xl font-serif font-bold text-stone-900 dark:text-white pt-2">
+                    <span>Total</span>
+                    <span>${finalTotal.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button 
+                    onClick={() => window.location.href = '/?cart=open'}
+                    className="w-full bg-stone-900 dark:bg-white text-white dark:text-stone-900 py-4 rounded-full font-bold text-base hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-xl flex items-center justify-center gap-2"
+                  >
+                    <span>Proceed to Checkout</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Loyalty Rewards Section */}
           <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-bold mb-4 text-stone-900 dark:text-white">Loyalty Rewards</h2>
@@ -268,6 +394,16 @@ const ProfileView: React.FC = () => {
           drink={editingFavourite.drink}
           cartItemToEdit={editingFavourite}
           onSaveItem={handleUpdateFavourite}
+        />
+      )}
+
+      {editingCartItem && (
+        <OrderModal
+          isOpen={!!editingCartItem}
+          onClose={() => setEditingCartItem(null)}
+          drink={editingCartItem.drink}
+          cartItemToEdit={editingCartItem}
+          onSaveItem={handleSaveCartItem}
         />
       )}
     </div>

@@ -13,8 +13,8 @@ const Logo = () => {
         {`
           .rlc-logo-text-light { display: block; }
           .rlc-logo-text-dark { display: none; }
-          .dark .rlc-logo-text-light { display: none; }
-          .dark .rlc-logo-text-dark { display: block; }
+          .dark .rlc-logo-text-light, [data-theme="dark"] .rlc-logo-text-light { display: none; }
+          .dark .rlc-logo-text-dark, [data-theme="dark"] .rlc-logo-text-dark { display: block; }
         `}
       </style>
       <defs>

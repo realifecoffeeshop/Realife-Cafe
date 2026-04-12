@@ -332,7 +332,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
                 <span className="text-4xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">${totalPrice.toFixed(2)}</span>
             </div>
             <div className="flex items-center gap-4">
-                <button id="add-to-order-button" onClick={handleSaveItemClick} className="flex-1 bg-stone-900 text-white dark:bg-white dark:text-stone-900 py-5 rounded-full font-bold text-xl hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl transform active:scale-95">
+                <button id="add-to-order-button" onClick={handleSaveItemClick} className="flex-1 bg-stone-900 text-white dark:bg-white dark:text-stone-900 py-5 rounded-full font-bold text-xl hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl transform active:scale-95 flex items-center justify-center leading-none">
                     {cartItemToEdit ? 'Update Item' : 'Add to Order'}
                 </button>
                 {currentUser && (

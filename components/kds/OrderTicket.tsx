@@ -8,6 +8,8 @@ interface OrderTicketProps {
   onComplete: (id: string) => void;
   onDelete: (id: string) => void;
   onToggleItem: (orderId: string, itemId: string) => void;
+  onUpdateName?: (id: string, newName: string) => void;
+  isAdmin?: boolean;
   isSelected?: boolean;
   onSelect?: (id: string) => void;
   onUnmerge?: (id: string) => void;
@@ -40,7 +42,22 @@ const Timer = memo(({ createdAt, timeColourClass }: { createdAt: number; timeCol
   );
 });
 
-const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, onToggleItem, isSelected, onSelect, onUnmerge }) => {
+const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, onToggleItem, onUpdateName, isAdmin, isSelected, onSelect, onUnmerge }) => {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(order.customerName || '');
+
+  useEffect(() => {
+    setEditedName(order.customerName || '');
+  }, [order.customerName]);
+
+  const handleNameSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (editedName.trim() && editedName !== order.customerName) {
+      onUpdateName?.(order.id, editedName.trim());
+    }
+    setIsEditingName(false);
+  };
+
   const getMinutesWaiting = () => {
       const createdAt = order.createdAt || Date.now();
       return Math.floor((Date.now() - createdAt) / 60000);
@@ -99,7 +116,7 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
           e.stopPropagation();
           onDelete(order.id);
         }}
-        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-red-600"
+        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-[30] hover:bg-red-600 active:scale-95"
         title="Delete Order"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -111,8 +128,46 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
           className={`p-3 bg-stone-100 dark:bg-zinc-700 rounded-t-lg sticky top-0 z-20 shadow-sm`}
       >
         <div className="flex justify-between items-start">
-            <div id={`order-heading-${order.id}`}>
-              <h3 className="font-bold text-xl text-stone-900 dark:text-white truncate">{order.customerName || 'Unknown'}</h3>
+            <div id={`order-heading-${order.id}`} className="flex-grow min-w-0">
+              {isEditingName && isAdmin ? (
+                <form onSubmit={handleNameSubmit} className="flex items-center gap-2 pr-2" onClick={e => e.stopPropagation()}>
+                  <input
+                    type="text"
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                    onBlur={() => handleNameSubmit()}
+                    autoFocus
+                    className="w-full px-2 py-1 text-lg font-bold border rounded bg-white dark:bg-zinc-800 dark:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </form>
+              ) : (
+                <div className="flex items-center gap-2 group/name">
+                  <h3 
+                    className={`font-bold text-xl text-stone-900 dark:text-white truncate ${isAdmin ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
+                    onClick={(e) => {
+                      if (isAdmin) {
+                        e.stopPropagation();
+                        setIsEditingName(true);
+                      }
+                    }}
+                  >
+                    {order.customerName || 'Unknown'}
+                  </h3>
+                  {isAdmin && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsEditingName(true);
+                      }}
+                      className="opacity-0 group-hover/name:opacity-100 p-1 text-stone-400 hover:text-blue-600 transition-opacity"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="flex items-center space-x-2 mt-1">
                 <p className="text-xs text-stone-500 dark:text-zinc-400">ID: #{(order.id || '').slice(-6)}</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-200 dark:bg-zinc-600 text-stone-600 dark:text-zinc-300 font-bold uppercase tracking-wider">
@@ -208,7 +263,7 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
             e.stopPropagation();
             onComplete(order.id);
           }}
-          className={`w-full py-2 rounded-md font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-800 ${allItemsCompleted ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500' : 'bg-stone-200 dark:bg-zinc-700 text-stone-600 dark:text-zinc-300 hover:bg-stone-300 dark:hover:bg-zinc-600'}`}
+          className={`w-full py-2 rounded-md font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-800 flex items-center justify-center leading-none ${allItemsCompleted ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500' : 'bg-stone-200 dark:bg-zinc-700 text-stone-600 dark:text-zinc-300 hover:bg-stone-300 dark:hover:bg-zinc-600'}`}
           aria-label={!allItemsCompleted ? `Cannot complete order for ${order.customerName || 'Unknown'} yet` : `Complete order for ${order.customerName || 'Unknown'}`}
         >
           {allItemsCompleted ? 'Complete Order' : 'Force Complete'}

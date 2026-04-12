@@ -175,6 +175,7 @@ export interface AppState {
   globalError: string | null;
   isMenuLoaded: boolean;
   isOrdersLoaded: boolean;
+  isConnected: boolean;
 }
 
 export type Action =
@@ -193,6 +194,7 @@ export type Action =
         isVerified: boolean;
         pickupTime?: number;
     } }
+  | { type: 'UPDATE_ORDER'; payload: { id: string; updates: Partial<Order> } }
   | { type: 'COMPLETE_ORDER'; payload: string } // order id
   | { type: 'DELETE_ORDER'; payload: string } // order id
   | { type: 'REQUEUE_ORDER'; payload: string } // order id
@@ -216,7 +218,7 @@ export type Action =
   | { type: 'ADD_DISCOUNT'; payload: Discount }
   | { type: 'DELETE_DISCOUNT'; payload: string } // discount id
   | { type: 'REGISTER'; payload: { name: string; userId: string } }
-  | { type: 'LOGIN'; payload: { name: string } }
+  | { type: 'LOGIN'; payload: { name: string; userId?: string } }
   | { type: 'LOGOUT' }
   | { type: 'ADD_FAVOURITE'; payload: CartItem }
   | { type: 'UPDATE_FAVOURITE'; payload: CartItem }
@@ -225,7 +227,7 @@ export type Action =
   | { type: 'UPDATE_USER_PROFILE'; payload: { userId: string; name?: string; birthday?: string } }
   | { type: 'SUBMIT_FEEDBACK'; payload: { rating: number; message: string } }
   | { type: 'SET_THEME', payload: 'light' | 'dark' }
-  | { type: 'ADD_CATEGORY', payload: Omit<Category, 'id'> }
+  | { type: 'ADD_CATEGORY', payload: { id?: string; name: string; imageUrl?: string } }
   | { type: 'UPDATE_CATEGORY', payload: Category }
   | { type: 'DELETE_CATEGORY', payload: string } // category id
   | { type: 'ADD_ITEM_TO_CART'; payload: CartItem }
@@ -234,5 +236,6 @@ export type Action =
   | { type: 'CLEAR_CART' }
   | { type: 'SET_MENU_DATA'; payload: { drinks: Drink[]; categories: Category[]; modifierGroups: ModifierGroup[] } }
   | { type: 'SET_FEEDBACK'; payload: Feedback[] }
+  | { type: 'SET_CONNECTED'; payload: boolean }
   | { type: 'SET_PERMISSION_ERROR'; payload: string | null }
   | { type: 'SET_GLOBAL_ERROR'; payload: string | null };

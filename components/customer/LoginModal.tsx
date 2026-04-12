@@ -26,7 +26,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             c => c?.name?.toLowerCase() === trimmedName.toLowerCase()
         );
         
-        dispatch({ type: 'LOGIN', payload: { name: trimmedName } });
+        dispatch({ type: 'LOGIN', payload: { name: trimmedName, userId: firebaseUser?.uid } });
 
         if (user) {
             addToast(`Welcome back, ${trimmedName}!`, 'success');
@@ -71,18 +71,22 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     const renderContent = () => (
         <div className="space-y-6">
             <div className="flex p-1 bg-stone-100 dark:bg-zinc-900 rounded-2xl border border-stone-200 dark:border-zinc-700 shadow-sm">
-                <button 
-                    onClick={() => setViewMode('login')} 
-                    className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${viewMode === 'login' ? 'bg-brand-primary text-white shadow-md' : 'text-stone-400 hover:text-stone-600'}`}
-                >
-                    Login
-                </button>
-                <button 
-                    onClick={() => setViewMode('register')} 
-                    className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${viewMode === 'register' ? 'bg-brand-primary text-white shadow-md' : 'text-stone-400 hover:text-stone-600'}`}
-                >
-                    Register
-                </button>
+                <div className="flex-1">
+                    <button 
+                        onClick={() => setViewMode('login')} 
+                        className={`w-full py-2.5 text-sm font-bold rounded-xl transition-all text-center flex items-center justify-center ${viewMode === 'login' ? 'bg-brand-primary text-white shadow-md' : 'text-stone-400 hover:text-stone-600'}`}
+                    >
+                        Login
+                    </button>
+                </div>
+                <div className="flex-1">
+                    <button 
+                        onClick={() => setViewMode('register')} 
+                        className={`w-full py-2.5 text-sm font-bold rounded-xl transition-all text-center flex items-center justify-center ${viewMode === 'register' ? 'bg-brand-primary text-white shadow-md' : 'text-stone-400 hover:text-stone-600'}`}
+                    >
+                        Register
+                    </button>
+                </div>
             </div>
             
             {viewMode === 'login' ? (
@@ -94,12 +98,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                             value={name} 
                             onChange={e => setName(e.target.value)} 
                             required 
-                            className="w-full p-3 border rounded-xl bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 dark:text-white focus:ring-2 focus:ring-brand-primary/20 focus:outline-none transition-all" 
+                            className="w-full p-3 border rounded-xl bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 dark:text-white focus:ring-2 focus:ring-brand-primary/20 focus:outline-none transition-all text-left" 
                             placeholder="e.g., John Doe"
                         />
                         <p className="text-xs text-stone-500 dark:text-zinc-400 mt-2 italic font-serif">Enter your name to access your profile and history.</p>
                     </div>
-                    <button type="submit" className="w-full bg-brand-primary text-white py-4 rounded-2xl font-bold text-lg hover:bg-stone-700 transition-all shadow-lg transform active:scale-95">
+                    <button type="submit" className="w-full bg-brand-primary text-white py-4 rounded-2xl font-bold text-lg hover:bg-stone-700 transition-all shadow-lg transform active:scale-95 text-center flex items-center justify-center">
                         Continue to Menu
                     </button>
                 </form>
@@ -112,10 +116,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                             value={name} 
                             onChange={e => setName(e.target.value)} 
                             required 
-                            className="w-full p-3 border rounded-xl bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 dark:text-white focus:ring-2 focus:ring-brand-primary/20 focus:outline-none transition-all"
+                            className="w-full p-3 border rounded-xl bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 dark:text-white focus:ring-2 focus:ring-brand-primary/20 focus:outline-none transition-all text-left"
+                            placeholder="Your Name"
                         />
                     </div>
-                    <button type="submit" className="w-full bg-brand-primary text-white py-4 rounded-2xl font-bold text-lg hover:bg-stone-700 transition-all shadow-lg transform active:scale-95">
+                    <button type="submit" className="w-full bg-brand-primary text-white py-4 rounded-2xl font-bold text-lg hover:bg-stone-700 transition-all shadow-lg transform active:scale-95 text-center flex items-center justify-center">
                         Create Account
                     </button>
                 </form>

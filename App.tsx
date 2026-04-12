@@ -57,6 +57,17 @@ const FirebasePermissionErrorBanner: React.FC<{ message: string, onDismiss: () =
     </div>
 );
 
+const ConnectionWarningBanner: React.FC = () => (
+    <div className="bg-amber-500 text-white p-2 text-center text-xs font-medium animate-pulse" role="alert">
+        <div className="flex items-center justify-center gap-2">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 4.243a5 5 0 010-7.072m0 0l2.829 2.829m-4.243 4.243L3 21M5.636 5.636a9 9 0 0112.728 0m0 0l-2.829 2.829" />
+            </svg>
+            <span>Connection lost. Trying to reconnect...</span>
+        </div>
+    </div>
+);
+
 const GlobalErrorBanner: React.FC<{ error: string, onDismiss: () => void }> = ({ error, onDismiss }) => (
     <div className="bg-red-500 text-white p-3 text-center text-sm relative" role="alert">
         <div className="flex items-center justify-center max-w-4xl mx-auto">
@@ -148,8 +159,10 @@ const AppContent: React.FC = () => {
     const root = window.document.documentElement;
     if (theme === 'dark') {
         root.classList.add('dark');
+        root.setAttribute('data-theme', 'dark');
     } else {
         root.classList.remove('dark');
+        root.removeAttribute('data-theme');
     }
   }, [theme]);
 
@@ -259,6 +272,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="flex flex-col min-h-full bg-[#F5F3EF] dark:bg-zinc-900 transition-colors duration-300">
       {!isFirebaseConfigured && <FirebaseWarningBanner />}
+      {!state.isConnected && <ConnectionWarningBanner />}
       {permissionError && (
           <FirebasePermissionErrorBanner 
               message={permissionError} 

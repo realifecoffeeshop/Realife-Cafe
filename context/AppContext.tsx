@@ -13,11 +13,7 @@ const initialState: AppState = {
   orders: [],
   historicalOrders: [],
   discounts: INITIAL_DISCOUNTS,
-  users: [
-      { id: 'admin-user', name: 'admin', role: UserRole.ADMIN, favourites: [], loyaltyPoints: 0 },
-      { id: 'kitchen-user', name: 'kitchen', role: UserRole.KITCHEN, favourites: [], loyaltyPoints: 0 },
-      { id: 'jp1-admin-user', name: 'JP1', role: UserRole.ADMIN, favourites: [], loyaltyPoints: 0 },
-  ],
+  users: [],
   customers: [],
   currentUser: null,
   feedback: [],
@@ -27,6 +23,7 @@ const initialState: AppState = {
   globalError: null,
   isMenuLoaded: false,
   isOrdersLoaded: false,
+  isConnected: true,
 };
 
 const appReducer = (state: AppState, action: Action): AppState => {
@@ -88,13 +85,15 @@ const appReducer = (state: AppState, action: Action): AppState => {
         return { ...state, currentUser: existingUser };
       }
       
-      // Auto-promote the first 'admin' registration to Administrator
-      const isInitialAdmin = (action.payload.name || '').toLowerCase() === 'admin';
+      // Auto-promote the first 'admin' or 'kitchen' registration to their respective roles
+      const nameLower = (action.payload.name || '').toLowerCase();
+      const isInitialAdmin = nameLower === 'admin';
+      const isInitialKitchen = nameLower === 'kitchen';
       
       const newUser: User = {
         name: action.payload.name,
         id: action.payload.userId,
-        role: isInitialAdmin ? UserRole.ADMIN : UserRole.CUSTOMER,
+        role: isInitialAdmin ? UserRole.ADMIN : (isInitialKitchen ? UserRole.KITCHEN : UserRole.CUSTOMER),
         favourites: [],
         loyaltyPoints: 0,
       };
@@ -120,20 +119,36 @@ const appReducer = (state: AppState, action: Action): AppState => {
         };
     }
     case 'LOGIN': {
+      const nameLower = (action.payload.name || '').toLowerCase();
       const user = (state.users || []).find(
-        c => c && c.name && c.name.toLowerCase() === (action.payload.name || '').toLowerCase()
+        c => c && c.name && c.name.toLowerCase() === nameLower
       );
+      
       if (!user) {
         // Allow guest login if user doesn't exist
         const guestUser: User = {
             name: action.payload.name,
-            id: `guest-${Date.now()}`,
+            id: action.payload.userId || `guest-${Date.now()}`,
             role: UserRole.CUSTOMER,
             favourites: [],
             loyaltyPoints: 0,
         };
         return { ...state, currentUser: guestUser };
       }
+
+      // Migration: If the user ID in the database doesn't match the Firebase Auth UID,
+      // we should update the ID to ensure future writes (like loyalty points) succeed.
+      if (action.payload.userId && user.id !== action.payload.userId) {
+          const migratedUser = { ...user, id: action.payload.userId };
+          saveUser(migratedUser).catch(err => console.error("Failed to migrate user ID:", err));
+          // We also update the local state to use the new ID immediately
+          return { 
+              ...state, 
+              currentUser: migratedUser,
+              users: state.users.map(u => u.id === user.id ? migratedUser : u)
+          };
+      }
+
       return { ...state, currentUser: user };
     }
     case 'LOGOUT': {
@@ -310,6 +325,11 @@ const appReducer = (state: AppState, action: Action): AppState => {
         deleteCustomer(action.payload).catch(err => console.error("Failed to delete customer:", err));
         return { ...state, customers: state.customers.filter(c => c.id !== action.payload) };
     }
+    case 'UPDATE_ORDER': {
+        const { id, updates } = action.payload;
+        updateOrder(id, updates).catch(err => console.error(`Failed to update order ${id}:`, err));
+        return state;
+    }
     case 'COMPLETE_ORDER': {
       const orderId = action.payload;
       const order = state.orders.find(o => o.id === orderId);
@@ -363,15 +383,24 @@ const appReducer = (state: AppState, action: Action): AppState => {
         .catch(err => console.error("Failed to activate scheduled order:", err));
       return state;
     }
-    case 'ADD_DRINK':
+    case 'ADD_DRINK': {
       const newDrink = { ...action.payload, imageUrl: action.payload.imageUrl || "" };
+      // Prevent duplicates in local state
+      if (state.drinks.some(d => d.id === newDrink.id)) {
+          return {
+              ...state,
+              drinks: state.drinks.map(d => d.id === newDrink.id ? newDrink : d)
+          };
+      }
       return { ...state, drinks: [...state.drinks, newDrink] };
-    case 'UPDATE_DRINK':
+    }
+    case 'UPDATE_DRINK': {
       const updatedDrink = { ...action.payload, imageUrl: action.payload.imageUrl || "" };
       return {
         ...state,
         drinks: state.drinks.map(d => (d.id === action.payload.id ? updatedDrink : d)),
       };
+    }
     case 'DELETE_DRINK':
       return {
         ...state,
@@ -379,9 +408,16 @@ const appReducer = (state: AppState, action: Action): AppState => {
       };
     case 'ADD_CATEGORY': {
         const newCategory: Category = {
-            id: `cat-${Date.now()}`,
+            id: action.payload.id || `cat-${Date.now()}`,
             name: action.payload.name
         };
+        // Prevent duplicates
+        if (state.categories.some(c => c.id === newCategory.id)) {
+            return {
+                ...state,
+                categories: state.categories.map(c => c.id === newCategory.id ? newCategory : c)
+            };
+        }
         return { ...state, categories: [...state.categories, newCategory] };
     }
     case 'UPDATE_CATEGORY': {
@@ -404,8 +440,17 @@ const appReducer = (state: AppState, action: Action): AppState => {
             ),
         };
     }
-    case 'ADD_MODIFIER_GROUP':
-      return { ...state, modifierGroups: [...state.modifierGroups, action.payload] };
+    case 'ADD_MODIFIER_GROUP': {
+      const newGroup = action.payload;
+      // Prevent duplicates
+      if (state.modifierGroups.some(mg => mg.id === newGroup.id)) {
+          return {
+              ...state,
+              modifierGroups: state.modifierGroups.map(mg => mg.id === newGroup.id ? newGroup : mg)
+          };
+      }
+      return { ...state, modifierGroups: [...state.modifierGroups, newGroup] };
+    }
     case 'UPDATE_MODIFIER_GROUP':
       return {
         ...state,
@@ -492,27 +537,61 @@ const appReducer = (state: AppState, action: Action): AppState => {
     case 'CLEAR_CART':
       return { ...state, cart: [] };
     case 'SET_MENU_DATA': {
-        const newDrinks = (action.payload.drinks || []).filter(Boolean).map((drink: any) => ({
-            ...drink,
-            modifierGroups: drink.modifierGroups || [],
-            variants: drink.variants || [],
-            imageUrl: drink.imageUrl || "", // Ensure it's never undefined or null
-        }));
-        const newCategories = (action.payload.categories || []).filter(Boolean);
-        const newModifierGroups = (action.payload.modifierGroups || []).filter(Boolean);
+        // Handle both array and object formats from Firebase RTDB
+        const rawDrinks = action.payload.drinks || [];
+        const drinksArray = Array.isArray(rawDrinks) ? rawDrinks : Object.values(rawDrinks);
+        
+        const rawCategories = action.payload.categories || [];
+        const categoriesArray = Array.isArray(rawCategories) ? rawCategories : Object.values(rawCategories);
+        
+        const rawModifierGroups = action.payload.modifierGroups || [];
+        const modifierGroupsArray = Array.isArray(rawModifierGroups) ? rawModifierGroups : Object.values(rawModifierGroups);
 
-        // OPTIMIZATION: We skip deep equality check here because Firebase data is the source of truth
-        // and we want to ensure the UI is in sync. The isMenuLoaded flag handles initial load.
+        // Deduplicate drinks by ID
+        const uniqueDrinksMap = new Map();
+        drinksArray.filter(Boolean).forEach((drink: any) => {
+            if (drink && drink.id) {
+                uniqueDrinksMap.set(drink.id, {
+                    ...drink,
+                    modifierGroups: drink.modifierGroups || [],
+                    variants: drink.variants || [],
+                    imageUrl: drink.imageUrl || "",
+                });
+            }
+        });
+        const newDrinks = Array.from(uniqueDrinksMap.values());
+
+        // Deduplicate categories by ID
+        const uniqueCategoriesMap = new Map();
+        categoriesArray.filter(Boolean).forEach((cat: any) => {
+            if (cat && cat.id) {
+                uniqueCategoriesMap.set(cat.id, cat);
+            }
+        });
+        const newCategories = Array.from(uniqueCategoriesMap.values());
+
+        // Deduplicate modifier groups by ID
+        const uniqueModifierGroupsMap = new Map();
+        modifierGroupsArray.filter(Boolean).forEach((mg: any) => {
+            if (mg && mg.id) {
+                uniqueModifierGroupsMap.set(mg.id, mg);
+            }
+        });
+        const newModifierGroups = Array.from(uniqueModifierGroupsMap.values());
+
         return {
             ...state,
             drinks: newDrinks,
             categories: newCategories,
             modifierGroups: newModifierGroups,
-            isMenuLoaded: true, // New flag to track initial load
+            isMenuLoaded: true,
         };
     }
     case 'SET_FEEDBACK': {
         return { ...state, feedback: action.payload };
+    }
+    case 'SET_CONNECTED': {
+        return { ...state, isConnected: action.payload };
     }
     default:
       return state;
@@ -552,8 +631,17 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   });
 
-  // @ts-ignore
   const [firebaseUser, setFirebaseUser] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (database) {
+        const connectedRef = database.ref('.info/connected');
+        const listener = connectedRef.on('value', (snap) => {
+            dispatch({ type: 'SET_CONNECTED', payload: !!snap.val() });
+        });
+        return () => connectedRef.off('value', listener);
+    }
+  }, [database]);
 
   useEffect(() => {
     if (isFirebaseConfigured && auth) {
@@ -720,14 +808,16 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     (error: any) => {
                         if (error.message?.toLowerCase().includes('permission_denied')) {
                             dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/orders'.` });
+                            // Also set isOrdersLoaded to true to stop the loading spinner
+                            dispatch({ type: 'SET_ORDERS', payload: [] });
                         } else {
                             dispatch({ type: 'SET_GLOBAL_ERROR', payload: `Failed to sync orders: ${error.message}` });
                         }
                     }
                 );
 
-                // OPTIMIZATION: Only fetch users for ADMIN. KDS (KITCHEN) doesn't need them.
-                if (isAdmin) {
+                // OPTIMIZATION: Only fetch users for ADMIN and KITCHEN.
+                if (isStaff) {
                     unsubscribeUsers = onUsersUpdate(
                         (users: User[]) => {
                             dispatch({ type: 'SET_USERS', payload: users });

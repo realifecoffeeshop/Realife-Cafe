@@ -1,5 +1,6 @@
 
 import React, { useState, memo } from 'react';
+import { motion } from 'motion/react';
 import { Drink } from '../../types';
 
 interface DrinkCardProps {
@@ -28,14 +29,21 @@ const DrinkCard: React.FC<DrinkCardProps> = ({ drink, onSelect, onQuickAdd, prio
   const isUnavailable = drink.isAvailable === false;
 
   return (
-    <div 
-      className={`relative rounded-[2rem] shadow-sm hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-500 cursor-pointer group h-56 sm:h-64 bg-stone-100 dark:bg-zinc-800 transform-gpu will-change-transform overflow-hidden ${isUnavailable ? 'grayscale cursor-not-allowed opacity-75' : ''}`} 
+    <motion.div 
+      whileHover={!isUnavailable ? { y: -8, scale: 1.02 } : {}}
+      whileTap={!isUnavailable ? { scale: 0.98 } : {}}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      className={`relative rounded-[2rem] shadow-sm hover:shadow-xl cursor-pointer group h-56 sm:h-64 bg-stone-100 dark:bg-zinc-800 overflow-hidden will-change-transform ${isUnavailable ? 'grayscale cursor-not-allowed opacity-75' : ''}`} 
       onClick={() => !isUnavailable && onSelect(drink)}
       aria-label={`Select ${drink?.name || 'Item'}${isUnavailable ? ' (Unavailable)' : ''}`}
     >
       <div className="absolute inset-0 bg-stone-100 dark:bg-zinc-800">
-        <img 
-            className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+        <motion.img 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: imageLoaded ? 1 : 0 }}
+            transition={{ duration: 0.5 }}
+            whileHover={{ scale: 1.1 }}
+            className="w-full h-full object-cover"
             src={optimizedImage} 
             srcSet={srcSet}
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 200px"
@@ -102,7 +110,7 @@ const DrinkCard: React.FC<DrinkCardProps> = ({ drink, onSelect, onQuickAdd, prio
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 

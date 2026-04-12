@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@variant dark (&:where(.dark, .dark *));
+@variant dark (.dark &, [data-theme="dark"] &);
 
 @theme {
   --dark: selector;
@@ -26,15 +26,76 @@ html, body, #root {
 }
 
 @layer base {
-  body {
-    background-color: var(--color-brand-paper);
-    color: var(--color-brand-dark);
-    overflow-x: hidden;
+  /* Robust button reset for older browsers */
+  button {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: transparent;
+    border-width: 0;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+    font-size: inherit;
+    font-style: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    color: inherit;
+    cursor: pointer;
+    text-align: inherit;
+    outline: none;
+    display: inline-block; /* Ensure dimensions are respected */
+    vertical-align: middle;
+    box-sizing: border-box;
+    /* Optimization: Hardware acceleration for buttons */
+    transform: translateZ(0);
+    will-change: transform, opacity;
   }
 
-  .dark body {
-    background-color: #121212;
-    color: #e5e5e5;
+  body {
+    background-color: #F5F3EF; /* Fallback for --color-brand-paper */
+    background-color: var(--color-brand-paper);
+    color: #1c1917; /* Fallback for --color-brand-dark */
+    color: var(--color-brand-dark);
+    overflow-x: hidden;
+    font-size: 1.1rem;
+  }
+
+  /* Direct selector for older browsers that might struggle with complex Tailwind variants */
+  .dark body, html.dark body, [data-theme="dark"] body {
+    background-color: #121212 !important;
+    color: #e5e5e5 !important;
+  }
+
+  /* Hardcoded fallbacks for common dark mode classes to support browsers without CSS variable support */
+  .dark .dark\:bg-zinc-900, .dark .bg-zinc-900, [data-theme="dark"] .dark\:bg-zinc-900 { background-color: #18181b !important; }
+  .dark .dark\:bg-zinc-800, .dark .bg-zinc-800, [data-theme="dark"] .dark\:bg-zinc-800 { background-color: #27272a !important; }
+  .dark .dark\:bg-zinc-950, .dark .bg-zinc-950, [data-theme="dark"] .dark\:bg-zinc-950 { background-color: #09090b !important; }
+  .dark .dark\:text-white, .dark .text-white, [data-theme="dark"] .dark\:text-white { color: #ffffff; }
+  .dark .dark\:text-zinc-200, .dark .text-zinc-200, [data-theme="dark"] .dark\:text-zinc-200 { color: #e4e4e7; }
+  .dark .dark\:text-zinc-400, .dark .text-zinc-400, [data-theme="dark"] .dark\:text-zinc-400 { color: #a1a1aa; }
+  .dark .dark\:border-zinc-800, .dark .border-zinc-800, [data-theme="dark"] .dark\:border-zinc-800 { border-color: #27272a !important; }
+  .dark .dark\:border-zinc-700, .dark .border-zinc-700, [data-theme="dark"] .dark\:border-zinc-700 { border-color: #3f3f46 !important; }
+
+  /* Fallbacks for older browsers */
+  header {
+    background-color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.98);
+  }
+  .dark header, html.dark header, [data-theme="dark"] header {
+    background-color: #121212 !important;
+    background-color: rgba(18, 18, 18, 0.98) !important;
+  }
+
+  @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    header {
+      background-color: rgba(255, 255, 255, 0.8);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+    }
+    .dark header {
+      background-color: rgba(18, 18, 18, 0.8);
+    }
   }
 
   h1, h2, h3, .font-serif {
@@ -69,7 +130,16 @@ html, body, #root {
 /* Performance optimizations */
 .menu-grid-container {
   content-visibility: auto;
-  contain-intrinsic-size: 1000px;
+  contain-intrinsic-size: 1px 1000px;
+}
+
+.order-history-container {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 500px;
+}
+
+.order-modal-content {
+  contain: content;
 }
 
 .will-change-transform {
@@ -101,13 +171,58 @@ html, body, #root {
 }
 
 @keyframes pulse-accent {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1); }
+  0% { transform: scale(1) translateZ(0); }
+  50% { transform: scale(1.15) translateZ(0); }
+  100% { transform: scale(1) translateZ(0); }
 }
 .pulse-once {
   animation: pulse-accent 0.8s ease-in-out;
+  will-change: transform;
 }
 .animate-pulse-cart {
   animation: pulse-accent 2s infinite ease-in-out;
+  will-change: transform;
 }
+
+  /* Explicit hex fallbacks for main colors for older browsers */
+  @layer utilities {
+    .bg-stone-900 { background-color: #1c1917; }
+    .bg-brand-primary { background-color: #A58D79; }
+    .text-white { color: #ffffff; }
+    
+    /* Dark mode fallbacks with multiple selector support */
+    .dark .dark\:bg-white, [data-theme="dark"] .dark\:bg-white { 
+      background-color: #ffffff !important; 
+    }
+    .dark .dark\:text-stone-900, [data-theme="dark"] .dark\:text-stone-900 { 
+      color: #1c1917 !important; 
+    }
+    
+    /* Ensure floating buttons are visible in dark mode */
+    .dark #cart-button, [data-theme="dark"] #cart-button {
+      background-color: #ffffff !important;
+      color: #1c1917 !important;
+    }
+    .dark #cart-button svg, [data-theme="dark"] #cart-button svg {
+      color: #1c1917 !important;
+    }
+
+    /* Selected state fallbacks for buttons in dark mode */
+    .dark .bg-stone-900, [data-theme="dark"] .bg-stone-900,
+    .dark .bg-brand-primary, [data-theme="dark"] .bg-brand-primary {
+      background-color: #ffffff !important;
+      color: #1c1917 !important;
+      border-color: #ffffff !important;
+    }
+    .dark .bg-stone-900 svg, [data-theme="dark"] .bg-stone-900 svg,
+    .dark .bg-brand-primary svg, [data-theme="dark"] .bg-brand-primary svg {
+      color: #1c1917 !important;
+    }
+
+    /* Unselected state fallbacks for buttons in dark mode */
+    .dark .bg-white:not(#cart-button), [data-theme="dark"] .bg-white:not(#cart-button) {
+      background-color: #27272a !important; /* zinc-800 fallback */
+      color: #a1a1aa !important; /* zinc-400 fallback */
+      border-color: #3f3f46 !important; /* zinc-700 fallback */
+    }
+  }

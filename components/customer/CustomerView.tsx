@@ -7,11 +7,13 @@ import DrinkCard from './DrinkCard';
 import DetailedDrinkCard from './DetailedDrinkCard';
 import MenuSkeleton from './MenuSkeleton';
 import Logo from '../shared/Logo';
+import { Users } from 'lucide-react';
 
 import { lazyWithRetry } from '../../lib/utils';
 
 const OrderModal = lazyWithRetry(() => import('./OrderModal'));
 const CartFlyout = lazyWithRetry(() => import('./CartFlyout'));
+const CustomerDirectoryFlyout = lazyWithRetry(() => import('./CustomerDirectoryFlyout'));
 
 import { addOrder } from '../../firebase/firestoreService';
 import { COFFEE_JOKES } from '../../constants';
@@ -152,6 +154,7 @@ const CustomerView: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [editingCartItem, setEditingCartItem] = useState<CartItem | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCustomerDirectoryOpen, setIsCustomerDirectoryOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
   const [pickupOption, setPickupOption] = useState<'now' | 'later'>('now');
   const [pickupDate, setPickupDate] = useState(() => {
@@ -198,6 +201,13 @@ const CustomerView: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('fullscreen') === 'true') {
         setShowFullscreenPrompt(true);
+    }
+    if (params.get('cart') === 'open') {
+        setIsCartOpen(true);
+        // Clean URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete('cart');
+        window.history.replaceState({}, '', url);
     }
 
     // OPTIMIZATION: Pre-fetch lazy components after initial render
@@ -378,7 +388,7 @@ const CustomerView: React.FC = () => {
     
     const newOrder: Omit<Order, 'id'> = {
         customerName: orderCustomerName,
-        customerId: firebaseUser.uid, // Use the authenticated Firebase User ID
+        customerId: currentUser?.id || firebaseUser.uid, // Use the logged-in user ID or fallback to anonymous ID
         items: cart,
         total: subtotal,
         totalCost: totalCost,
@@ -399,7 +409,7 @@ const CustomerView: React.FC = () => {
           type: 'PLACE_ORDER',
           payload: {
             customerName: orderCustomerName,
-            customerId: firebaseUser.uid,
+            customerId: currentUser?.id || firebaseUser.uid,
             total: subtotal,
             discountApplied: appliedDiscount,
             finalTotal,
@@ -492,7 +502,7 @@ const CustomerView: React.FC = () => {
                 setViewMode={setViewMode}
             />
             
-            <div id="menu-grid" className="menu-grid-container min-h-[400px]">
+            <div id="menu-grid" className="menu-grid-container min-h-[400px] transform-gpu">
                 {state.drinks.length === 0 ? (
                     <MenuSkeleton viewMode={viewMode} />
                 ) : (
@@ -551,7 +561,7 @@ const CustomerView: React.FC = () => {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={handleCartOpen}
-            className={`fixed bottom-6 right-24 bg-brand-primary dark:bg-white text-white dark:text-zinc-800 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center hover:bg-stone-700 dark:hover:bg-neutral-200 transition-all duration-300 z-30 ${cart.length > 0 ? 'animate-pulse-cart' : ''}`}
+            className={`fixed bottom-6 right-6 bg-brand-primary text-white dark:bg-white dark:text-stone-900 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center hover:bg-stone-700 dark:hover:bg-stone-200 transition-all duration-300 z-30 ${cart.length > 0 ? 'animate-pulse-cart' : ''}`}
             aria-label={`Open cart with ${cartItemCount} items`}
         >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
@@ -565,6 +575,20 @@ const CustomerView: React.FC = () => {
                 </motion.span>
             )}
         </motion.button>
+
+        {/* Admin Customer Directory Toggle */}
+        {(currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.KITCHEN) && (
+            <motion.button
+                id="directory-toggle"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setIsCustomerDirectoryOpen(true)}
+                className="fixed bottom-6 right-24 bg-amber-600 text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center hover:bg-amber-700 transition-all duration-300 z-30"
+                aria-label="Open customer directory"
+            >
+                <Users className="h-7 w-7" />
+            </motion.button>
+        )}
         
         <Suspense fallback={null}>
             <CartFlyout
@@ -587,12 +611,26 @@ const CustomerView: React.FC = () => {
                 onRemoveItem={removeFromCart}
                 onEditItem={handleEditCartItem}
                 isLoggedIn={!!currentUser}
+                isAdmin={currentUser?.role === UserRole.ADMIN}
                 pickupOption={pickupOption}
                 onPickupOptionChange={setPickupOption}
                 pickupDate={pickupDate}
                 onPickupDateChange={setPickupDate}
                 pickupTimeValue={pickupTime}
                 onPickupTimeChange={setPickupTime}
+            />
+        </Suspense>
+
+        <Suspense fallback={null}>
+            <CustomerDirectoryFlyout
+                isOpen={isCustomerDirectoryOpen}
+                onClose={() => setIsCustomerDirectoryOpen(false)}
+                onSelectCustomer={(customer) => {
+                    setCustomerName(customer.name);
+                    setIsCustomerDirectoryOpen(false);
+                    setIsCartOpen(true); // Open cart to show the name is set
+                    addToast(`Selected customer: ${customer.name}`, 'success');
+                }}
             />
         </Suspense>
 

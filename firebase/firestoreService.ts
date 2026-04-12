@@ -305,7 +305,14 @@ export const addOrder = async (order: Omit<Order, 'id'>): Promise<void> => {
         
         // 4. Atomic push and set
         const newOrderRef = ordersRef.push();
-        await newOrderRef.set(finalOrder);
+        
+        // Add a timeout to the set operation to prevent hanging
+        const setPromise = newOrderRef.set(finalOrder);
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Order submission timed out. Please check your connection.")), 15000)
+        );
+
+        await Promise.race([setPromise, timeoutPromise]);
     } catch (error: any) {
         if (isPermissionError(error)) {
             const permError = new Error("Firebase Permission Denied: Could not add order. Please check your database rules.");

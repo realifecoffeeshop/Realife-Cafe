@@ -3,14 +3,13 @@ import React, { useContext, useState, useMemo, useEffect, useCallback, memo } fr
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
-import { Drink, ModifierOption, Order, SelectedModifier, Customer } from '../../types';
+import { Drink, ModifierOption, Order, SelectedModifier, Customer, UserRole } from '../../types';
 import { Loader2, Download } from 'lucide-react';
 import OrderTicket from './OrderTicket';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import Modal from '../shared/Modal';
 import GroupedItemCard, { AggregatedItem } from './GroupedItemCard';
 import GroupedByTypeCard, { AggregatedByType } from './GroupedByTypeCard';
-import CustomerDirectory from './CustomerDirectory';
 
 const PREPARATION_LEAD_TIME = 15 * 60 * 1000; // 15 minutes in milliseconds
 
@@ -28,8 +27,22 @@ const filterOrders = (orders: Order[], query: string): Order[] => {
 };
 
 
-const PaymentTicket = memo(({ order, onVerify, onDelete }: { order: Order; onVerify: (id: string) => void; onDelete: (id: string) => void; }) => {
+const PaymentTicket = memo(({ order, onVerify, onDelete, onUpdateName, isAdmin }: { order: Order; onVerify: (id: string) => void; onDelete: (id: string) => void; onUpdateName?: (id: string, newName: string) => void; isAdmin?: boolean; }) => {
   const [timeElapsed, setTimeElapsed] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(order.customerName || '');
+
+  useEffect(() => {
+    setEditedName(order.customerName || '');
+  }, [order.customerName]);
+
+  const handleNameSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (editedName.trim() && editedName !== order.customerName) {
+      onUpdateName?.(order.id, editedName.trim());
+    }
+    setIsEditingName(false);
+  };
 
   useEffect(() => {
     const updateTimer = () => {
@@ -70,7 +83,7 @@ const PaymentTicket = memo(({ order, onVerify, onDelete }: { order: Order; onVer
           e.stopPropagation();
           onDelete(order.id);
         }}
-        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-red-600"
+        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-[30] hover:bg-red-600 active:scale-95"
         title="Delete Order"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -80,8 +93,46 @@ const PaymentTicket = memo(({ order, onVerify, onDelete }: { order: Order; onVer
 
       <header className="p-3 bg-stone-100 dark:bg-zinc-700 rounded-t-lg sticky top-0 z-20 shadow-sm">
         <div className="flex justify-between items-start">
-            <div id={`order-heading-${order.id}`}>
-              <h3 className="font-bold text-xl text-stone-900 dark:text-white truncate">{order.customerName}</h3>
+            <div id={`order-heading-${order.id}`} className="flex-grow min-w-0">
+              {isEditingName && isAdmin ? (
+                <form onSubmit={handleNameSubmit} className="flex items-center gap-2 pr-2" onClick={e => e.stopPropagation()}>
+                  <input
+                    type="text"
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                    onBlur={() => handleNameSubmit()}
+                    autoFocus
+                    className="w-full px-2 py-1 text-lg font-bold border rounded bg-white dark:bg-zinc-800 dark:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </form>
+              ) : (
+                <div className="flex items-center gap-2 group/name">
+                  <h3 
+                    className={`font-bold text-xl text-stone-900 dark:text-white truncate ${isAdmin ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
+                    onClick={(e) => {
+                      if (isAdmin) {
+                        e.stopPropagation();
+                        setIsEditingName(true);
+                      }
+                    }}
+                  >
+                    {order.customerName || 'Unknown'}
+                  </h3>
+                  {isAdmin && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsEditingName(true);
+                      }}
+                      className="opacity-0 group-hover/name:opacity-100 p-1 text-stone-400 hover:text-blue-600 transition-opacity"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="flex items-center space-x-2 mt-1">
                 <p className="text-xs text-stone-500 dark:text-zinc-400">ID: #{(order.id || '').slice(-6)}</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
@@ -130,7 +181,7 @@ const PaymentTicket = memo(({ order, onVerify, onDelete }: { order: Order; onVer
       <footer className="p-3 border-t dark:border-zinc-700">
         <button
           onClick={() => onVerify(order.id)}
-          className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors font-bold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-zinc-800"
+          className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors font-bold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-zinc-800 flex items-center justify-center leading-none"
           aria-label={`Verify payment for ${order.customerName || 'Customer'}'s order`}
         >
           Verify Payment & Send to Kitchen
@@ -141,8 +192,69 @@ const PaymentTicket = memo(({ order, onVerify, onDelete }: { order: Order; onVer
 });
 PaymentTicket.displayName = 'PaymentTicket';
 
+const EditableNameCell = memo(({ order, onUpdateName, isAdmin }: { order: Order; onUpdateName: (id: string, newName: string) => void; isAdmin: boolean }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState(order.customerName || '');
+
+  useEffect(() => {
+    setEditedName(order.customerName || '');
+  }, [order.customerName]);
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (editedName.trim() && editedName !== order.customerName) {
+      onUpdateName(order.id, editedName.trim());
+    }
+    setIsEditing(false);
+  };
+
+  if (isEditing && isAdmin) {
+    return (
+      <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">
+        <form onSubmit={handleSubmit} className="flex items-center gap-2">
+          <input
+            type="text"
+            value={editedName}
+            onChange={(e) => setEditedName(e.target.value)}
+            onBlur={() => handleSubmit()}
+            autoFocus
+            className="w-full px-2 py-1 text-sm font-bold border rounded bg-white dark:bg-zinc-800 dark:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </form>
+      </td>
+    );
+  }
+
+  return (
+    <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">
+      <div className="flex items-center gap-2 group/name">
+        <div className="flex flex-col">
+          <div 
+            className={`font-bold ${isAdmin ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
+            onClick={() => isAdmin && setIsEditing(true)}
+          >
+            {order.customerName || 'Unknown'}
+          </div>
+          <div className="text-[10px] text-stone-400 dark:text-zinc-500 font-mono">#{(order.id || '').slice(-6).toUpperCase()}</div>
+        </div>
+        {isAdmin && (
+          <button 
+            onClick={() => setIsEditing(true)}
+            className="opacity-0 group-hover/name:opacity-100 p-1 text-stone-400 hover:text-blue-600 transition-opacity"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
+        )}
+      </div>
+    </td>
+  );
+});
+EditableNameCell.displayName = 'EditableNameCell';
+
 const TabButton = memo(({ tabId, count, children, panelId, activeTab, onTabChange }: {
-  tabId: 'payment-required' | 'pending' | 'scheduled' | 'history' | 'customers';
+  tabId: 'payment-required' | 'pending' | 'scheduled' | 'history';
   count: number;
   children: React.ReactNode;
   panelId: string;
@@ -218,7 +330,7 @@ const KDSView: React.FC = () => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'payment-required' | 'pending' | 'scheduled' | 'history' | 'customers'>('pending');
+  const [activeTab, setActiveTab] = useState<'payment-required' | 'pending' | 'scheduled' | 'history'>('pending');
 
   // Debounce search query
   useEffect(() => {
@@ -700,6 +812,8 @@ const KDSView: React.FC = () => {
                                         onComplete={handleCompleteOrder} 
                                         onDelete={setDeleteCandidate} 
                                         onToggleItem={handleToggleItemCompletion}
+                                        onUpdateName={(id, newName) => dispatch({ type: 'UPDATE_ORDER', payload: { id, updates: { customerName: newName } } })}
+                                        isAdmin={state.currentUser?.role === UserRole.ADMIN}
                                         isSelected={selectedOrders.includes(order.id)}
                                         onSelect={isMergeMode ? toggleOrderSelection : undefined}
                                         onUnmerge={handleUngroupOrder}
@@ -752,6 +866,11 @@ const KDSView: React.FC = () => {
                                                     handleToggleItemCompletion(originalOrder.id, itemId);
                                                 }
                                             }}
+                                            onUpdateName={(id, newName) => {
+                                                // Update all orders in the group with the same name
+                                                orders.forEach(o => dispatch({ type: 'UPDATE_ORDER', payload: { id: o.id, updates: { customerName: newName } } }));
+                                            }}
+                                            isAdmin={state.currentUser?.role === UserRole.ADMIN}
                                             onUnmerge={handleUngroupOrder}
                                         />
                                         <div className="px-3 py-1 text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase text-center">
@@ -840,7 +959,6 @@ const KDSView: React.FC = () => {
         <TabButton tabId="pending" count={pendingOrders.length} panelId="tabpanel-pending" activeTab={activeTab} onTabChange={setActiveTab}>Pending</TabButton>
         <TabButton tabId="scheduled" count={scheduledOrders.length} panelId="tabpanel-scheduled" activeTab={activeTab} onTabChange={setActiveTab}>Scheduled</TabButton>
         <TabButton tabId="history" count={completedOrders.length} panelId="tabpanel-history" activeTab={activeTab} onTabChange={setActiveTab}>History</TabButton>
-        <TabButton tabId="customers" count={state.customers.length} panelId="tabpanel-customers" activeTab={activeTab} onTabChange={setActiveTab}>Customers</TabButton>
       </div>
       
       <div id="tabpanel-payment-required" role="tabpanel" aria-labelledby="tab-payment-required" hidden={activeTab !== 'payment-required'}>
@@ -857,7 +975,13 @@ const KDSView: React.FC = () => {
                       <AnimatePresence mode="popLayout">
                           {paymentRequiredOrders.map(order => (
                               <div key={order.id} className={ticketWrapperClasses}>
-                                  <PaymentTicket order={order} onVerify={handleVerifyPayment} onDelete={setDeleteCandidate} />
+                                  <PaymentTicket 
+                                    order={order} 
+                                    onVerify={handleVerifyPayment} 
+                                    onDelete={setDeleteCandidate} 
+                                    onUpdateName={(id, newName) => dispatch({ type: 'UPDATE_ORDER', payload: { id, updates: { customerName: newName } } })}
+                                    isAdmin={state.currentUser?.role === UserRole.ADMIN}
+                                  />
                               </div>
                           ))}
                       </AnimatePresence>
@@ -926,10 +1050,11 @@ const KDSView: React.FC = () => {
                 <tbody>
                     {scheduledOrders.map(order => (
                         <tr key={order.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700 hover:bg-stone-50 dark:hover:bg-zinc-700/50 transition-colors">
-                            <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">
-                                <div className="font-bold">{order.customerName || 'Unknown'}</div>
-                                <div className="text-[10px] text-stone-400 dark:text-zinc-500 font-mono">#{(order.id || '').slice(-6)}</div>
-                            </td>
+                            <EditableNameCell 
+                                order={order} 
+                                onUpdateName={(id, newName) => dispatch({ type: 'UPDATE_ORDER', payload: { id, updates: { customerName: newName } } })}
+                                isAdmin={state.currentUser?.role === UserRole.ADMIN}
+                            />
                             <td className="px-6 py-4">
                                 <div className="font-semibold text-stone-800 dark:text-zinc-200">
                                     {order.pickupTime && !isNaN(new Date(order.pickupTime).getTime()) ? new Date(order.pickupTime).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}
@@ -1044,12 +1169,11 @@ const KDSView: React.FC = () => {
                           <tbody>
                               {completedOrders.map(order => (
                                   <tr key={order.id} className="bg-white dark:bg-zinc-800 border-b dark:border-zinc-700 hover:bg-stone-50 dark:hover:bg-zinc-700/50 transition-colors">
-                                      <td className="px-6 py-4 font-medium text-stone-900 dark:text-white whitespace-nowrap">
-                                          <div className="flex flex-col">
-                                              <span>{order.customerName || 'Unknown'}</span>
-                                              <span className="text-[10px] text-stone-400 dark:text-zinc-500 font-mono">#{order.id.slice(-6).toUpperCase()}</span>
-                                          </div>
-                                      </td>
+                                      <EditableNameCell 
+                                          order={order} 
+                                          onUpdateName={(id, newName) => dispatch({ type: 'UPDATE_ORDER', payload: { id, updates: { customerName: newName } } })}
+                                          isAdmin={state.currentUser?.role === UserRole.ADMIN}
+                                      />
                                       <td className="px-6 py-4">
                                           <div className="flex flex-col">
                                               <span>{order.completedAt ? new Date(order.completedAt).toLocaleDateString() : 'N/A'}</span>
@@ -1143,21 +1267,6 @@ const KDSView: React.FC = () => {
                       </div>
                   )}
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <div id="tabpanel-customers" role="tabpanel" aria-labelledby="tab-customers" hidden={activeTab !== 'customers'}>
-        <AnimatePresence mode="popLayout">
-          {activeTab === 'customers' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-            >
-              <CustomerDirectory />
             </motion.div>
           )}
         </AnimatePresence>
