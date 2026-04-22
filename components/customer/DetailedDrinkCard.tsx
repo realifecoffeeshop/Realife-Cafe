@@ -60,6 +60,11 @@ const DetailedDrinkCard: React.FC<DetailedDrinkCardProps> = ({ drink, onSelect, 
                 Out of Stock
               </span>
             )}
+            {drink.schedulingConstraint?.isEnabled && (
+              <span className="px-3 py-1 bg-amber-500 text-[9px] sm:text-[11px] uppercase tracking-widest font-bold text-white rounded-full font-serif whitespace-nowrap mt-1 shadow-lg">
+                Pre-order
+              </span>
+            )}
           </div>
           {drink.description && (
             <p className="text-xs sm:text-sm md:text-base text-stone-500 dark:text-zinc-400 line-clamp-3 sm:line-clamp-4 md:line-clamp-5 leading-relaxed font-serif italic">

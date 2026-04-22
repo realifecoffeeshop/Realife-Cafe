@@ -91,6 +91,18 @@ const ProfileView: React.FC = () => {
     setEditingCartItem(item);
   };
 
+  const handleUpdateQuantity = (itemId: string, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    const item = cart.find(i => i.id === itemId);
+    if (!item) return;
+    const unitPrice = item.finalPrice / item.quantity;
+    const newFinalPrice = unitPrice * newQuantity;
+    dispatch({ 
+        type: 'UPDATE_CART_ITEM', 
+        payload: { ...item, quantity: newQuantity, finalPrice: newFinalPrice } 
+    });
+  };
+
   const handleSaveCartItem = (item: CartItem) => {
     if (editingCartItem) {
       dispatch({ type: 'UPDATE_CART_ITEM', payload: { ...item, id: editingCartItem.id } });
@@ -139,12 +151,32 @@ const ProfileView: React.FC = () => {
                     <div key={item.id} className="p-3 bg-stone-50 dark:bg-zinc-900/50 rounded-xl border border-stone-100 dark:border-zinc-800 group">
                       <div className="flex justify-between items-start">
                         <div className="flex-grow">
-                          <p className="font-bold text-sm leading-tight">
-                            {item.quantity}x {item.drink?.name}
+                          <p className="font-bold text-sm leading-tight mb-2">
+                            {item.drink?.name}
                           </p>
-                          {item.customName && <p className="text-[10px] text-stone-400 italic mt-0.5">"{item.customName}"</p>}
+                          
+                          {/* Quantity Controls */}
+                          <div className="flex items-center gap-2 bg-white dark:bg-zinc-800 p-1 rounded-xl w-fit border border-stone-100 dark:border-zinc-700 shadow-sm">
+                            <button 
+                              onClick={() => handleUpdateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                              className="w-6 h-6 flex items-center justify-center rounded-lg bg-stone-100 dark:bg-zinc-700 text-stone-900 dark:text-white hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all font-bold text-xs"
+                              aria-label="Decrease quantity"
+                            >
+                              -
+                            </button>
+                            <span className="text-xs font-bold min-w-[16px] text-center">{item.quantity}</span>
+                            <button 
+                              onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                              className="w-6 h-6 flex items-center justify-center rounded-lg bg-stone-100 dark:bg-zinc-700 text-stone-900 dark:text-white hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all font-bold text-xs"
+                              aria-label="Increase quantity"
+                            >
+                              +
+                            </button>
+                          </div>
+                          
+                          {item.customName && <p className="text-[10px] text-stone-400 italic mt-1 font-serif">"{item.customName}"</p>}
                         </div>
-                        <span className="font-bold text-sm">${item.finalPrice.toFixed(2)}</span>
+                        <span className="font-bold text-sm text-stone-900 dark:text-white">${item.finalPrice.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-end gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 

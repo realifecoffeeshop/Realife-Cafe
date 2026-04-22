@@ -67,9 +67,14 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ isOpen, onClose, onLinkCl
                                 </>
                             )}
                             {currentUser?.role === UserRole.ADMIN && (
-                                <li className="md:hidden">
-                                    <button onClick={() => onNavClick(View.ADMIN)} className="w-full flex items-center px-4 py-3.5 text-lg font-serif font-bold text-stone-900 dark:text-zinc-50 rounded-xl hover:bg-stone-50 dark:hover:bg-zinc-800 transition-all border border-transparent hover:border-stone-100 dark:hover:border-zinc-700">Admin</button>
-                                </li>
+                                <>
+                                    <li className="md:hidden">
+                                        <button onClick={() => onNavClick(View.ADMIN)} className="w-full flex items-center px-4 py-3.5 text-lg font-serif font-bold text-stone-900 dark:text-zinc-50 rounded-xl hover:bg-stone-50 dark:hover:bg-zinc-800 transition-all border border-transparent hover:border-stone-100 dark:hover:border-zinc-700">Admin</button>
+                                    </li>
+                                    <li>
+                                        <button onClick={() => onNavClick(View.DEV_MODE)} className="w-full flex items-center px-4 py-3.5 text-lg font-serif font-bold text-stone-900 dark:text-zinc-50 rounded-xl hover:bg-stone-50 dark:hover:bg-zinc-800 transition-all border border-transparent hover:border-stone-100 dark:hover:border-zinc-700">Dev Mode</button>
+                                    </li>
+                                </>
                             )}
                             <li className="border-b border-stone-100 dark:border-zinc-800 my-4 md:hidden"></li>
                             

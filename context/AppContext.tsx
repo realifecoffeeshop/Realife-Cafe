@@ -29,6 +29,8 @@ const initialState: AppState = {
 const appReducer = (state: AppState, action: Action): AppState => {
   switch (action.type) {
     case 'SET_PERMISSION_ERROR':
+      // Only set error if it's different to avoid loops
+      if (state.permissionError === action.payload) return state;
       return { ...state, permissionError: action.payload };
     case 'SET_GLOBAL_ERROR':
       return { ...state, globalError: action.payload };
@@ -44,7 +46,31 @@ const appReducer = (state: AppState, action: Action): AppState => {
         
         // Ensure favourites is always an array
         const normalizedUsers = (action.payload || []).map(u => u ? { ...u, favourites: u.favourites || [] } : u);
-        const normalizedCurrentUser = updatedCurrentUser ? { ...updatedCurrentUser, favourites: updatedCurrentUser.favourites || [] } : null;
+        
+        let normalizedCurrentUser = updatedCurrentUser ? { ...updatedCurrentUser, favourites: updatedCurrentUser.favourites || [] } : null;
+
+        // Bootstrap Admin by Email or Specific Usernames to ensure role persistence
+        const adminNames = ['admin', 'joseph p', 'joseph admin', 'joseph'];
+        const kitchenNames = ['kitchen', 'staff'];
+        if (normalizedCurrentUser) {
+            const nameLower = (normalizedCurrentUser.name || '').toLowerCase();
+            const matchesAdminName = adminNames.includes(nameLower);
+            const matchesKitchenName = kitchenNames.includes(nameLower);
+            const isOwnerEmail = normalizedCurrentUser.email === 'realifecoffeeshop@gmail.com';
+            
+            if ((isOwnerEmail || matchesAdminName) && normalizedCurrentUser.role !== UserRole.ADMIN) {
+                normalizedCurrentUser.role = UserRole.ADMIN;
+                // Avoid saving if it's a guest ID
+                if (!normalizedCurrentUser.id.startsWith('guest-')) {
+                    updateUser(normalizedCurrentUser.id, { role: UserRole.ADMIN }).catch(err => console.error("Failed to sync admin role to DB:", err));
+                }
+            } else if (matchesKitchenName && normalizedCurrentUser.role !== UserRole.KITCHEN) {
+                normalizedCurrentUser.role = UserRole.KITCHEN;
+                if (!normalizedCurrentUser.id.startsWith('guest-')) {
+                    updateUser(normalizedCurrentUser.id, { role: UserRole.KITCHEN }).catch(err => console.error("Failed to sync kitchen role to DB:", err));
+                }
+            }
+        }
 
         return { ...state, users: normalizedUsers, currentUser: normalizedCurrentUser };
     }
@@ -85,14 +111,15 @@ const appReducer = (state: AppState, action: Action): AppState => {
         return { ...state, currentUser: existingUser };
       }
       
-      // Auto-promote the first 'admin' or 'kitchen' registration to their respective roles
+      // Auto-promote specific users to admin role
       const nameLower = (action.payload.name || '').toLowerCase();
-      const isInitialAdmin = nameLower === 'admin';
+      const isInitialAdmin = nameLower === 'admin' || nameLower === 'joseph p' || nameLower === 'joseph admin' || nameLower === 'joseph';
       const isInitialKitchen = nameLower === 'kitchen';
       
       const newUser: User = {
         name: action.payload.name,
         id: action.payload.userId,
+        email: action.payload.email,
         role: isInitialAdmin ? UserRole.ADMIN : (isInitialKitchen ? UserRole.KITCHEN : UserRole.CUSTOMER),
         favourites: [],
         loyaltyPoints: 0,
@@ -107,8 +134,27 @@ const appReducer = (state: AppState, action: Action): AppState => {
       };
     }
     case 'SET_CURRENT_USER': {
-        const normalizedUser = action.payload ? { ...action.payload, favourites: action.payload.favourites || [] } : null;
-        if (!normalizedUser) return { ...state, currentUser: null };
+        const baseUser = action.payload ? { ...action.payload, favourites: action.payload.favourites || [] } : null;
+        if (!baseUser) return { ...state, currentUser: null };
+
+        // Ensure admin/staff roles are preserved for bootstrap names/emails
+        const nameLower = (baseUser.name || '').toLowerCase();
+        const emailLower = (baseUser.email || '').toLowerCase();
+        const isOwnerEmail = emailLower === 'realifecoffeeshop@gmail.com';
+        const matchesAdminName = nameLower === 'admin' || nameLower === 'joseph p' || nameLower === 'joseph admin' || nameLower === 'joseph';
+        const matchesKitchenName = nameLower === 'kitchen' || nameLower === 'staff';
+        
+        const normalizedUser = { ...baseUser };
+        if (isOwnerEmail || matchesAdminName) {
+            normalizedUser.role = UserRole.ADMIN;
+        } else if (matchesKitchenName) {
+            normalizedUser.role = UserRole.KITCHEN;
+        }
+
+        // If the role was upgraded by local logic, sync it back to DB
+        if (normalizedUser.role !== baseUser.role && !normalizedUser.id.startsWith('guest-')) {
+            updateUser(normalizedUser.id, { role: normalizedUser.role }).catch(err => console.error("Failed to sync role upgrade:", err));
+        }
 
         return { 
             ...state, 
@@ -126,14 +172,34 @@ const appReducer = (state: AppState, action: Action): AppState => {
       
       if (!user) {
         // Allow guest login if user doesn't exist
+        const isJoseph = nameLower === 'joseph p' || nameLower === 'joseph admin' || nameLower === 'joseph' || nameLower === 'admin';
         const guestUser: User = {
             name: action.payload.name,
             id: action.payload.userId || `guest-${Date.now()}`,
-            role: UserRole.CUSTOMER,
+            email: action.payload.email,
+            role: isJoseph ? UserRole.ADMIN : UserRole.CUSTOMER,
             favourites: [],
             loyaltyPoints: 0,
         };
+        
+        // If they are an authenticated user (have a userId) and matched as an admin, 
+        // we MUST save them to the DB as an admin so rules work.
+        if (action.payload.userId && isJoseph) {
+             saveUser(guestUser).catch(err => console.error("Failed to persist initial admin:", err));
+        }
+        
         return { ...state, currentUser: guestUser };
+      }
+
+      // Auto-promote Joseph P if they exist but aren't admin yet
+      if (nameLower === 'joseph p' && user.role !== UserRole.ADMIN) {
+          const promotedUser = { ...user, role: UserRole.ADMIN };
+          updateUser(user.id, { role: UserRole.ADMIN }).catch(err => console.error("Failed to promote Joseph P:", err));
+          return {
+              ...state,
+              currentUser: promotedUser,
+              users: state.users.map(u => u.id === user.id ? promotedUser : u)
+          };
       }
 
       // Migration: If the user ID in the database doesn't match the Firebase Auth UID,
@@ -152,7 +218,9 @@ const appReducer = (state: AppState, action: Action): AppState => {
       return { ...state, currentUser: user };
     }
     case 'LOGOUT': {
-      // Note: Firebase anonymous user is not signed out to maintain a stable UID for the session.
+      if (auth) {
+          auth.signOut().catch(err => console.error("Firebase sign-out failed:", err));
+      }
       return { ...state, currentUser: null };
     }
     case 'ADD_FAVOURITE': {
@@ -472,13 +540,16 @@ const appReducer = (state: AppState, action: Action): AppState => {
             ...state,
             discounts: state.discounts.filter(d => d.id !== action.payload),
         };
-    case 'UPDATE_USER_ROLE':
+    case 'UPDATE_USER_ROLE': {
+        const { userId, role } = action.payload;
+        updateUser(userId, { role }).catch(err => console.error("Failed to update user role in Firebase:", err));
         return {
             ...state,
             users: state.users.map(user => 
-                user.id === action.payload.userId ? { ...user, role: action.payload.role } : user
+                user.id === userId ? { ...user, role } : user
             ),
         };
+    }
     case 'UPDATE_USER_PROFILE': {
         const { userId, name, birthday } = action.payload;
         
@@ -645,16 +716,20 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   useEffect(() => {
     if (isFirebaseConfigured && auth) {
-      const signIn = async () => {
+        const signIn = async () => {
         try {
           if (!auth.currentUser) {
             await auth.signInAnonymously();
           }
         } catch (error: any) {
-          console.error("Anonymous sign-in failed", error);
+          console.error("Anonymous sign-in failed:", error);
           // Check for the specific error and show a helpful message.
           if (error.code === 'auth/configuration-not-found') {
               addToast("Action Required: Enable Anonymous Sign-In in your Firebase Console (Authentication -> Sign-in method).", 'error', { duration: 10000 });
+          } else if (error.code === 'auth/invalid-credential') {
+              addToast("Firebase Authentication Failure: The current domain is likely not authorized, or the API key is restricted. Please check your Firebase settings or clear your browser cache.", 'error', { duration: 10000 });
+              // Clear current auth state if it's corrupted locally
+              auth.signOut().catch(() => {});
           } else {
               addToast(`Authentication Error: ${error.message}`, 'error');
           }
@@ -771,6 +846,12 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         let unsubscribeCustomers: (() => void) | undefined;
 
         const setupAuthListeners = async () => {
+            // Clear any existing permission errors when we start setting up new listeners
+            // but only if it was a permission error for a path we are about to listen to
+            if (state.permissionError) {
+                dispatch({ type: 'SET_PERMISSION_ERROR', payload: null });
+            }
+
             // Seeding data (requires write permission, which is auth != null)
             // We only seed if the user is an ADMIN to prevent multiple clients trying to seed at once
             const isAdmin = state.currentUser?.role === UserRole.ADMIN;
@@ -804,6 +885,10 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 unsubscribeOrders = onActiveOrdersUpdate(
                     (orders: Order[]) => {
                         dispatch({ type: 'SET_ORDERS', payload: orders });
+                        // Clear permission error if we successfully loaded data
+                        if (state.permissionError?.includes("'/orders'")) {
+                            dispatch({ type: 'SET_PERMISSION_ERROR', payload: null });
+                        }
                     },
                     (error: any) => {
                         if (error.message?.toLowerCase().includes('permission_denied')) {
@@ -818,16 +903,20 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
                 // OPTIMIZATION: Only fetch users for ADMIN and KITCHEN.
                 if (isStaff) {
-                    unsubscribeUsers = onUsersUpdate(
-                        (users: User[]) => {
-                            dispatch({ type: 'SET_USERS', payload: users });
-                        },
-                        (error: any) => {
-                            if (error.message?.toLowerCase().includes('permission_denied')) {
-                                dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/users'.` });
-                            }
+                unsubscribeUsers = onUsersUpdate(
+                    (users: User[]) => {
+                        dispatch({ type: 'SET_USERS', payload: users });
+                        // Clear permission error if we successfully loaded data
+                        if (state.permissionError?.includes("'/users'")) {
+                            dispatch({ type: 'SET_PERMISSION_ERROR', payload: null });
                         }
-                    );
+                    },
+                    (error: any) => {
+                        if (error.message?.toLowerCase().includes('permission_denied')) {
+                            dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/users'.` });
+                        }
+                    }
+                );
 
                     unsubscribeFeedback = onFeedbackUpdate(
                         (feedback: Feedback[]) => {
@@ -840,16 +929,20 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                         }
                     );
 
-                    unsubscribeCustomers = onCustomersUpdate(
-                        (customers: Customer[]) => {
-                            dispatch({ type: 'SET_CUSTOMERS', payload: customers });
-                        },
-                        (error: any) => {
-                            if (error.message?.toLowerCase().includes('permission_denied')) {
-                                dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/customers'.` });
-                            }
+                unsubscribeCustomers = onCustomersUpdate(
+                    (customers: Customer[]) => {
+                        dispatch({ type: 'SET_CUSTOMERS', payload: customers });
+                        // Clear permission error if we successfully loaded data
+                        if (state.permissionError?.includes("'/customers'")) {
+                            dispatch({ type: 'SET_PERMISSION_ERROR', payload: null });
                         }
-                    );
+                    },
+                    (error: any) => {
+                        if (error.message?.toLowerCase().includes('permission_denied')) {
+                            dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/customers'.` });
+                        }
+                    }
+                );
                 }
             } else if (state.currentUser) {
                 // For customers, we could implement a filtered listener here 
@@ -890,6 +983,13 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   }, [state.orders]);
 
   // Effect for scheduled order activation
+  useEffect(() => {
+    if (state.currentUser) {
+        const isGuest = state.currentUser.id.startsWith('guest-');
+        console.log(`[ACL] User ID: ${state.currentUser.id} | Email: ${state.currentUser.email} | Role: ${state.currentUser.role} | Account: ${isGuest ? 'GUEST (Rules will fail)' : 'AUTHENTICATED'}`);
+    }
+  }, [state.currentUser?.id, state.currentUser?.role]);
+
   useEffect(() => {
     const PREPARATION_LEAD_TIME = 15 * 60 * 1000; // 15 minutes
     const interval = setInterval(() => {

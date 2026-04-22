@@ -9,7 +9,7 @@ import Feedback from './components/shared/Feedback';
 import Modal from './components/shared/Modal';
 import SharePictureForm from './components/shared/SharePictureForm';
 import TellStoryForm from './components/shared/TellStoryForm';
-import { isFirebaseConfigured } from './firebase/config';
+import { isFirebaseConfigured, auth } from './firebase/config';
 
 import CustomerView from './components/customer/CustomerView';
 
@@ -20,6 +20,7 @@ const AdminView = lazyWithRetry(() => import('./components/admin/AdminView'));
 const ProfileView = lazyWithRetry(() => import('./components/customer/ProfileView'));
 const BirthdaysView = lazyWithRetry(() => import('./components/shared/BirthdaysView'));
 const LoginModal = lazyWithRetry(() => import('./components/customer/LoginModal'));
+const DevMode = lazyWithRetry(() => import('./components/admin/DevMode'));
 
 const LoadingSpinner = () => (
     <div className="flex items-center justify-center p-12">
@@ -33,29 +34,51 @@ const FirebaseWarningBanner: React.FC = () => (
     </div>
 );
 
-const FirebasePermissionErrorBanner: React.FC<{ message: string, onDismiss: () => void }> = ({ message, onDismiss }) => (
-    <div className="bg-red-100 dark:bg-red-900 border-b-2 border-red-500 dark:border-red-600 p-3 text-center text-sm text-red-800 dark:text-red-200 relative" role="alert">
-        <div className="flex items-center justify-center max-w-4xl mx-auto">
-            <div className="flex-shrink-0">
-                 <svg className="h-5 w-5 text-red-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
+const FirebasePermissionErrorBanner: React.FC<{ message: string, onDismiss: () => void }> = ({ message, onDismiss }) => {
+    const handleRefresh = async () => {
+        if (auth) {
+            try {
+                // Clear any corrupted local auth state
+                await auth.signOut();
+                localStorage.removeItem('cafe-pos-data');
+            } catch (e) {
+                console.warn("Sign-out failed during session refresh:", e);
+            }
+        }
+        window.location.reload();
+    };
+
+    return (
+        <div className="bg-red-50 dark:bg-zinc-900 border-b border-red-200 dark:border-zinc-800 p-2 text-center text-[10px] uppercase tracking-widest font-bold text-red-600 dark:text-red-400 relative z-50 shadow-sm" role="alert">
+            <div className="flex items-center justify-center max-w-4xl mx-auto px-8">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                         <svg className="h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                        <span>{message}</span>
+                    </div>
+                    <button 
+                        onClick={handleRefresh}
+                        className="flex items-center gap-1.5 px-3 py-1 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 rounded-full transition-all active:scale-95"
+                    >
+                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span>Refresh Session</span>
+                    </button>
+                </div>
             </div>
-            <div className="ml-3 text-left">
-                <p>
-                    <strong className="font-bold">Firebase Error:</strong> {message} For a quick fix, you can set your rules to be public. In Firebase Console &gt; Realtime Database &gt; Rules, use:
-                    <code className="bg-red-200 dark:bg-red-800/50 rounded p-1 mx-1 text-xs font-mono select-all">
-                        {`{ "rules": { ".read": true, ".write": true } }`}
-                    </code>
-                     (Note: This is insecure for production apps).
-                </p>
-            </div>
+            <button 
+                onClick={onDismiss} 
+                className="absolute top-1/2 right-2 -translate-y-1/2 p-1.5 rounded-full hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors text-stone-400 hover:text-red-600" 
+                aria-label="Dismiss"
+            >
+                <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path></svg>
+            </button>
         </div>
-        <button onClick={onDismiss} className="absolute top-1/2 right-3 -translate-y-1/2 p-1 rounded-md hover:bg-red-200 dark:hover:bg-red-800/50" aria-label="Dismiss">
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path></svg>
-        </button>
-    </div>
-);
+    );
+};
 
 const ConnectionWarningBanner: React.FC = () => (
     <div className="bg-amber-500 text-white p-2 text-center text-xs font-medium animate-pulse" role="alert">
@@ -253,6 +276,14 @@ const AppContent: React.FC = () => {
                   <ViewErrorBoundary viewName="Birthdays">
                     <React.Suspense fallback={<LoadingSpinner />}>
                       <BirthdaysView />
+                    </React.Suspense>
+                  </ViewErrorBoundary>
+                ) : <AccessDenied />;
+              case View.DEV_MODE:
+                return currentUser?.role === UserRole.ADMIN ? (
+                  <ViewErrorBoundary viewName="Dev Mode">
+                    <React.Suspense fallback={<LoadingSpinner />}>
+                      <DevMode />
                     </React.Suspense>
                   </ViewErrorBoundary>
                 ) : <AccessDenied />;

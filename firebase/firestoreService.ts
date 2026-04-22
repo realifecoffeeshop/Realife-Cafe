@@ -254,12 +254,14 @@ export const addOrder = async (order: Omit<Order, 'id'>): Promise<void> => {
         const orderToSanitize: any = {
             customerName: order.customerName || "Guest",
             customerId: order.customerId || null,
+            tableNumber: order.tableNumber || null,
             total: Number(order.total) || 0,
             totalCost: Number(order.totalCost) || 0,
             discountApplied: order.discountApplied ? sanitizeForFirebase(order.discountApplied) : null,
             finalTotal: Number(order.finalTotal) || 0,
             paymentMethod: order.paymentMethod || "Cash",
             status: order.status || "pending",
+            isVerified: order.isVerified ?? false,
             createdAt: order.createdAt || Date.now(),
             pickupTime: order.pickupTime || null,
             items: (order.items || []).map((item: any) => {

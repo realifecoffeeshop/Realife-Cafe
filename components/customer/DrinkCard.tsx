@@ -70,6 +70,11 @@ const DrinkCard: React.FC<DrinkCardProps> = ({ drink, onSelect, onQuickAdd, prio
             Unavailable
           </span>
         )}
+        {drink.schedulingConstraint?.isEnabled && (
+          <span className="px-3 py-1.5 bg-amber-500/90 backdrop-blur-md rounded-xl text-[10px] uppercase tracking-widest font-bold text-white shadow-lg font-serif flex items-center">
+            Pre-order
+          </span>
+        )}
       </div>
 
       <div className="absolute bottom-0 left-0 p-4 sm:p-6 w-full">
@@ -77,7 +82,7 @@ const DrinkCard: React.FC<DrinkCardProps> = ({ drink, onSelect, onQuickAdd, prio
         
         {!isUnavailable && (
           <div className="mt-2 md:mt-4 flex items-center justify-between opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-500 transform translate-y-0 md:translate-y-4 md:group-hover:translate-y-0">
-            <span className="text-[8px] sm:text-[10px] uppercase tracking-[0.2em] text-white/80 font-bold font-serif italic">View Details</span>
+            <span className="text-[8px] sm:text-[10px] uppercase tracking-[0.2em] text-white/80 font-bold font-serif italic">Customise</span>
             {onQuickAdd && (
               <button
                 onClick={(e) => {

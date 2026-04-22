@@ -6,6 +6,7 @@ export enum View {
   ADMIN = 'ADMIN',
   PROFILE = 'PROFILE',
   BIRTHDAYS = 'BIRTHDAYS',
+  DEV_MODE = 'DEV_MODE',
 }
 
 export enum AdminView {
@@ -16,6 +17,8 @@ export enum AdminView {
   FEEDBACK = 'FEEDBACK',
   QR_CODE = 'QR_CODE',
   ORDER_HISTORY = 'ORDER_HISTORY',
+  CUSTOMERS = 'CUSTOMERS',
+  DEV_MODE = 'DEV_MODE',
 }
 
 export enum UserRole {
@@ -63,6 +66,16 @@ export interface DrinkVariant {
   isAvailable?: boolean;
 }
 
+export interface SchedulingConstraint {
+  type: 'recurring' | 'fixed';
+  collectionDay?: number; // 0-6 (Sun-Sat), for recurring
+  cutoffDay?: number;    // 0-6 (Sun-Sat), for recurring
+  collectionDate?: string; // ISO Date YYYY-MM-DD, for single event
+  cutoffDate?: string;   // ISO Date YYYY-MM-DD, for single event
+  cutoffTime: string;    // HH:mm
+  isEnabled: boolean;
+}
+
 export interface Drink {
   id: string;
   name: string;
@@ -74,6 +87,7 @@ export interface Drink {
   description?: string;
   variants?: DrinkVariant[];
   isAvailable?: boolean;
+  schedulingConstraint?: SchedulingConstraint;
 }
 
 export interface SelectedModifier {
@@ -108,6 +122,7 @@ export interface Order {
   completedAt?: number;
   pickupTime?: number;
   mergeId?: string;
+  tableNumber?: string;
 }
 
 export interface Discount {
@@ -120,6 +135,7 @@ export interface Discount {
 export interface User {
     id: string;
     name: string;
+    email?: string;
     role: UserRole;
     favourites: CartItem[];
     birthday?: string; // ISO date string YYYY-MM-DD
@@ -217,8 +233,8 @@ export type Action =
   | { type: 'DELETE_MODIFIER_GROUP'; payload: string } // group id
   | { type: 'ADD_DISCOUNT'; payload: Discount }
   | { type: 'DELETE_DISCOUNT'; payload: string } // discount id
-  | { type: 'REGISTER'; payload: { name: string; userId: string } }
-  | { type: 'LOGIN'; payload: { name: string; userId?: string } }
+  | { type: 'REGISTER'; payload: { name: string; userId: string; email?: string } }
+  | { type: 'LOGIN'; payload: { name: string; userId?: string; email?: string } }
   | { type: 'LOGOUT' }
   | { type: 'ADD_FAVOURITE'; payload: CartItem }
   | { type: 'UPDATE_FAVOURITE'; payload: CartItem }

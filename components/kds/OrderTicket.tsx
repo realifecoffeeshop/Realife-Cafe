@@ -153,6 +153,11 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
                   >
                     {order.customerName || 'Unknown'}
                   </h3>
+                  {order.tableNumber && (
+                    <div className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 rounded-lg px-2.5 py-0.5 text-xs font-bold tracking-wider uppercase shadow-sm">
+                      T{order.tableNumber}
+                    </div>
+                  )}
                   {isAdmin && (
                     <button 
                       onClick={(e) => {

@@ -167,6 +167,7 @@ const CustomerView: React.FC = () => {
     return `${String(future.getHours()).padStart(2, '0')}:${String(future.getMinutes()).padStart(2, '0')}`;
   });
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
+  const [tableNumber, setTableNumber] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isBirthday = useMemo(() => {
@@ -201,6 +202,10 @@ const CustomerView: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('fullscreen') === 'true') {
         setShowFullscreenPrompt(true);
+    }
+    const tableParam = params.get('table');
+    if (tableParam) {
+        setTableNumber(tableParam);
     }
     if (params.get('cart') === 'open') {
         setIsCartOpen(true);
@@ -283,6 +288,21 @@ const CustomerView: React.FC = () => {
       setIsCartOpen(false); // Close cart to open the order modal
   }, []);
 
+  const handleUpdateQuantity = useCallback((itemId: string, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    const item = cart.find(i => i.id === itemId);
+    if (!item) return;
+    
+    // Calculate unit price based on current finalPrice and quantity
+    const unitPrice = item.finalPrice / item.quantity;
+    const newFinalPrice = unitPrice * newQuantity;
+    
+    dispatch({ 
+        type: 'UPDATE_CART_ITEM', 
+        payload: { ...item, quantity: newQuantity, finalPrice: newFinalPrice } 
+    });
+  }, [cart, dispatch]);
+
   const handleSaveCartItem = useCallback((item: CartItem) => {
     if (editingCartItem) {
         // Update existing item
@@ -332,6 +352,63 @@ const CustomerView: React.FC = () => {
     }
   }, [state.discounts, discountCode, addToast]);
 
+  const validateSchedules = useCallback((items: CartItem[], dateStr: string, timeStr: string, option: 'now' | 'later') => {
+    const now = new Date();
+    const selectedDate = option === 'later' 
+        ? new Date(`${dateStr}T${timeStr || '00:00'}`)
+        : new Date();
+
+    for (const item of items) {
+        const sc = item.drink.schedulingConstraint;
+        if (sc && sc.isEnabled) {
+            if (sc.type === 'recurring') {
+                if (selectedDate.getDay() !== sc.collectionDay) {
+                    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    return { 
+                        isValid: false, 
+                        message: `${item.drink.name} is only available for collection on ${days[sc.collectionDay!]}.` 
+                    };
+                }
+
+                const collectionDate = new Date(selectedDate);
+                collectionDate.setHours(0, 0, 0, 0);
+                
+                const cutoffDate = new Date(collectionDate);
+                let daysToCutoff = collectionDate.getDay() - sc.cutoffDay!;
+                if (daysToCutoff < 0) daysToCutoff += 7;
+                if (daysToCutoff === 0) daysToCutoff = 0; // Same day cutoff
+                
+                cutoffDate.setDate(cutoffDate.getDate() - daysToCutoff);
+                const [hours, minutes] = (sc.cutoffTime || '23:59').split(':').map(Number);
+                cutoffDate.setHours(hours, minutes, 0, 0);
+
+                if (now > cutoffDate) {
+                    return { 
+                        isValid: false, 
+                        message: `Pre-orders for ${item.drink.name} on ${collectionDate.toLocaleDateString()} closed on ${cutoffDate.toLocaleDateString()} at ${sc.cutoffTime}.` 
+                    };
+                }
+            } else if (sc.type === 'fixed') {
+                const targetDate = option === 'later' ? dateStr : `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+                if (targetDate !== sc.collectionDate) {
+                    return { 
+                        isValid: false, 
+                        message: `${item.drink.name} is only available for collection on ${sc.collectionDate}.` 
+                    };
+                }
+                const cutoffDateTime = new Date(`${sc.cutoffDate}T${sc.cutoffTime}`);
+                if (now > cutoffDateTime) {
+                    return { 
+                        isValid: false, 
+                        message: `Pre-orders for ${item.drink.name} closed on ${sc.cutoffDate} at ${sc.cutoffTime}.` 
+                    };
+                }
+            }
+        }
+    }
+    return { isValid: true };
+  }, []);
+
   const handlePlaceOrder = useCallback(async () => {
     if (isSubmitting) return;
 
@@ -339,6 +416,14 @@ const CustomerView: React.FC = () => {
       addToast('Your cart is empty. Please add items to your order first.', 'error');
       return;
     }
+
+    const scheduleValidation = validateSchedules(cart, pickupDate, pickupTime, pickupOption);
+    if (!scheduleValidation.isValid) {
+        setError(scheduleValidation.message || 'Invalid scheduling selection.');
+        addToast(scheduleValidation.message || 'Invalid scheduling selection.', 'error');
+        return;
+    }
+
     if (!customerName.trim()) {
       setError('Group Order Name is required.');
       addToast('Group Order Name is required.', 'error');
@@ -383,7 +468,8 @@ const CustomerView: React.FC = () => {
 
     const isAdmin = currentUser?.role === UserRole.ADMIN;
     const isPayOnCollection = paymentMethod === PaymentMethod.COLLECTION;
-    const isVerified = isAdmin && !isPayOnCollection;
+    const isCardPayment = paymentMethod === PaymentMethod.CARD;
+    const isVerified = (isAdmin && !isPayOnCollection) || isCardPayment;
     const newStatus = pickupTimestamp ? 'scheduled' : (isVerified ? 'pending' : 'payment-required');
     
     const newOrder: Omit<Order, 'id'> = {
@@ -399,6 +485,7 @@ const CustomerView: React.FC = () => {
         isVerified,
         createdAt: Date.now(),
         ...(pickupTimestamp && { pickupTime: pickupTimestamp }),
+        ...(tableNumber && { tableNumber }),
     };
 
     try {
@@ -437,7 +524,7 @@ const CustomerView: React.FC = () => {
     } finally {
         setIsSubmitting(false);
     }
-  }, [isSubmitting, cart, customerName, firebaseUser, pickupOption, pickupTime, pickupDate, currentUser, subtotal, appliedDiscount, finalTotal, paymentMethod, dispatch, addToast]);
+  }, [isSubmitting, cart, customerName, firebaseUser, pickupOption, pickupTime, pickupDate, currentUser, subtotal, appliedDiscount, finalTotal, paymentMethod, dispatch, addToast, tableNumber]);
   
   const visibleCategories = useMemo(() => {
     const categoriesWithDrinks = new Set<string>();
@@ -610,6 +697,7 @@ const CustomerView: React.FC = () => {
                 isSubmitting={isSubmitting}
                 onRemoveItem={removeFromCart}
                 onEditItem={handleEditCartItem}
+                onUpdateQuantity={handleUpdateQuantity}
                 isLoggedIn={!!currentUser}
                 isAdmin={currentUser?.role === UserRole.ADMIN}
                 pickupOption={pickupOption}
@@ -618,6 +706,8 @@ const CustomerView: React.FC = () => {
                 onPickupDateChange={setPickupDate}
                 pickupTimeValue={pickupTime}
                 onPickupTimeChange={setPickupTime}
+                tableNumber={tableNumber}
+                onTableNumberChange={setTableNumber}
             />
         </Suspense>
 

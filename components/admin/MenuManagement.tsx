@@ -327,6 +327,15 @@ const MenuManagement: React.FC = () => {
             modifierGroups: drinkFormState.modifierGroups || [],
             variants: drinkFormState.variants || [],
             isAvailable: drinkFormState.isAvailable !== false,
+            schedulingConstraint: drinkFormState.schedulingConstraint ? {
+                isEnabled: drinkFormState.schedulingConstraint.isEnabled,
+                type: drinkFormState.schedulingConstraint.type,
+                collectionDay: drinkFormState.schedulingConstraint.collectionDay,
+                cutoffDay: drinkFormState.schedulingConstraint.cutoffDay,
+                collectionDate: drinkFormState.schedulingConstraint.collectionDate,
+                cutoffDate: drinkFormState.schedulingConstraint.cutoffDate,
+                cutoffTime: drinkFormState.schedulingConstraint.cutoffTime,
+            } : undefined
         };
 
         // Optimistic update
@@ -899,6 +908,146 @@ const MenuManagement: React.FC = () => {
                                     </div>
                                 ))}
                             </div>
+                        </div>
+
+                        <div className="space-y-6 bg-stone-50 dark:bg-zinc-800/50 p-6 rounded-3xl border border-stone-100 dark:border-zinc-800">
+                            <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Scheduling Window</label>
+                                <button
+                                    type="button"
+                                    onClick={() => setDrinkFormState({
+                                        ...drinkFormState,
+                                        schedulingConstraint: {
+                                            isEnabled: !drinkFormState.schedulingConstraint?.isEnabled,
+                                            type: drinkFormState.schedulingConstraint?.type || 'recurring',
+                                            collectionDay: drinkFormState.schedulingConstraint?.collectionDay ?? 0,
+                                            cutoffDay: drinkFormState.schedulingConstraint?.cutoffDay ?? 5,
+                                            cutoffTime: drinkFormState.schedulingConstraint?.cutoffTime || '23:59'
+                                        }
+                                    })}
+                                    className={`w-10 h-5 rounded-full transition-all duration-300 relative ${drinkFormState.schedulingConstraint?.isEnabled ? 'bg-green-500' : 'bg-stone-300 dark:bg-zinc-700'}`}
+                                >
+                                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${drinkFormState.schedulingConstraint?.isEnabled ? 'left-5.5' : 'left-0.5'}`} />
+                                </button>
+                            </div>
+
+                            {drinkFormState.schedulingConstraint?.isEnabled && (
+                                <div className="space-y-6 pt-4 border-t border-stone-100 dark:border-zinc-700">
+                                    <div className="flex gap-6">
+                                        <label className="flex items-center gap-3 cursor-pointer group">
+                                            <input 
+                                                type="radio" 
+                                                checked={drinkFormState.schedulingConstraint.type === 'recurring'} 
+                                                onChange={() => setDrinkFormState({
+                                                    ...drinkFormState,
+                                                    schedulingConstraint: { ...drinkFormState.schedulingConstraint!, type: 'recurring' }
+                                                })}
+                                                className="hidden" 
+                                            />
+                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${drinkFormState.schedulingConstraint.type === 'recurring' ? 'border-stone-900 dark:border-white' : 'border-stone-200 dark:border-zinc-700'}`}>
+                                                {drinkFormState.schedulingConstraint.type === 'recurring' && <div className="w-2.5 h-2.5 rounded-full bg-stone-900 dark:bg-white" />}
+                                            </div>
+                                            <span className={`text-sm font-bold tracking-tight transition-all ${drinkFormState.schedulingConstraint.type === 'recurring' ? 'text-stone-900 dark:text-white' : 'text-stone-400'}`}>Recurring Weekly</span>
+                                        </label>
+                                        <label className="flex items-center gap-3 cursor-pointer group">
+                                            <input 
+                                                type="radio" 
+                                                checked={drinkFormState.schedulingConstraint.type === 'fixed'} 
+                                                onChange={() => setDrinkFormState({
+                                                    ...drinkFormState,
+                                                    schedulingConstraint: { ...drinkFormState.schedulingConstraint!, type: 'fixed' }
+                                                })}
+                                                className="hidden" 
+                                            />
+                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${drinkFormState.schedulingConstraint.type === 'fixed' ? 'border-stone-900 dark:border-white' : 'border-stone-200 dark:border-zinc-700'}`}>
+                                                {drinkFormState.schedulingConstraint.type === 'fixed' && <div className="w-2.5 h-2.5 rounded-full bg-stone-900 dark:bg-white" />}
+                                            </div>
+                                            <span className={`text-sm font-bold tracking-tight transition-all ${drinkFormState.schedulingConstraint.type === 'fixed' ? 'text-stone-900 dark:text-white' : 'text-stone-400'}`}>Single Event</span>
+                                        </label>
+                                    </div>
+
+                                    {drinkFormState.schedulingConstraint.type === 'recurring' ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Collection Day</label>
+                                                <select
+                                                    value={drinkFormState.schedulingConstraint.collectionDay}
+                                                    onChange={(e) => setDrinkFormState({
+                                                        ...drinkFormState,
+                                                        schedulingConstraint: { ...drinkFormState.schedulingConstraint!, collectionDay: parseInt(e.target.value) }
+                                                    })}
+                                                    className="w-full bg-white dark:bg-zinc-900 border-none rounded-xl px-4 py-2 text-stone-900 dark:text-white text-sm focus:ring-2 focus:ring-stone-900/10 transition-all shadow-sm"
+                                                >
+                                                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, i) => (
+                                                        <option key={day} value={i}>{day}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Cutoff Day</label>
+                                                <select
+                                                    value={drinkFormState.schedulingConstraint.cutoffDay}
+                                                    onChange={(e) => setDrinkFormState({
+                                                        ...drinkFormState,
+                                                        schedulingConstraint: { ...drinkFormState.schedulingConstraint!, cutoffDay: parseInt(e.target.value) }
+                                                    })}
+                                                    className="w-full bg-white dark:bg-zinc-900 border-none rounded-xl px-4 py-2 text-stone-900 dark:text-white text-sm focus:ring-2 focus:ring-stone-900/10 transition-all shadow-sm"
+                                                >
+                                                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, i) => (
+                                                        <option key={day} value={i}>{day}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Collection Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={drinkFormState.schedulingConstraint.collectionDate || ''}
+                                                    onChange={(e) => setDrinkFormState({
+                                                        ...drinkFormState,
+                                                        schedulingConstraint: { ...drinkFormState.schedulingConstraint!, collectionDate: e.target.value }
+                                                    })}
+                                                    className="w-full bg-white dark:bg-zinc-900 border-none rounded-xl px-4 py-2 text-stone-900 dark:text-white text-sm focus:ring-2 focus:ring-stone-900/10 transition-all shadow-sm"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Cutoff Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={drinkFormState.schedulingConstraint.cutoffDate || ''}
+                                                    onChange={(e) => setDrinkFormState({
+                                                        ...drinkFormState,
+                                                        schedulingConstraint: { ...drinkFormState.schedulingConstraint!, cutoffDate: e.target.value }
+                                                    })}
+                                                    className="w-full bg-white dark:bg-zinc-900 border-none rounded-xl px-4 py-2 text-stone-900 dark:text-white text-sm focus:ring-2 focus:ring-stone-900/10 transition-all shadow-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Cutoff Time</label>
+                                        <input
+                                            type="time"
+                                            value={drinkFormState.schedulingConstraint.cutoffTime}
+                                            onChange={(e) => setDrinkFormState({
+                                                ...drinkFormState,
+                                                schedulingConstraint: { ...drinkFormState.schedulingConstraint!, cutoffTime: e.target.value }
+                                            })}
+                                            className="w-full bg-white dark:bg-zinc-900 border-none rounded-xl px-4 py-2 text-stone-900 dark:text-white text-sm focus:ring-2 focus:ring-stone-900/10 transition-all shadow-sm"
+                                        />
+                                    </div>
+                                    <p className="text-[10px] font-medium italic text-stone-400 dark:text-zinc-500">
+                                        {drinkFormState.schedulingConstraint.type === 'recurring' 
+                                            ? `Customers must order by ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][drinkFormState.schedulingConstraint.cutoffDay || 0]} at ${drinkFormState.schedulingConstraint.cutoffTime} for collection on the following ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][drinkFormState.schedulingConstraint.collectionDay || 0]}.`
+                                            : `Customers must order by ${drinkFormState.schedulingConstraint.cutoffDate || '...'} at ${drinkFormState.schedulingConstraint.cutoffTime} for collection on ${drinkFormState.schedulingConstraint.collectionDate || '...'}.`
+                                        }
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex justify-end gap-4 pt-8">
