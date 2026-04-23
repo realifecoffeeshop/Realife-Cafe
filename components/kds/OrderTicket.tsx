@@ -36,7 +36,7 @@ const Timer = memo(({ createdAt, timeColourClass }: { createdAt: number; timeCol
   }, [createdAt]);
 
   return (
-    <span className={`px-3 py-1 text-sm font-bold rounded-full transition-colors duration-500 ${timeColourClass(minutesWaiting)}`}>
+    <span className={`px-2 py-0.5 text-xs font-bold rounded-full transition-colors duration-500 ${timeColourClass(minutesWaiting)}`}>
       {timeElapsed}
     </span>
   );
@@ -92,19 +92,26 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
 
   return (
     <div 
-        className={`bg-white dark:bg-zinc-800 rounded-lg shadow-md flex flex-col border-4 transition-all hover:shadow-lg cursor-pointer group relative ${ticketBorderClass()} ${isSelected ? 'ring-4 ring-blue-500 ring-offset-2 dark:ring-offset-zinc-900' : ''}`}
+        className={`bg-white dark:bg-zinc-800 rounded-lg shadow-md flex flex-col border-4 transition-all hover:shadow-lg cursor-pointer group relative ${ticketBorderClass()} ${isSelected ? 'scale-[1.02] shadow-xl z-20 !border-blue-600 ring-4 ring-blue-500/20' : ''}`}
         role="article"
         aria-labelledby={`order-heading-${order.id}`}
         onClick={() => onSelect ? onSelect(order.id) : onComplete(order.id)}
     >
-      {/* Selection Checkbox (Visible when onSelect is provided) */}
+      {/* Selection Overlay */}
+      {isSelected && (
+        <div className="absolute inset-0 bg-blue-600/5 dark:bg-blue-400/5 rounded-lg pointer-events-none z-[5]" />
+      )}
+
+      {/* Selection Indicator (Visible when onSelect is provided) */}
       {onSelect && (
-        <div className="absolute top-2 left-2 z-10">
-          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${isSelected ? 'bg-blue-500 border-blue-500' : 'bg-white/50 border-stone-300 dark:border-zinc-500'}`}>
-            {isSelected && (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
+        <div className="absolute top-2 left-2 z-30">
+          <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-200 transform ${isSelected ? 'bg-blue-600 border-blue-600 scale-110 shadow-lg' : 'bg-white/80 border-stone-300 dark:bg-zinc-800/80 dark:border-zinc-500'}`}>
+            {isSelected ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
+            ) : (
+              <div className="w-1.5 h-1.5 rounded-full bg-stone-300 dark:bg-zinc-500" />
             )}
           </div>
         </div>
@@ -125,10 +132,10 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
       </button>
 
       <header 
-          className={`p-3 bg-stone-100 dark:bg-zinc-700 rounded-t-lg sticky top-0 z-20 shadow-sm`}
+          className={`p-2 bg-stone-100 dark:bg-zinc-700 rounded-t-lg sticky top-0 z-20 shadow-sm`}
       >
         <div className="flex justify-between items-start">
-            <div id={`order-heading-${order.id}`} className="flex-grow min-w-0">
+            <div id={`order-heading-${order.id}`} className={`flex-grow min-w-0 ${onSelect ? 'pl-10' : ''}`}>
               {isEditingName && isAdmin ? (
                 <form onSubmit={handleNameSubmit} className="flex items-center gap-2 pr-2" onClick={e => e.stopPropagation()}>
                   <input
@@ -143,7 +150,7 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
               ) : (
                 <div className="flex items-center gap-2 group/name">
                   <h3 
-                    className={`font-bold text-xl text-stone-900 dark:text-white truncate ${isAdmin ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
+                    className={`font-bold text-lg text-stone-900 dark:text-white truncate ${isAdmin ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
                     onClick={(e) => {
                       if (isAdmin) {
                         e.stopPropagation();
@@ -173,7 +180,7 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
                   )}
                 </div>
               )}
-              <div className="flex items-center space-x-2 mt-1">
+              <div className={`flex items-center space-x-2 mt-1 ${onSelect ? 'pl-10' : ''}`}>
                 <p className="text-xs text-stone-500 dark:text-zinc-400">ID: #{(order.id || '').slice(-6)}</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-200 dark:bg-zinc-600 text-stone-600 dark:text-zinc-300 font-bold uppercase tracking-wider">
                   {getStatusLabel(order.status || '')}
@@ -211,7 +218,7 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
             </div>
         )}
       </header>
-      <div className="p-4 space-y-3 flex-grow overflow-y-auto">
+      <div className={`p-2.5 space-y-2 flex-grow overflow-y-auto ${onSelect ? 'pl-12' : ''}`}>
         {order.items.map(item => {
             const isComplete = !!item.isCompleted;
             return (
@@ -224,7 +231,7 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
                   scale: isComplete ? 0.98 : 1,
                   x: isComplete ? 4 : 0
                 }}
-                className={`text-sm p-1 -m-1 rounded-md transition-colors duration-200 cursor-pointer hover:bg-stone-100 dark:hover:bg-zinc-700/50 ${isComplete ? 'line-through text-stone-400 dark:text-zinc-500' : ''}`}
+                className={`text-xs p-1 -m-1 rounded-md transition-colors duration-200 cursor-pointer hover:bg-stone-100 dark:hover:bg-zinc-700/50 ${isComplete ? 'line-through text-stone-400 dark:text-zinc-500' : ''}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleItem(order.id, item.id);
@@ -240,7 +247,7 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
                 }}
                 aria-label={`${isComplete ? 'Mark as incomplete' : 'Mark as complete'}: ${item.quantity}x ${item.drink?.name || 'Unknown Drink'}`}
               >
-                <p className={`font-semibold text-base ${isComplete ? '' : 'text-stone-800 dark:text-zinc-200'}`}>
+                <p className={`font-semibold text-sm ${isComplete ? '' : 'text-stone-800 dark:text-zinc-200'}`}>
                   <span>{item.quantity}x </span>
                   {item.selectedVariantId && item.drink?.variants && (
                     <span className="uppercase mr-1">
@@ -249,18 +256,18 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
                   )}
                   <span>{item.drink?.name || 'Unknown Drink'}</span>
                 </p>
-                {item.customName && <p className={`pl-4 font-medium ${isComplete ? '' : 'text-stone-700 dark:text-zinc-300'}`}>- {item.customName}</p>}
+                {item.customName && <p className={`pl-4 font-medium italic ${isComplete ? '' : 'text-stone-700 dark:text-zinc-300'}`}>- {item.customName}</p>}
                 <ul className={`pl-4 list-disc list-inside ${isComplete ? '' : 'text-stone-600 dark:text-zinc-400'}`}>
                   {Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => (
-                    <li key={sm.option?.id || Math.random()}>{sm.quantity > 1 ? `${sm.quantity}x ` : ''}{sm.option?.name || 'Unknown'}</li>
+                    <li key={sm.option?.id || Math.random()} className="text-[11px] leading-tight">{sm.quantity > 1 ? `${sm.quantity}x ` : ''}{sm.option?.name || 'Unknown'}</li>
                   ))}
                 </ul>
               </motion.div>
             )
         })}
       </div>
-      <footer className="p-3 border-t dark:border-zinc-700">
-        <div className="text-center text-[10px] text-stone-400 dark:text-zinc-500 mb-2 uppercase tracking-widest font-bold">
+      <footer className={`p-2 border-t dark:border-zinc-700 ${onSelect ? 'pl-12' : ''}`}>
+        <div className="text-center text-[9px] text-stone-400 dark:text-zinc-500 mb-1.5 uppercase tracking-widest font-bold">
           Click ticket to complete
         </div>
         <button
@@ -268,7 +275,7 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
             e.stopPropagation();
             onComplete(order.id);
           }}
-          className={`w-full py-2 rounded-md font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-800 flex items-center justify-center leading-none ${allItemsCompleted ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500' : 'bg-stone-200 dark:bg-zinc-700 text-stone-600 dark:text-zinc-300 hover:bg-stone-300 dark:hover:bg-zinc-600'}`}
+          className={`w-full py-1.5 rounded-md font-bold text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-800 flex items-center justify-center leading-none ${allItemsCompleted ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500' : 'bg-stone-200 dark:bg-zinc-700 text-stone-600 dark:text-zinc-300 hover:bg-stone-300 dark:hover:bg-zinc-600'}`}
           aria-label={!allItemsCompleted ? `Cannot complete order for ${order.customerName || 'Unknown'} yet` : `Complete order for ${order.customerName || 'Unknown'}`}
         >
           {allItemsCompleted ? 'Complete Order' : 'Force Complete'}

@@ -26,7 +26,7 @@ const initialState: AppState = {
   isConnected: true,
 };
 
-const appReducer = (state: AppState, action: Action): AppState => {
+export const appReducer = (state: AppState, action: Action): AppState => {
   switch (action.type) {
     case 'SET_PERMISSION_ERROR':
       // Only set error if it's different to avoid loops
@@ -56,7 +56,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
             const nameLower = (normalizedCurrentUser.name || '').toLowerCase();
             const matchesAdminName = adminNames.includes(nameLower);
             const matchesKitchenName = kitchenNames.includes(nameLower);
-            const isOwnerEmail = normalizedCurrentUser.email === 'realifecoffeeshop@gmail.com';
+            const isOwnerEmail = normalizedCurrentUser.email === 'realifecoffeeshop@gmail.com' || normalizedCurrentUser.email === 'josephpadua.24@gmail.com';
             
             if ((isOwnerEmail || matchesAdminName) && normalizedCurrentUser.role !== UserRole.ADMIN) {
                 normalizedCurrentUser.role = UserRole.ADMIN;
@@ -84,11 +84,11 @@ const appReducer = (state: AppState, action: Action): AppState => {
                 const parsed: Partial<AppState> = JSON.parse(localData);
                 
                 // Only update if there are actual changes to avoid unnecessary re-renders
-                // We'll trust the hydration payload if it exists to avoid expensive stringify on every boot
                 return {
                     ...state,
                     discounts: parsed.discounts ?? state.discounts,
                     users: parsed.users ?? state.users,
+                    currentUser: parsed.currentUser ?? state.currentUser,
                     feedback: parsed.feedback ?? state.feedback,
                     theme: parsed.theme ?? state.theme,
                     drinks: parsed.drinks ?? state.drinks,
@@ -140,7 +140,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
         // Ensure admin/staff roles are preserved for bootstrap names/emails
         const nameLower = (baseUser.name || '').toLowerCase();
         const emailLower = (baseUser.email || '').toLowerCase();
-        const isOwnerEmail = emailLower === 'realifecoffeeshop@gmail.com';
+        const isOwnerEmail = emailLower === 'realifecoffeeshop@gmail.com' || emailLower === 'josephpadua.24@gmail.com';
         const matchesAdminName = nameLower === 'admin' || nameLower === 'joseph p' || nameLower === 'joseph admin' || nameLower === 'joseph';
         const matchesKitchenName = nameLower === 'kitchen' || nameLower === 'staff';
         
@@ -347,7 +347,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
         return state;
     }
     case 'UNMERGE_ORDER': {
-        updateOrder(action.payload, { mergeId: undefined })
+        updateOrder(action.payload, { mergeId: null as any })
             .catch(err => console.error(`Failed to unmerge order ${action.payload}:`, err));
         return state;
     }
@@ -355,7 +355,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
         const mergeId = action.payload;
         state.orders.forEach(order => {
             if (order.mergeId === mergeId) {
-                updateOrder(order.id, { mergeId: undefined })
+                updateOrder(order.id, { mergeId: null as any })
                     .catch(err => console.error(`Failed to unmerge order ${order.id} from group ${mergeId}:`, err));
             }
         });
@@ -593,8 +593,50 @@ const appReducer = (state: AppState, action: Action): AppState => {
             feedback: [...state.feedback, newFeedback],
         };
     }
-    case 'ADD_ITEM_TO_CART':
-      return { ...state, cart: [...state.cart, action.payload] };
+    case 'ADD_ITEM_TO_CART': {
+      const newItem = action.payload;
+      const existingItemIndex = state.cart.findIndex(item => {
+        // Basic checks: same drink and same variant
+        if (item.drink.id !== newItem.drink.id) return false;
+        if (item.selectedVariantId !== newItem.selectedVariantId) return false;
+        if (item.customName !== newItem.customName) return false;
+
+        // Check modifiers
+        const itemMgKeys = Object.keys(item.selectedModifiers).filter(k => item.selectedModifiers[k].length > 0);
+        const newItemMgKeys = Object.keys(newItem.selectedModifiers).filter(k => newItem.selectedModifiers[k].length > 0);
+
+        if (itemMgKeys.length !== newItemMgKeys.length) return false;
+
+        for (const key of itemMgKeys) {
+            const mods1 = item.selectedModifiers[key] || [];
+            const mods2 = newItem.selectedModifiers[key] || [];
+
+            if (mods1.length !== mods2.length) return false;
+
+            // Sort by option id to compare
+            const s1 = [...mods1].sort((a, b) => a.option.id.localeCompare(b.option.id));
+            const s2 = [...mods2].sort((a, b) => a.option.id.localeCompare(b.option.id));
+
+            for (let i = 0; i < s1.length; i++) {
+                if (s1[i].option.id !== s2[i].option.id || s1[i].quantity !== s2[i].quantity) return false;
+            }
+        }
+        return true;
+      });
+
+      if (existingItemIndex > -1) {
+          const updatedCart = [...state.cart];
+          const existingItem = updatedCart[existingItemIndex];
+          updatedCart[existingItemIndex] = {
+              ...existingItem,
+              quantity: existingItem.quantity + newItem.quantity,
+              finalPrice: existingItem.finalPrice + newItem.finalPrice
+          };
+          return { ...state, cart: updatedCart };
+      }
+
+      return { ...state, cart: [...state.cart, newItem] };
+    }
     case 'UPDATE_CART_ITEM':
       return {
         ...state,
@@ -703,6 +745,7 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   });
 
   const [firebaseUser, setFirebaseUser] = useState<any | null>(null);
+  const [isInitializingAuth, setIsInitializingAuth] = useState(true);
 
   useEffect(() => {
     if (database) {
@@ -714,35 +757,84 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   }, [database]);
 
+  // Initialize state once on mount from local storage
+  useEffect(() => {
+    dispatch({ type: '_HYDRATE_STATE_FROM_STORAGE' });
+  }, []);
+
   useEffect(() => {
     if (isFirebaseConfigured && auth) {
+        let isCancelled = false;
+
         const signIn = async () => {
-        try {
-          if (!auth.currentUser) {
-            await auth.signInAnonymously();
-          }
-        } catch (error: any) {
-          console.error("Anonymous sign-in failed:", error);
-          // Check for the specific error and show a helpful message.
-          if (error.code === 'auth/configuration-not-found') {
-              addToast("Action Required: Enable Anonymous Sign-In in your Firebase Console (Authentication -> Sign-in method).", 'error', { duration: 10000 });
-          } else if (error.code === 'auth/invalid-credential') {
-              addToast("Firebase Authentication Failure: The current domain is likely not authorized, or the API key is restricted. Please check your Firebase settings or clear your browser cache.", 'error', { duration: 10000 });
-              // Clear current auth state if it's corrupted locally
-              auth.signOut().catch(() => {});
-          } else {
-              addToast(`Authentication Error: ${error.message}`, 'error');
-          }
-        }
-      };
-      signIn();
-      const unsubscribe = auth.onAuthStateChanged((user) => {
-        setFirebaseUser(user);
-      });
-      return () => unsubscribe();
+            try {
+                // 1. Wait a moment for Firebase to restore existing session (Google, etc)
+                // This prevents "logging out" a real user by signing in anonymously too early.
+                await new Promise(resolve => setTimeout(resolve, 800));
+
+                if (isCancelled) return;
+
+                // 2. Check if we already have a user (restored by onAuthStateChanged during the wait)
+                if (auth.currentUser) {
+                    if (!isCancelled) {
+                        setFirebaseUser(auth.currentUser);
+                        setIsInitializingAuth(false);
+                    }
+                    return;
+                }
+
+                // 3. Fallback to anonymous sign-in only if no user is found
+                console.log("[Auth] Starting anonymous fallback...");
+                const result = await auth.signInAnonymously();
+                if (!isCancelled) {
+                    setFirebaseUser(result.user);
+                    setIsInitializingAuth(false);
+                }
+            } catch (error: any) {
+                if (isCancelled) return;
+                setIsInitializingAuth(false);
+                console.error("Authentication initialization failed:", error);
+                
+                if (error.code === 'auth/configuration-not-found') {
+                    addToast("Action Required: Enable Anonymous Sign-In in your Firebase Console.", 'error', { duration: 10000 });
+                } else if (error.code === 'auth/invalid-credential') {
+                    // This can happen if the browser session is weird or API key is restricted
+                    auth.signOut().catch(() => {});
+                } else if (error.code !== 'auth/network-request-failed') {
+                    addToast(`Authentication Error: ${error.message}`, 'error');
+                }
+            }
+        };
+
+        signIn();
+
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+            if (!isCancelled) {
+                setFirebaseUser(user);
+                setIsInitializingAuth(false);
+            }
+        });
+
+        return () => {
+            isCancelled = true;
+            unsubscribe();
+        };
+    } else {
+        setIsInitializingAuth(false);
     }
   }, [addToast]);
   
+  // Auto-login Guest if name is saved locally
+  useEffect(() => {
+    if (firebaseUser?.isAnonymous && !state.currentUser && isFirebaseConfigured) {
+        const savedName = localStorage.getItem('last_user_name');
+        if (savedName) {
+            console.log("[Auth] Found saved guest name. Auto-signing in...");
+            dispatch({ type: 'LOGIN', payload: { name: savedName, userId: firebaseUser.uid } });
+        }
+    }
+  }, [firebaseUser, state.currentUser, isFirebaseConfigured]);
+
   // Destructure for explicit dependency arrays
   const { drinks, categories, modifierGroups, ...nonMenuState } = state;
   const { discounts, users, currentUser, feedback, theme } = nonMenuState;
@@ -822,39 +914,70 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Effect to listen for real-time updates for the current user's profile
   useEffect(() => {
     if (database && firebaseUser) {
+        let isCancelled = false;
         const unsubscribe = onUserUpdate(
             firebaseUser.uid,
             (user) => {
+                if (isCancelled) return;
                 if (user) {
                     dispatch({ type: 'SET_CURRENT_USER', payload: user });
+                } else if (!firebaseUser.isAnonymous) {
+                    // AUTO-REGISTRATION: 
+                    // If user is authenticated (not anonymous) but has no profile, auto-create one.
+                    console.log("[Auth] Authenticated user has no profile. Auto-registering...");
+                    const displayName = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User';
+                    const newUser: User = {
+                        id: firebaseUser.uid,
+                        name: displayName,
+                        email: firebaseUser.email || undefined,
+                        role: UserRole.CUSTOMER,
+                        favourites: [],
+                        loyaltyPoints: 0,
+                    };
+                    saveUser(newUser)
+                        .then(() => {
+                            if (!isCancelled) dispatch({ type: 'SET_CURRENT_USER', payload: newUser });
+                        })
+                        .catch(err => console.error("Auto-registration failed:", err));
                 }
             },
             (error) => {
                 console.error("Failed to sync current user profile:", error);
             }
         );
-        return () => unsubscribe();
+        return () => {
+            isCancelled = true;
+            unsubscribe();
+        };
     }
   }, [database, firebaseUser]);
 
   // Effect to listen for real-time updates from Firebase (Auth-dependent)
   useEffect(() => {
-    if (database && firebaseUser) {
+    if (database && firebaseUser && !isInitializingAuth) {
         let unsubscribeOrders: (() => void) | undefined;
         let unsubscribeUsers: (() => void) | undefined;
         let unsubscribeFeedback: (() => void) | undefined;
         let unsubscribeCustomers: (() => void) | undefined;
 
         const setupAuthListeners = async () => {
-            // Clear any existing permission errors when we start setting up new listeners
-            // but only if it was a permission error for a path we are about to listen to
-            if (state.permissionError) {
-                dispatch({ type: 'SET_PERMISSION_ERROR', payload: null });
+            const emailLower = (firebaseUser.email || '').toLowerCase();
+            const isAdminByEmail = emailLower === 'realifecoffeeshop@gmail.com' || emailLower === 'josephpadua.24@gmail.com';
+
+            // CRITICAL FIX: If user is an admin by email, force a token refresh immediately.
+            // This ensures the Realtime Database session is re-authenticated with fresh credentials,
+            // preventing the common "Permission Denied" error on refresh.
+            if (isAdminByEmail) {
+                try {
+                    console.log("[AppContext] Admin detected, refreshing session token...");
+                    await firebaseUser.getIdToken(true);
+                } catch (e) {
+                    console.error("Failed to refresh token:", e);
+                }
             }
 
             // Seeding data (requires write permission, which is auth != null)
-            // We only seed if the user is an ADMIN to prevent multiple clients trying to seed at once
-            const isAdmin = state.currentUser?.role === UserRole.ADMIN;
+            const isAdmin = state.currentUser?.role === UserRole.ADMIN || isAdminByEmail;
             
             if (isAdmin) {
                 try {
@@ -878,72 +1001,86 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             }
 
             // Only listen to ALL orders if user is Staff or Admin
-            const isStaff = state.currentUser?.role === UserRole.ADMIN || state.currentUser?.role === UserRole.KITCHEN;
+            const isStaff = state.currentUser?.role === UserRole.ADMIN || state.currentUser?.role === UserRole.KITCHEN || isAdminByEmail;
             
             if (isStaff) {
                 console.log("[AppContext] Staff detected, setting up real-time order listeners...");
-                unsubscribeOrders = onActiveOrdersUpdate(
-                    (orders: Order[]) => {
-                        dispatch({ type: 'SET_ORDERS', payload: orders });
-                        // Clear permission error if we successfully loaded data
-                        if (state.permissionError?.includes("'/orders'")) {
-                            dispatch({ type: 'SET_PERMISSION_ERROR', payload: null });
-                        }
-                    },
-                    (error: any) => {
-                        if (error.message?.toLowerCase().includes('permission_denied')) {
-                            dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/orders'.` });
-                            // Also set isOrdersLoaded to true to stop the loading spinner
-                            dispatch({ type: 'SET_ORDERS', payload: [] });
-                        } else {
-                            dispatch({ type: 'SET_GLOBAL_ERROR', payload: `Failed to sync orders: ${error.message}` });
-                        }
-                    }
-                );
-
-                // OPTIMIZATION: Only fetch users for ADMIN and KITCHEN.
-                if (isStaff) {
-                unsubscribeUsers = onUsersUpdate(
-                    (users: User[]) => {
-                        dispatch({ type: 'SET_USERS', payload: users });
-                        // Clear permission error if we successfully loaded data
-                        if (state.permissionError?.includes("'/users'")) {
-                            dispatch({ type: 'SET_PERMISSION_ERROR', payload: null });
-                        }
-                    },
-                    (error: any) => {
-                        if (error.message?.toLowerCase().includes('permission_denied')) {
-                            dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/users'.` });
-                        }
-                    }
-                );
-
-                    unsubscribeFeedback = onFeedbackUpdate(
-                        (feedback: Feedback[]) => {
-                            dispatch({ type: 'SET_FEEDBACK', payload: feedback });
+                
+                // STAGGERED LISTENER SETUP: 
+                // We space these out to prevent network congestion on mobile boot
+                
+                const registerListeners = async () => {
+                    // 1. Orders (Most critical for staff)
+                    unsubscribeOrders = onActiveOrdersUpdate(
+                        (orders: Order[]) => {
+                            dispatch({ type: 'SET_ORDERS', payload: orders });
+                            if (state.permissionError?.includes("'/orders'")) {
+                                dispatch({ type: 'SET_PERMISSION_ERROR', payload: null });
+                            }
                         },
                         (error: any) => {
                             if (error.message?.toLowerCase().includes('permission_denied')) {
-                                dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/feedback'.` });
+                                dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/orders'.` });
+                                dispatch({ type: 'SET_ORDERS', payload: [] });
+                                // Auto-fix for admins
+                                if (isAdminByEmail) {
+                                    firebaseUser.getIdToken(true).then(() => {
+                                        console.log("Token refreshed after permission error, reloading...");
+                                        window.location.reload();
+                                    });
+                                }
                             }
                         }
                     );
 
-                unsubscribeCustomers = onCustomersUpdate(
-                    (customers: Customer[]) => {
-                        dispatch({ type: 'SET_CUSTOMERS', payload: customers });
-                        // Clear permission error if we successfully loaded data
-                        if (state.permissionError?.includes("'/customers'")) {
-                            dispatch({ type: 'SET_PERMISSION_ERROR', payload: null });
+                    // 2. Users (Slightly delayed)
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    unsubscribeUsers = onUsersUpdate(
+                        (users: User[]) => {
+                            dispatch({ type: 'SET_USERS', payload: users });
+                        },
+                        (error: any) => {
+                            if (error.message?.toLowerCase().includes('permission_denied')) {
+                                dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/users'.` });
+                                // Auto-fix for admins
+                                if (isAdminByEmail) {
+                                    firebaseUser.getIdToken(true).then(() => {
+                                        console.log("Token refreshed after permission error, reloading...");
+                                        window.location.reload();
+                                    });
+                                }
+                            }
                         }
-                    },
-                    (error: any) => {
-                        if (error.message?.toLowerCase().includes('permission_denied')) {
-                            dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/customers'.` });
+                    );
+
+                    // 3. Feedback and Customers (Lower priority)
+                    await new Promise(resolve => setTimeout(resolve, 600));
+                    unsubscribeFeedback = onFeedbackUpdate(
+                        (feedback: Feedback[]) => {
+                            dispatch({ type: 'SET_FEEDBACK', payload: feedback });
                         }
-                    }
-                );
-                }
+                    );
+
+                    unsubscribeCustomers = onCustomersUpdate(
+                        (customers: Customer[]) => {
+                            dispatch({ type: 'SET_CUSTOMERS', payload: customers });
+                        },
+                        (error: any) => {
+                            if (error.message?.toLowerCase().includes('permission_denied')) {
+                                dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/customers'.` });
+                                // Auto-fix for admins
+                                if (isAdminByEmail) {
+                                    firebaseUser.getIdToken(true).then(() => {
+                                        console.log("Token refreshed after permission error, reloading...");
+                                        window.location.reload();
+                                    });
+                                }
+                            }
+                        }
+                    );
+                };
+
+                registerListeners();
             } else if (state.currentUser) {
                 // For customers, we could implement a filtered listener here 
                 // but for now we just stop the global "All Orders" sync
@@ -960,7 +1097,7 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             if (unsubscribeCustomers) unsubscribeCustomers();
         };
     }
-  }, [database, firebaseUser, state.currentUser?.role]);
+  }, [database, firebaseUser, state.currentUser?.role, isInitializingAuth]);
 
 
   // Cross-tab sync for non-order/non-menu data
@@ -1020,7 +1157,7 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
-  return <AppContext.Provider value={{ state, dispatch, firebaseUser, loadHistory }}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={{ state, dispatch, firebaseUser, isInitializingAuth, loadHistory }}>{children}</AppContext.Provider>;
 };
 
 export { AppProvider };

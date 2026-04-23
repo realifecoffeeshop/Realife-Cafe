@@ -115,7 +115,7 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
 
     // Fetch PaymentIntent when CARD is selected and total > 0
     useEffect(() => {
-        if (paymentMethod === PaymentMethod.CARD && finalTotal > 0 && isOpen) {
+        if (paymentMethod === PaymentMethod.CARD && finalTotal > 0 && isOpen && IS_STRIPE_CONFIGURED) {
             const fetchPaymentIntent = async () => {
                 setIsStripeLoading(true);
                 try {
@@ -124,14 +124,27 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ amount: finalTotal }),
                     });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        let errorMsg = `Server error: ${response.status}`;
+                        try {
+                            const errorJson = JSON.parse(errorText);
+                            errorMsg = errorJson.error || errorMsg;
+                        } catch (e) {
+                            // Non-JSON error, keep the original errorMsg
+                        }
+                        throw new Error(errorMsg);
+                    }
+
                     const data = await response.json();
                     if (data.clientSecret) {
                         setClientSecret(data.clientSecret);
                     } else {
                         console.error('Failed to get client secret:', data.error);
                     }
-                } catch (err) {
-                    console.error('Error fetching payment intent:', err);
+                } catch (err: any) {
+                    console.error('Error fetching payment intent:', err.message || err);
                 } finally {
                     setIsStripeLoading(false);
                 }
@@ -174,7 +187,9 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                 <header className="flex items-center justify-between p-4 md:p-6 border-b dark:border-zinc-700">
                     <div className="flex items-center space-x-2">
                         <h2 id="cart-heading" className="text-xl md:text-3xl font-serif font-bold text-stone-900 dark:text-white">Your Order</h2>
-                        <span className="bg-stone-900 dark:bg-white text-white dark:text-stone-900 text-[10px] md:text-xs font-bold px-2 py-1 rounded-full">{cart.length}</span>
+                        <span className="bg-stone-900 dark:bg-white text-white dark:text-stone-900 text-[10px] md:text-xs font-bold px-2 py-1 rounded-full">
+                            {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                        </span>
                     </div>
                     <button
                         onClick={onClose}

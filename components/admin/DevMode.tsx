@@ -24,7 +24,7 @@ interface TestResult {
 }
 
 const DevMode: React.FC = () => {
-    const { state } = useApp();
+    const { state, dispatch } = useApp();
     const { addToast } = useToast();
     const [results, setResults] = useState<TestResult[]>([]);
     const [isAllRunning, setIsAllRunning] = useState(false);
@@ -42,6 +42,8 @@ const DevMode: React.FC = () => {
         { id: 'long-notes', name: 'Boundary: Extreme Text', description: 'Tests UI robustness with very long names and complex items.' },
         { id: 'concurrent-burst', name: 'Thunderstruck: 5 Rapid Orders', description: 'Fires 5 orders simultaneously to test real-time KDS performance.' },
         { id: 'focaccia-sunday', name: 'Focaccia Sunday Window', description: 'Simulates a Focaccia preorder with specific Sunday collection constraints.' },
+        { id: 'loyalty-accrual', name: 'Loyalty: Points Accrual', description: 'Places an order with 2 drinks, completes it, and verifies points increase.' },
+        { id: 'kds-group-test', name: 'KDS: Group & Ungroup', description: 'Visual simulation: Creates 2 orders, groups them, then ungroups them after 3s.' },
     ];
 
     const createRandomCartItem = (drink: Drink, customName?: string): CartItem => {
@@ -163,6 +165,15 @@ const DevMode: React.FC = () => {
                     pickupTime = nextSunday.getTime();
                     customerName = "Sunday Focaccia Simulation";
                     break;
+                case 'loyalty-accrual':
+                    if (!state.currentUser) throw new Error("Please log in to test loyalty.");
+                    items = [createRandomCartItem(state.drinks[0]), createRandomCartItem(state.drinks[1] || state.drinks[0])];
+                    customerName = `${state.currentUser.name} (Loyalty Test)`;
+                    break;
+                case 'kds-group-test':
+                    items = [createRandomCartItem(state.drinks[0])];
+                    customerName = "Group Test Order 1";
+                    break;
             }
 
             if (burstMode) {
@@ -216,8 +227,49 @@ const DevMode: React.FC = () => {
                 tableNumber
             };
 
-            await addOrder(newOrder);
-            updateResult(testId, 'success', 'Order created successfully.');
+            const orderId = await addOrder(newOrder);
+            updateResult(testId, 'success', `Order ${orderId} created successfully.`);
+
+            // Custom post-processing for loyalty and group tests
+            if (testId === 'loyalty-accrual' && state.currentUser) {
+                updateResult(testId, 'running', 'Completing order to accrue points...');
+                setTimeout(() => {
+                    dispatch({ type: 'COMPLETE_ORDER', payload: orderId });
+                    updateResult(testId, 'success', `Order ${orderId} completed! Point sync triggered.`);
+                    addToast("Loyalty test: Order completed. Check points!", "success");
+                }, 2000);
+            }
+
+            if (testId === 'kds-group-test') {
+                updateResult(testId, 'running', 'Creating second order for group test...');
+                const item2 = createRandomCartItem(state.drinks[Math.min(1, state.drinks.length-1)]);
+                const orderId2 = await addOrder({
+                    customerName: "Group Test Order 2",
+                    customerId: 'simulation-group',
+                    items: [item2],
+                    total: item2.finalPrice,
+                    totalCost: item2.drink.baseCost,
+                    discountApplied: null,
+                    finalTotal: item2.finalPrice,
+                    paymentMethod: PaymentMethod.CASH,
+                    status: 'pending',
+                    isVerified: true,
+                    createdAt: Date.now() + 1000
+                });
+
+                const mergeId = `sim-group-${Date.now()}`;
+                updateResult(testId, 'running', 'Grouping orders (MERGE_ORDERS)...');
+                
+                setTimeout(() => {
+                    dispatch({ type: 'MERGE_ORDERS', payload: { orderIds: [orderId, orderId2], mergeId } });
+                    updateResult(testId, 'running', `Orders ${orderId} & ${orderId2} merged into ${mergeId}. Ungrouping in 3s...`);
+                    
+                    setTimeout(() => {
+                        dispatch({ type: 'UNMERGE_GROUP', payload: mergeId });
+                        updateResult(testId, 'success', 'Ungrouped successfully! Simulation finished.');
+                    }, 3000);
+                }, 2000);
+            }
         } catch (error: any) {
             updateResult(testId, 'failed', error.message || 'Unknown error');
         }

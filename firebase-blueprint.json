@@ -80,6 +80,7 @@
     "/orders": { "schema": "Order", "description": "Collection of all orders" },
     "/menu": { "schema": "object", "description": "Menu configuration including drinks, categories, and modifier groups" },
     "/users": { "schema": "User", "description": "User profiles and preferences" },
+    "/customers": { "schema": "Customer", "description": "Global customer directory for staff" },
     "/tutorialSteps": { "schema": "array", "description": "Tutorial content" }
   }
 }

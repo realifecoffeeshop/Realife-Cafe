@@ -241,10 +241,10 @@ export const fetchOrdersByDateRange = async (startDate: number, endDate: number)
     }
 };
 
-export const addOrder = async (order: Omit<Order, 'id'>): Promise<void> => {
+export const addOrder = async (order: Omit<Order, 'id'>): Promise<string> => {
     if (!isFirebaseConfigured || !database) {
         console.warn('Firebase not configured. Order not sent.');
-        return;
+        return 'no-firebase';
     }
     try {
         const ordersRef = database.ref('orders');
@@ -307,6 +307,7 @@ export const addOrder = async (order: Omit<Order, 'id'>): Promise<void> => {
         
         // 4. Atomic push and set
         const newOrderRef = ordersRef.push();
+        const orderId = newOrderRef.key!;
         
         // Add a timeout to the set operation to prevent hanging
         const setPromise = newOrderRef.set(finalOrder);
@@ -315,6 +316,7 @@ export const addOrder = async (order: Omit<Order, 'id'>): Promise<void> => {
         );
 
         await Promise.race([setPromise, timeoutPromise]);
+        return orderId;
     } catch (error: any) {
         if (isPermissionError(error)) {
             const permError = new Error("Firebase Permission Denied: Could not add order. Please check your database rules.");

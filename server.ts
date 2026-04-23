@@ -41,8 +41,16 @@ async function startServer() {
     try {
       const { amount, currency = 'usd' } = req.body;
 
-      if (!amount || amount <= 0) {
-        return res.status(400).json({ error: 'Invalid amount' });
+      if (typeof amount !== 'number' || amount <= 0) {
+        return res.status(400).json({ error: 'Invalid amount. Amount must be a positive number.' });
+      }
+
+      const key = process.env.STRIPE_SECRET_KEY;
+      if (!key) {
+        console.error('Missing STRIPE_SECRET_KEY');
+        return res.status(500).json({ 
+          error: 'Stripe is not configured on the server. Please add STRIPE_SECRET_KEY to your environment variables.' 
+        });
       }
 
       const stripe = getStripe();
@@ -58,8 +66,8 @@ async function startServer() {
         clientSecret: paymentIntent.client_secret,
       });
     } catch (error: any) {
-      console.error('Stripe error:', error);
-      res.status(500).json({ error: error.message });
+      console.error('Stripe error:', error.message);
+      res.status(500).json({ error: error.message || 'An internal server error occurred while creating the payment intent.' });
     }
   });
 

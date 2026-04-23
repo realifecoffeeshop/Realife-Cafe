@@ -104,8 +104,8 @@ const AdminView: React.FC = () => {
                     <AlertCircle className="w-5 h-5" />
                 </div>
                 <div className="flex-grow">
-                    <p className="text-sm font-bold text-red-900 dark:text-red-100 uppercase tracking-wider">Database Access Restricted</p>
-                    <p className="text-xs text-red-700 dark:text-red-300">Your role may not be synced yet.</p>
+                    <p className="text-sm font-bold text-red-900 dark:text-red-100 uppercase tracking-wider">Syncing Admin Session...</p>
+                    <p className="text-xs text-red-700 dark:text-red-300">Refreshing Firebase security token. This happens occasionally on reload.</p>
                 </div>
                 <button 
                     onClick={handleFixPermissions}

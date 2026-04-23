@@ -5,6 +5,7 @@ export const AppContext = React.createContext<{
   state: AppState; 
   dispatch: React.Dispatch<Action>; 
   firebaseUser: any | null;
+  isInitializingAuth: boolean;
   loadHistory: (limit?: number, endAtTimestamp?: number) => Promise<void>;
 } | undefined>(undefined);
 

@@ -91,7 +91,7 @@ const PaymentTicket = memo(({ order, onVerify, onDelete, onUpdateName, isAdmin }
         </svg>
       </button>
 
-      <header className="p-3 bg-stone-100 dark:bg-zinc-700 rounded-t-lg sticky top-0 z-20 shadow-sm">
+      <header className="p-2 bg-stone-100 dark:bg-zinc-700 rounded-t-lg sticky top-0 z-20 shadow-sm">
         <div className="flex justify-between items-start">
             <div id={`order-heading-${order.id}`} className="flex-grow min-w-0">
               {isEditingName && isAdmin ? (
@@ -102,13 +102,13 @@ const PaymentTicket = memo(({ order, onVerify, onDelete, onUpdateName, isAdmin }
                     onChange={(e) => setEditedName(e.target.value)}
                     onBlur={() => handleNameSubmit()}
                     autoFocus
-                    className="w-full px-2 py-1 text-lg font-bold border rounded bg-white dark:bg-zinc-800 dark:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 py-1 text-base font-bold border rounded bg-white dark:bg-zinc-800 dark:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </form>
               ) : (
                 <div className="flex items-center gap-2 group/name">
                   <h3 
-                    className={`font-bold text-xl text-stone-900 dark:text-white truncate ${isAdmin ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
+                    className={`font-bold text-lg text-stone-900 dark:text-white truncate ${isAdmin ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
                     onClick={(e) => {
                       if (isAdmin) {
                         e.stopPropagation();
@@ -157,34 +157,33 @@ const PaymentTicket = memo(({ order, onVerify, onDelete, onUpdateName, isAdmin }
             </div>
         )}
       </header>
-      <div className="p-4 space-y-3 flex-grow overflow-y-auto">
-        {order.items.map(item => (
-          <div key={item.id} className="text-sm">
-            <p className="font-semibold text-base text-stone-800 dark:text-zinc-200">
-              <span>{item.quantity}x </span>
-              {item.selectedVariantId && item.drink?.variants && (
-                <span className="uppercase mr-1">
-                  {item.drink.variants.find(v => v.id === item.selectedVariantId)?.name}
-                </span>
-              )}
-              <span>{item.drink?.name || 'Unknown Drink'}</span>
-            </p>
-            {item.customName && <p className="pl-4 font-medium text-stone-700 dark:text-zinc-300">- {item.customName}</p>}
-            <ul className="pl-4 list-disc list-inside text-stone-600 dark:text-zinc-400">
-              {Object.values(item.selectedModifiers || {}).flatMap(mods => mods || []).filter(sm => sm).map((sm: SelectedModifier) => (
-                <li key={sm.option?.id || Math.random()}>{sm.quantity > 1 ? `${sm.quantity}x ` : ''}{sm.option?.name || 'Unknown'}</li>
-              ))}
-            </ul>
+      <div className="p-2.5 flex-grow overflow-y-auto">
+          <p className="text-[10px] text-stone-500 dark:text-zinc-400 mb-1 font-mono uppercase tracking-tighter">ID: #{(order.id || '').slice(-6)}</p>
+          <div className="flex flex-col gap-2">
+            {(order.items || []).map(item => (
+              <div key={item.id} className="text-xs bg-stone-50/50 dark:bg-zinc-900/30 p-1.5 rounded border border-stone-200/50 dark:border-zinc-700/50">
+                <p className="font-semibold text-stone-800 dark:text-zinc-200 leading-none mb-1">
+                  <span className="text-blue-600 dark:text-blue-400">{item.quantity}x</span> {item.drink?.name || 'Unknown'}
+                </p>
+                {item.customName && <p className="text-[10px] text-stone-500 dark:text-zinc-400 italic">For: {item.customName}</p>}
+              </div>
+            ))}
           </div>
-        ))}
       </div>
-      <footer className="p-3 border-t dark:border-zinc-700">
+      <footer className="p-2 border-t dark:border-zinc-700 bg-stone-50/30 dark:bg-zinc-900/10">
+        <div className="flex items-center justify-between mb-2 px-1">
+          <div className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-tighter">
+            Total: ${(order.finalTotal || 0).toFixed(2)}
+          </div>
+          <div className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded font-bold font-mono">
+            {timeElapsed}
+          </div>
+        </div>
         <button
           onClick={() => onVerify(order.id)}
-          className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors font-bold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-zinc-800 flex items-center justify-center leading-none"
-          aria-label={`Verify payment for ${order.customerName || 'Customer'}'s order`}
+          className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors font-bold text-xs uppercase tracking-widest shadow-sm active:scale-[0.98]"
         >
-          Verify Payment & Send to Kitchen
+          Verify & Send
         </button>
       </footer>
     </motion.div>
@@ -729,7 +728,7 @@ const KDSView: React.FC = () => {
   };
 
   const containerClasses = scrollDirection === 'vertical' 
-    ? 'columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4' 
+    ? 'columns-xs space-y-4 gap-4 h-full' 
     : 'flex flex-row gap-4 overflow-x-auto pb-4 items-start scrollbar-thin scrollbar-thumb-stone-300 dark:scrollbar-thumb-zinc-600';
 
   const ticketWrapperClasses = scrollDirection === 'horizontal' ? 'w-80 flex-shrink-0' : 'break-inside-avoid mb-4';
@@ -753,7 +752,7 @@ const KDSView: React.FC = () => {
             return (
                 <div className="space-y-8">
                     {/* Group Mode Controls */}
-                    <div className="flex items-center justify-between bg-white dark:bg-zinc-800 p-4 rounded-lg shadow-sm border border-stone-200 dark:border-zinc-700">
+                    <div className="sticky top-0 z-40 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md p-4 rounded-lg shadow-md border border-stone-200 dark:border-zinc-700 mb-6 gap-4">
                         <div className="flex items-center space-x-4">
                             <button 
                                 onClick={() => {
@@ -927,8 +926,8 @@ const KDSView: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="relative flex-grow">
+      <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
+        <div className="relative flex-grow w-full">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg className="h-4 w-4 sm:h-5 sm:w-5 text-stone-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
@@ -961,7 +960,7 @@ const KDSView: React.FC = () => {
         <TabButton tabId="history" count={completedOrders.length} panelId="tabpanel-history" activeTab={activeTab} onTabChange={setActiveTab}>History</TabButton>
       </div>
       
-      <div id="tabpanel-payment-required" role="tabpanel" aria-labelledby="tab-payment-required" hidden={activeTab !== 'payment-required'}>
+      <div id="tabpanel-payment-required" role="tabpanel" aria-labelledby="tab-payment-required" hidden={activeTab !== 'payment-required'} className="overflow-hidden">
         <AnimatePresence mode="popLayout">
           {activeTab === 'payment-required' && (
             <motion.div
@@ -992,7 +991,7 @@ const KDSView: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      <div id="tabpanel-pending" role="tabpanel" aria-labelledby="tab-pending" hidden={activeTab !== 'pending'}>
+      <div id="tabpanel-pending" role="tabpanel" aria-labelledby="tab-pending" hidden={activeTab !== 'pending'} className="overflow-hidden">
         <AnimatePresence mode="popLayout">
           {activeTab === 'pending' && (
             <motion.div
@@ -1026,7 +1025,7 @@ const KDSView: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      <div id="tabpanel-scheduled" role="tabpanel" aria-labelledby="tab-scheduled" hidden={activeTab !== 'scheduled'}>
+      <div id="tabpanel-scheduled" role="tabpanel" aria-labelledby="tab-scheduled" hidden={activeTab !== 'scheduled'} className="overflow-hidden">
         <AnimatePresence mode="popLayout">
           {activeTab === 'scheduled' && (
             <motion.div
@@ -1136,7 +1135,7 @@ const KDSView: React.FC = () => {
         </AnimatePresence>
       </div>
       
-      <div id="tabpanel-history" role="tabpanel" aria-labelledby="tab-history" hidden={activeTab !== 'history'}>
+      <div id="tabpanel-history" role="tabpanel" aria-labelledby="tab-history" hidden={activeTab !== 'history'} className="overflow-hidden">
         <AnimatePresence mode="popLayout">
           {activeTab === 'history' && (
             <motion.div

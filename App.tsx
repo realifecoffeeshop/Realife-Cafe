@@ -160,7 +160,7 @@ const ViewErrorBoundary: React.FC<{ children: React.ReactNode; viewName: string 
 import { motion, AnimatePresence } from 'framer-motion';
 
 const AppContent: React.FC = () => {
-  const { state, dispatch } = useApp();
+  const { state, dispatch, isInitializingAuth } = useApp();
   const { addToast } = useToast();
   const { currentUser, theme, permissionError, globalError } = state;
   const [currentView, setCurrentView] = React.useState<View>(View.CUSTOMER);
@@ -229,6 +229,7 @@ const AppContent: React.FC = () => {
   };
   
   const renderCurrentView = () => {
+    if (isInitializingAuth) return null; // Safety check in sub-render
     return (
       <AnimatePresence mode="wait">
         <motion.div
@@ -299,6 +300,30 @@ const AppContent: React.FC = () => {
       </AnimatePresence>
     );
   };
+  
+  // If we are still figuring out who the user is (anonymous or logged in), 
+  // show a global splash to prevent starting listeners before we have a UID.
+  // We place this AFTER all hooks to follow the Rules of Hooks.
+  // OPTIMIZATION: If we already have a hydrated currentUser from localStorage, 
+  // we show the app immediately to make it feel instant.
+  if (isInitializingAuth && !currentUser) {
+    return (
+        <div className="fixed inset-0 bg-[#F5F3EF] dark:bg-zinc-950 flex flex-col items-center justify-center p-6 z-[100]">
+            <div className="relative mb-8">
+                <div className="w-24 h-24 border-4 border-[#A58D79]/20 border-t-[#A58D79] rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <svg className="w-10 h-10 text-[#A58D79]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17 8h1a4 4 0 1 1 0 8h-1" /><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" /><line x1="6" y1="2" x2="6" y2="4" /><line x1="10" y1="2" x2="10" y2="4" /><line x1="14" y1="2" x2="14" y2="4" />
+                    </svg>
+                </div>
+            </div>
+            <div className="text-center animate-pulse">
+                <h1 className="text-2xl font-bold text-stone-800 dark:text-stone-200 mb-2 font-serif">ReaLife Cafe</h1>
+                <p className="text-stone-500 dark:text-stone-400 text-sm tracking-widest uppercase font-semibold">Initializing Secure Session...</p>
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-full bg-[#F5F3EF] dark:bg-zinc-900 transition-colors duration-300">
