@@ -49,13 +49,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             if (user) {
                 // Save for next time
                 localStorage.setItem('last_user_email', email);
-                
-                // Find user in our database
-                const dbUser = state.users.find(u => u.id === user.uid);
-                const displayName = dbUser?.name || user.displayName || email.split('@')[0];
-                
-                dispatch({ type: 'LOGIN', payload: { name: displayName, userId: user.uid, email: user.email || undefined } });
-                addToast(`Welcome back, ${displayName}!`, 'success');
+                addToast("Logging in...", "info");
                 onClose();
             }
         } catch (error: any) {
@@ -103,8 +97,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 if (email) localStorage.setItem('last_user_email', email);
 
                 await user.updateProfile({ displayName: trimmedName });
-                dispatch({ type: 'REGISTER', payload: { name: trimmedName, userId: user.uid, email: user.email || undefined } });
-                addToast(`Account created for ${trimmedName}! Welcome!`, 'success');
+                addToast(`Setting up your account, ${trimmedName}...`, 'success');
                 onClose();
             }
         } catch (error: any) {
@@ -140,37 +133,46 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     const handleGoogleLogin = async () => {
         if (!auth) return;
         setIsLoading(true);
-        try {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            // Use popup as it's more reliable in the AI Studio iframe
-            const result = await auth.signInWithPopup(provider);
-            const user = result.user;
+        
+        const MAX_RETRIES = 2;
+        let attempt = 0;
 
-            if (user) {
-                const displayName = user.displayName || user.email?.split('@')[0] || 'User';
-                dispatch({ 
-                    type: 'LOGIN', 
-                    payload: { 
-                        name: displayName, 
-                        userId: user.uid, 
-                        email: user.email || undefined 
-                    } 
-                });
-                addToast(`Welcome, ${displayName}!`, 'success');
-                onClose();
+        const performLogin = async (): Promise<void> => {
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.setCustomParameters({ prompt: 'select_account' });
+                
+                const result = await auth.signInWithPopup(provider);
+                const user = result.user;
+
+                if (user) {
+                    addToast(`Logging in...`, 'info');
+                    onClose();
+                }
+            } catch (error: any) {
+                console.error(`Google Login attempt ${attempt + 1} failed:`, error);
+                
+                if (error.code === 'auth/network-request-failed' && attempt < MAX_RETRIES) {
+                    attempt++;
+                    addToast(`Connection issues. Retrying login (Attempt ${attempt + 1})...`, 'info');
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    return performLogin();
+                }
+
+                if (error.code === 'auth/unauthorized-domain') {
+                    addToast("Domain blocked by browser iframe security. Please click the 'Open in New Tab' button in the top right of the preview and try logging in there.", 'error', { duration: 15000 });
+                } else if (error.code === 'auth/popup-blocked') {
+                    addToast("Popup blocked! Please allow popups for this site to sign in with Google.", 'error');
+                } else if (error.code === 'auth/popup-closed-by-user') {
+                    addToast("Popup closed before completion. Please try again.", 'info');
+                } else {
+                    addToast(error.message || 'Google Login failed.', 'error');
+                }
             }
-        } catch (error: any) {
-            console.error("Google Login error:", error);
-            if (error.code === 'auth/unauthorized-domain') {
-                addToast("Action Required: Please add the current domain to your Firebase 'Authorized Domains' list.", 'error', { duration: 8000 });
-            } else if (error.code === 'auth/popup-blocked') {
-                addToast("Popup blocked! Please allow popups for this site to sign in with Google.", 'error');
-            } else {
-                addToast(error.message || 'Google Login failed.', 'error');
-            }
-        } finally {
-            setIsLoading(false);
-        }
+        };
+
+        await performLogin();
+        setIsLoading(false);
     };
     
     const handleClose = () => {
@@ -190,7 +192,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     const renderContent = () => (
         <div className="space-y-6">
             {/* Efficiency Boost: Direct Google Login at the top if it's a cold login */}
-            {viewMode === 'login' && !email && (
+            {viewMode === 'login' && (
                 <div className="pb-2">
                     <button 
                         type="button" 
@@ -206,6 +208,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                         </svg>
                         Sign in with Google Account
                     </button>
+                    {window.self !== window.top && (
+                        <p className="mt-2 text-[10px] text-center text-stone-400 font-medium">
+                            Tip: If Google login fails, try <span className="text-indigo-500 font-bold">Opening in a New Tab</span>
+                        </p>
+                    )}
                     <div className="relative my-6">
                         <div className="absolute inset-0 flex items-center">
                             <div className="w-full border-t border-stone-200 dark:border-zinc-700"></div>

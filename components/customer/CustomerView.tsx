@@ -145,7 +145,7 @@ const CustomerView: React.FC = () => {
   const { currentUser, cart } = state;
   const [selectedDrink, setSelectedDrink] = useState<Drink | null>(null);
   const [customerName, setCustomerName] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CARD);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.COLLECTION);
   const [discountCode, setDiscountCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState<Discount | null>(null);
   const [error, setError] = useState('');

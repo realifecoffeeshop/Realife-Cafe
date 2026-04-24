@@ -221,7 +221,28 @@ export const appReducer = (state: AppState, action: Action): AppState => {
       if (auth) {
           auth.signOut().catch(err => console.error("Firebase sign-out failed:", err));
       }
-      return { ...state, currentUser: null };
+      
+      // Immediately clear the currentUser from localStorage to prevent "ghost" sessions on instant refresh
+      try {
+          const localData = localStorage.getItem('cafe-pos-data');
+          if (localData) {
+              const parsed = JSON.parse(localData);
+              delete parsed.currentUser;
+              localStorage.setItem('cafe-pos-data', JSON.stringify(parsed));
+          }
+      } catch (e) {
+          console.warn("Failed to clear session from localStorage:", e);
+      }
+
+      return { 
+          ...state, 
+          currentUser: null,
+          orders: [],
+          users: [],
+          customers: [],
+          historicalOrders: [],
+          isOrdersLoaded: false
+      };
     }
     case 'ADD_FAVOURITE': {
       if (!state.currentUser) return state;
@@ -744,76 +765,103 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   });
 
-  const [firebaseUser, setFirebaseUser] = useState<any | null>(null);
-  const [isInitializingAuth, setIsInitializingAuth] = useState(true);
+    const [firebaseUser, setFirebaseUser] = useState<any | null>(null);
+    const [isInitializingAuth, setIsInitializingAuth] = useState(true);
+    const authOperationRef = useRef<number>(0);
 
-  useEffect(() => {
-    if (database) {
-        const connectedRef = database.ref('.info/connected');
-        const listener = connectedRef.on('value', (snap) => {
-            dispatch({ type: 'SET_CONNECTED', payload: !!snap.val() });
-        });
-        return () => connectedRef.off('value', listener);
-    }
-  }, [database]);
+    useEffect(() => {
+        if (database) {
+            const connectedRef = database.ref('.info/connected');
+            const listener = connectedRef.on('value', (snap) => {
+                dispatch({ type: 'SET_CONNECTED', payload: !!snap.val() });
+            });
+            return () => connectedRef.off('value', listener);
+        }
+    }, [database]);
 
-  // Initialize state once on mount from local storage
-  useEffect(() => {
-    dispatch({ type: '_HYDRATE_STATE_FROM_STORAGE' });
-  }, []);
+    // Initialize state once on mount from local storage
+    useEffect(() => {
+        dispatch({ type: '_HYDRATE_STATE_FROM_STORAGE' });
+    }, []);
 
-  useEffect(() => {
-    if (isFirebaseConfigured && auth) {
-        let isCancelled = false;
+    useEffect(() => {
+        if (isFirebaseConfigured && auth) {
+            let isCancelled = false;
 
-        const signIn = async () => {
-            try {
-                // 1. Wait a moment for Firebase to restore existing session (Google, etc)
-                // This prevents "logging out" a real user by signing in anonymously too early.
-                await new Promise(resolve => setTimeout(resolve, 800));
-
+            const signIn = async (retryCount = 0) => {
                 if (isCancelled) return;
+                
+                const operationId = ++authOperationRef.current;
+                setIsInitializingAuth(true);
 
-                // 2. Check if we already have a user (restored by onAuthStateChanged during the wait)
-                if (auth.currentUser) {
-                    if (!isCancelled) {
-                        setFirebaseUser(auth.currentUser);
+                try {
+                    // 1. Wait a moment for Firebase to restore existing session (Google, etc)
+                    await new Promise(resolve => setTimeout(resolve, retryCount > 0 ? 2000 : 800));
+
+                    if (isCancelled || operationId !== authOperationRef.current) return;
+
+                    // 2. Check if we already have a user (restored by onAuthStateChanged during the wait)
+                    const currentUser = auth.currentUser;
+                    if (currentUser) {
+                        if (!isCancelled && operationId === authOperationRef.current) {
+                            setFirebaseUser(currentUser);
+                            setIsInitializingAuth(false);
+                        }
+                        return;
+                    }
+
+                    // 3. Fallback to anonymous sign-in only if still no user
+                    console.log(`[Auth] Starting anonymous fallback (Attempt ${retryCount + 1})...`);
+                    const result = await auth.signInAnonymously();
+                    
+                    if (!isCancelled && operationId === authOperationRef.current) {
+                        setFirebaseUser(result.user);
                         setIsInitializingAuth(false);
                     }
-                    return;
-                }
+                } catch (error: any) {
+                    if (isCancelled || operationId !== authOperationRef.current) return;
 
-                // 3. Fallback to anonymous sign-in only if no user is found
-                console.log("[Auth] Starting anonymous fallback...");
-                const result = await auth.signInAnonymously();
-                if (!isCancelled) {
-                    setFirebaseUser(result.user);
+                    if (error.code === 'auth/network-request-failed' && retryCount < 1) {
+                        console.warn("[Auth] Network error during init, retrying...");
+                        return signIn(retryCount + 1);
+                    }
+
                     setIsInitializingAuth(false);
+                    console.error("Authentication initialization failed:", error);
+                    
+                    if (error.code === 'auth/configuration-not-found') {
+                        addToast("Action Required: Enable Anonymous Sign-In in your Firebase Console.", 'error', { duration: 10000 });
+                    } else if (error.code === 'auth/invalid-credential') {
+                        auth.signOut().catch(() => {});
+                    } else if (error.code !== 'auth/network-request-failed') {
+                        addToast(`Authentication Error: ${error.message}`, 'error');
+                    }
                 }
-            } catch (error: any) {
-                if (isCancelled) return;
-                setIsInitializingAuth(false);
-                console.error("Authentication initialization failed:", error);
-                
-                if (error.code === 'auth/configuration-not-found') {
-                    addToast("Action Required: Enable Anonymous Sign-In in your Firebase Console.", 'error', { duration: 10000 });
-                } else if (error.code === 'auth/invalid-credential') {
-                    // This can happen if the browser session is weird or API key is restricted
-                    auth.signOut().catch(() => {});
-                } else if (error.code !== 'auth/network-request-failed') {
-                    addToast(`Authentication Error: ${error.message}`, 'error');
+            };
+
+            signIn();
+
+            const unsubscribe = auth.onAuthStateChanged((user) => {
+                if (!isCancelled) {
+                    // If a user (real or anonymous) is provided, it counts as a valid auth intent
+                    // We increment operationId to kill any background signIn() loops
+                    if (user) {
+                        authOperationRef.current++; 
+                        setFirebaseUser(user);
+                        setIsInitializingAuth(false);
+                    } else {
+                        // User logged out
+                        setFirebaseUser(null);
+                        setIsInitializingAuth(false);
+                        
+                        // Re-trigger anonymous fallback if no initialization is already active for this specific intent
+                        if (!isInitializingAuth) {
+                            console.log("[Auth] User logged out, re-initializing anonymous session...");
+                            signIn();
+                        }
+                    }
                 }
-            }
-        };
-
-        signIn();
-
-        const unsubscribe = auth.onAuthStateChanged((user) => {
-            if (!isCancelled) {
-                setFirebaseUser(user);
-                setIsInitializingAuth(false);
-            }
-        });
+            });
 
         return () => {
             isCancelled = true;
