@@ -31,8 +31,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLoginClick, onM
 
   const handleLogout = () => {
     dispatch({ type: 'LOGOUT' });
-    // Force a reload to ensure all states are clean and prevent session ghosting
-    window.location.assign('/');
+    setView(View.CUSTOMER);
   };
   
   const handleThemeToggle = () => {
