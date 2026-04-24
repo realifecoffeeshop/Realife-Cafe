@@ -768,6 +768,7 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [firebaseUser, setFirebaseUser] = useState<any | null>(null);
     const [isInitializingAuth, setIsInitializingAuth] = useState(true);
     const authOperationRef = useRef<number>(0);
+    const hasInitialRefreshedToken = useRef<boolean>(false);
 
     useEffect(() => {
         if (database) {
@@ -1015,12 +1016,17 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             // CRITICAL FIX: If user is an admin by email, force a token refresh immediately.
             // This ensures the Realtime Database session is re-authenticated with fresh credentials,
             // preventing the common "Permission Denied" error on refresh.
-            if (isAdminByEmail) {
+            if (isAdminByEmail && !hasInitialRefreshedToken.current) {
                 try {
-                    console.log("[AppContext] Admin detected, refreshing session token...");
+                    console.log("[AppContext] Admin detected, ensuring fresh session token...");
                     await firebaseUser.getIdToken(true);
-                } catch (e) {
-                    console.error("Failed to refresh token:", e);
+                    hasInitialRefreshedToken.current = true;
+                } catch (e: any) {
+                    if (e.code === 'auth/network-request-failed') {
+                        console.warn("[AppContext] Initial token refresh failed due to network. Will try naturally.", e.message);
+                    } else {
+                        console.error("Failed to refresh token:", e);
+                    }
                 }
             }
 
@@ -1070,12 +1076,22 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                             if (error.message?.toLowerCase().includes('permission_denied')) {
                                 dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/orders'.` });
                                 dispatch({ type: 'SET_ORDERS', payload: [] });
-                                // Auto-fix for admins
+                                // Auto-fix for admins, but avoid infinite reload loops
                                 if (isAdminByEmail) {
-                                    firebaseUser.getIdToken(true).then(() => {
-                                        console.log("Token refreshed after permission error, reloading...");
-                                        window.location.reload();
-                                    });
+                                    const lastReload = parseInt(sessionStorage.getItem('last_permission_reload') || '0');
+                                    const now = Date.now();
+                                    
+                                    if (now - lastReload > 30000) { // Only reload once every 30 seconds max
+                                        sessionStorage.setItem('last_permission_reload', now.toString());
+                                        firebaseUser.getIdToken(true).then(() => {
+                                            console.log("Token refreshed after permission error, reloading...");
+                                            window.location.reload();
+                                        }).catch(err => {
+                                            console.warn("[AppContext] Background token refresh failed (network?):", err.message);
+                                        });
+                                    } else {
+                                        console.warn("[AppContext] Suppressing permission-related reload to avoid loop.");
+                                    }
                                 }
                             }
                         }
@@ -1090,12 +1106,22 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                         (error: any) => {
                             if (error.message?.toLowerCase().includes('permission_denied')) {
                                 dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/users'.` });
-                                // Auto-fix for admins
+                                // Auto-fix for admins, but avoid infinite reload loops
                                 if (isAdminByEmail) {
-                                    firebaseUser.getIdToken(true).then(() => {
-                                        console.log("Token refreshed after permission error, reloading...");
-                                        window.location.reload();
-                                    });
+                                    const lastReload = parseInt(sessionStorage.getItem('last_permission_reload') || '0');
+                                    const now = Date.now();
+                                    
+                                    if (now - lastReload > 30000) { // Only reload once every 30 seconds max
+                                        sessionStorage.setItem('last_permission_reload', now.toString());
+                                        firebaseUser.getIdToken(true).then(() => {
+                                            console.log("Token refreshed after permission error, reloading...");
+                                            window.location.reload();
+                                        }).catch(err => {
+                                            console.warn("[AppContext] Background token refresh failed (network?):", err.message);
+                                        });
+                                    } else {
+                                        console.warn("[AppContext] Suppressing permission-related reload to avoid loop.");
+                                    }
                                 }
                             }
                         }
@@ -1116,12 +1142,22 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                         (error: any) => {
                             if (error.message?.toLowerCase().includes('permission_denied')) {
                                 dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/customers'.` });
-                                // Auto-fix for admins
+                                // Auto-fix for admins, but avoid infinite reload loops
                                 if (isAdminByEmail) {
-                                    firebaseUser.getIdToken(true).then(() => {
-                                        console.log("Token refreshed after permission error, reloading...");
-                                        window.location.reload();
-                                    });
+                                    const lastReload = parseInt(sessionStorage.getItem('last_permission_reload') || '0');
+                                    const now = Date.now();
+                                    
+                                    if (now - lastReload > 30000) { // Only reload once every 30 seconds max
+                                        sessionStorage.setItem('last_permission_reload', now.toString());
+                                        firebaseUser.getIdToken(true).then(() => {
+                                            console.log("Token refreshed after permission error, reloading...");
+                                            window.location.reload();
+                                        }).catch(err => {
+                                            console.warn("[AppContext] Background token refresh failed (network?):", err.message);
+                                        });
+                                    } else {
+                                        console.warn("[AppContext] Suppressing permission-related reload to avoid loop.");
+                                    }
                                 }
                             }
                         }

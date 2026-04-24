@@ -160,7 +160,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 }
 
                 if (error.code === 'auth/unauthorized-domain') {
-                    addToast("Domain blocked by browser iframe security. Please click the 'Open in New Tab' button in the top right of the preview and try logging in there.", 'error', { duration: 15000 });
+                    addToast("Action Required: Please whitelist this domain in Firebase Console (Auth > Settings > Authorized Domains).", 'error', { duration: 10000 });
                 } else if (error.code === 'auth/popup-blocked') {
                     addToast("Popup blocked! Please allow popups for this site to sign in with Google.", 'error');
                 } else if (error.code === 'auth/popup-closed-by-user') {
@@ -208,11 +208,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                         </svg>
                         Sign in with Google Account
                     </button>
-                    {window.self !== window.top && (
-                        <p className="mt-2 text-[10px] text-center text-stone-400 font-medium">
-                            Tip: If Google login fails, try <span className="text-indigo-500 font-bold">Opening in a New Tab</span>
-                        </p>
-                    )}
                     <div className="relative my-6">
                         <div className="absolute inset-0 flex items-center">
                             <div className="w-full border-t border-stone-200 dark:border-zinc-700"></div>
