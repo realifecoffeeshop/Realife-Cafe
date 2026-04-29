@@ -220,7 +220,15 @@ const Dashboard: React.FC = () => {
   const { state } = useApp();
   const { theme } = state;
   
-  const todayStr = new Date().toISOString().split('T')[0];
+  const getTodayStr = () => {
+    const date = new Date();
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const todayStr = getTodayStr();
   const [startDate, setStartDate] = useState<string>(todayStr);
   const [endDate, setEndDate] = useState<string>(todayStr);
   const [fetchedOrders, setFetchedOrders] = useState<Order[]>([]);
@@ -308,7 +316,8 @@ const Dashboard: React.FC = () => {
       } else {
           const data: { [date: string]: { revenue: number, profit: number } } = {};
           (filteredOrders || []).forEach(order => {
-              const dateStr = new Date(order.createdAt).toISOString().split('T')[0];
+              const d = new Date(order.createdAt);
+              const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
               if (!data[dateStr]) {
                   data[dateStr] = { revenue: 0, profit: 0 };
               }

@@ -162,9 +162,10 @@ const CalendarView: React.FC = () => {
             <div className="bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-[3rem] shadow-xl overflow-hidden border border-stone-100 dark:border-zinc-800 relative">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-200 via-stone-900 to-amber-200 dark:from-amber-900 dark:via-white dark:to-amber-900"></div>
                 <div className="grid grid-cols-7 bg-stone-50/50 dark:bg-zinc-950/50 border-b border-stone-100 dark:border-zinc-800 backdrop-blur-md">
-                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, index) => (
                         <div key={index} className="py-3 sm:py-6 text-center text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.2em] sm:tracking-[0.3em] text-stone-400 dark:text-zinc-500">
-                            {day}
+                            <span className="sm:hidden">{day.charAt(0)}</span>
+                            <span className="hidden sm:inline">{day}</span>
                         </div>
                     ))}
                 </div>
@@ -344,7 +345,7 @@ const CalendarView: React.FC = () => {
                                             setShowNoteModal(selectedDayDetail);
                                             setSelectedDayDetail(null);
                                         }}
-                                        className="w-full bg-stone-900 dark:bg-white text-white dark:text-stone-900 py-5 rounded-[2rem] font-serif font-bold text-lg shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 px-8"
+                                        className="w-full bg-stone-900 dark:bg-white text-white dark:text-stone-900 py-5 rounded-[2rem] font-serif font-bold text-lg shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 px-8 whitespace-nowrap"
                                     >
                                         <Plus size={20} />
                                         <span>Pin to Calendar</span>
@@ -404,10 +405,10 @@ const CalendarView: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <button
+                                    <button
                                     onClick={handleSaveNote}
                                     disabled={!noteText.trim() || isSavingNote}
-                                    className="w-full bg-stone-900 dark:bg-white text-white dark:text-stone-900 py-5 px-8 rounded-[2rem] font-serif font-bold text-lg shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 tracking-tight"
+                                    className="w-full bg-stone-900 dark:bg-white text-white dark:text-stone-900 py-5 px-8 rounded-[2rem] font-serif font-bold text-lg shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 tracking-tight whitespace-nowrap"
                                 >
                                     {isSavingNote ? 'Saving...' : 'Pin to Calendar'}
                                 </button>

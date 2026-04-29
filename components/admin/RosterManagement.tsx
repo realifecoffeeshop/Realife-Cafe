@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
 import { UserRole, SundayRoster, RosterEntry, Availability } from '../../types';
-import { saveRoster, saveAvailability, deleteRoster } from '../../firebase/firestoreService';
+import { saveRoster, saveAvailability, deleteRoster, deleteAvailability } from '../../firebase/firestoreService';
 import { 
     ChevronLeft, 
     ChevronRight, 
@@ -100,7 +100,10 @@ const getSundaysInMonth = (year: number, month: number) => {
 };
 
 const formatDate = (date: Date) => {
-    return date.toISOString().split('T')[0];
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
 };
 
 const RosterManagement: React.FC = () => {
@@ -248,7 +251,7 @@ const RosterManagement: React.FC = () => {
             setIsSavingBulk(false);
         }
     };
-    const [myStatus, setMyStatus] = useState<'available' | 'unavailable' | 'preference'>('available');
+    const [myStatus, setMyStatus] = useState<'available' | 'unavailable' | 'preference' | null>('available');
     const [availabilityNote, setAvailabilityNote] = useState('');
 
     const handleUpdateMyAvailability = async (date: string) => {
@@ -256,6 +259,20 @@ const RosterManagement: React.FC = () => {
         
         const existing = availabilities.find(a => a.date === date && a.userId === currentUser.id);
         
+        if (myStatus === null) {
+            // Delete existing if it exists
+            if (existing) {
+                try {
+                    await deleteAvailability(existing.id);
+                    dispatch({ type: 'SET_AVAILABILITIES', payload: availabilities.filter(a => a.id !== existing.id) });
+                } catch (err) {
+                    console.error("Failed to delete availability:", err);
+                    throw err;
+                }
+            }
+            return;
+        }
+
         const newAvailability: Availability = {
             id: existing?.id || '',
             userId: currentUser.id,
@@ -434,7 +451,7 @@ const RosterManagement: React.FC = () => {
                                 ].map(item => (
                                     <button
                                         key={item.id}
-                                        onClick={() => setMyStatus(item.id as any)}
+                                        onClick={() => setMyStatus(prev => prev === item.id ? null : item.id as any)}
                                         className={`flex items-center gap-2 px-4 rounded-xl transition-all ${
                                             myStatus === item.id 
                                                 ? `${item.color} shadow-lg scale-105 z-10 font-bold` 

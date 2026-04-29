@@ -532,20 +532,15 @@ const KDSView: React.FC = () => {
 
 
   const handleCompleteOrder = useCallback(async (id: string) => {
-    setIsProcessing(true);
     try {
       await updateOrder(id, { status: 'completed', completedAt: Date.now() });
-      dispatch({ type: 'COMPLETE_ORDER', payload: id });
     } catch (err) {
       console.error("Failed to complete order:", err);
       addToast('Failed to complete order', 'error');
-    } finally {
-      setIsProcessing(false);
     }
-  }, [dispatch, addToast]);
+  }, [addToast]);
 
   const handleToggleItemCompletion = useCallback(async (orderId: string, itemId: string) => {
-    setIsProcessing(true);
     try {
         const order = state.orders.find(o => o.id === orderId);
         if (!order) return;
@@ -553,27 +548,20 @@ const KDSView: React.FC = () => {
             item.id === itemId ? { ...item, isCompleted: !item.isCompleted } : item
         );
         await updateOrder(orderId, { items });
-        dispatch({ type: 'TOGGLE_ORDER_ITEM_COMPLETION', payload: { orderId, itemId } });
     } catch (err) {
         console.error("Failed to toggle item completion:", err);
         addToast('Failed to update item', 'error');
-    } finally {
-      setIsProcessing(false);
     }
-  }, [dispatch, state.orders, addToast]);
+  }, [state.orders, addToast]);
   
   const handleVerifyPayment = useCallback(async (id: string) => {
-      setIsProcessing(true);
       try {
         await updateOrder(id, { isVerified: true, status: 'pending' });
-        dispatch({ type: 'VERIFY_PAYMENT', payload: id });
       } catch (err) {
         console.error("Failed to verify payment:", err);
         addToast('Failed to verify payment', 'error');
-      } finally {
-        setIsProcessing(false);
       }
-  }, [dispatch, addToast]);
+  }, [addToast]);
 
   const handleGroupOrders = useCallback(async () => {
     if (selectedOrders.length < 2) {
@@ -695,7 +683,9 @@ const KDSView: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `order_history_${new Date().toISOString().split('T')[0]}.csv`);
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    link.setAttribute('download', `order_history_${dateStr}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();

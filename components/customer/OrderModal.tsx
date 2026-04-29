@@ -249,8 +249,13 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
             <Info size={18} />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-stone-900 dark:text-white mb-0.5">{activeDrink.name}</h4>
-            <p className="text-xs text-stone-500 dark:text-zinc-400 leading-relaxed italic">
+            <div className="flex justify-between items-center mb-0.5">
+                <h4 className="text-sm font-bold text-stone-900 dark:text-white">{activeDrink.name}</h4>
+                <span className="text-sm font-serif font-bold text-amber-600 dark:text-amber-400">
+                    ${totalPrice.toFixed(2)}
+                </span>
+            </div>
+            <p className="text-xs text-stone-500 dark:text-zinc-400 leading-relaxed italic line-clamp-2">
               {activeDrink.description || "The perfect brew, precisely how you like it."}
             </p>
           </div>

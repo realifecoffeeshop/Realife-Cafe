@@ -853,6 +853,16 @@ export const saveAvailability = async (availability: any): Promise<void> => {
     }
 };
 
+export const deleteAvailability = async (id: string): Promise<void> => {
+    if (!isFirebaseConfigured || !database) return;
+    try {
+        await database.ref(`availabilities/${id}`).remove();
+    } catch (error: any) {
+        console.error("Error deleting availability:", error);
+        throw error;
+    }
+};
+
 export const onRostersUpdate = (callback: (rosters: any[]) => void, errorCallback?: (error: any) => void): (() => void) => {
     if (!isFirebaseConfigured || !database) return () => {};
     const ref = database.ref('rosters');

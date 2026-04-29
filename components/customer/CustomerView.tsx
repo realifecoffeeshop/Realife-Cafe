@@ -405,7 +405,8 @@ const CustomerView: React.FC = () => {
                 const [hours, minutes] = (sc.cutoffTime || '23:59').split(':').map(Number);
                 cutoffDate.setHours(hours, minutes, 0, 0);
 
-                if (now > cutoffDate) {
+                const isToday = now.toDateString() === selectedDate.toDateString();
+                if (now > cutoffDate && !isToday) {
                     return { 
                         isValid: false, 
                         message: `Pre-orders for ${item.drink.name} on ${collectionDate.toLocaleDateString()} closed on ${cutoffDate.toLocaleDateString()} at ${sc.cutoffTime}.` 
@@ -420,7 +421,8 @@ const CustomerView: React.FC = () => {
                     };
                 }
                 const cutoffDateTime = new Date(`${sc.cutoffDate}T${sc.cutoffTime}`);
-                if (now > cutoffDateTime) {
+                const isToday = now.toDateString() === selectedDate.toDateString();
+                if (now > cutoffDateTime && !isToday) {
                     return { 
                         isValid: false, 
                         message: `Pre-orders for ${item.drink.name} closed on ${sc.cutoffDate} at ${sc.cutoffTime}.` 
@@ -448,8 +450,8 @@ const CustomerView: React.FC = () => {
     }
 
     if (!customerName.trim()) {
-      setError('Group Order Name is required.');
-      addToast('Group Order Name is required.', 'error');
+      setError('Order Name is required.');
+      addToast('Order Name is required.', 'error');
       return;
     }
     if (!firebaseUser) {

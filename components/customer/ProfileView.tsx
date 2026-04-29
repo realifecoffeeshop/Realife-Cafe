@@ -352,7 +352,7 @@ const ProfileView: React.FC = () => {
               <button 
                 onClick={handleUpdateProfile}
                 disabled={isUpdatingProfile}
-                className="w-full py-4 bg-stone-900 dark:bg-white text-white dark:text-stone-900 rounded-[1.5rem] font-serif font-bold text-base shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 tracking-tight"
+                className="w-full py-4 bg-stone-900 dark:bg-white text-white dark:text-stone-900 rounded-[1.5rem] font-serif font-bold text-base shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 tracking-tight whitespace-nowrap flex items-center justify-center px-4"
               >
                 {isUpdatingProfile ? 'Saving...' : 'Save Profile Changes'}
               </button>
