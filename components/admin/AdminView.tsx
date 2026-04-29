@@ -12,6 +12,8 @@ import FeedbackView from './FeedbackView';
 import QRCodeGenerator from './QRCodeGenerator';
 import OrderHistory from './OrderHistory';
 import CustomerManagement from './CustomerManagement';
+import RosterManagement from './RosterManagement';
+import CalendarView from '../shared/CalendarView';
 import DevMode from './DevMode';
 
 const NavItem: React.FC<{ view: AdminViewEnum; activeTab: AdminViewEnum; onSelect: (view: AdminViewEnum) => void; children: React.ReactNode }> = ({ view, activeTab, onSelect, children }) => {
@@ -76,6 +78,10 @@ const AdminView: React.FC = () => {
         return <QRCodeGenerator key="qrcode" />;
       case AdminViewEnum.CUSTOMERS:
         return <CustomerManagement key="customers" />;
+      case AdminViewEnum.ROSTER:
+        return <RosterManagement key="roster" />;
+      case AdminViewEnum.CALENDAR:
+        return <CalendarView key="calendar" />;
       case AdminViewEnum.DEV_MODE:
         return <DevMode key="devmode" />;
       default:
@@ -85,13 +91,13 @@ const AdminView: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-50/50 dark:bg-zinc-950/50">
-      <div className="container mx-auto px-4 py-8 md:px-8">
-        <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="container mx-auto px-4 py-6 md:py-8 md:px-8">
+        <header className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-4xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">
+            <h1 className="text-3xl md:text-4xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">
               Admin Panel
             </h1>
-            <p className="text-stone-500 dark:text-zinc-400 mt-1">Manage your cafe operations and settings.</p>
+            <p className="text-stone-500 dark:text-zinc-400 mt-1 text-sm md:text-base">Manage your cafe operations and settings.</p>
           </div>
           
           {state.permissionError && (
@@ -125,6 +131,8 @@ const AdminView: React.FC = () => {
                 <NavItem view={AdminViewEnum.PERMISSIONS} activeTab={activeTab} onSelect={setActiveTab}>Permissions</NavItem>
                 <NavItem view={AdminViewEnum.ORDER_HISTORY} activeTab={activeTab} onSelect={setActiveTab}>Order History</NavItem>
                 <NavItem view={AdminViewEnum.CUSTOMERS} activeTab={activeTab} onSelect={setActiveTab}>Customers</NavItem>
+                <NavItem view={AdminViewEnum.ROSTER} activeTab={activeTab} onSelect={setActiveTab}>Sunday Roster</NavItem>
+                <NavItem view={AdminViewEnum.CALENDAR} activeTab={activeTab} onSelect={setActiveTab}>Calendar</NavItem>
                 <NavItem view={AdminViewEnum.MENU} activeTab={activeTab} onSelect={setActiveTab}>Menu</NavItem>
                 <NavItem view={AdminViewEnum.QR_CODE} activeTab={activeTab} onSelect={setActiveTab}>QR Code</NavItem>
                 <NavItem view={AdminViewEnum.DISCOUNTS} activeTab={activeTab} onSelect={setActiveTab}>Discounts</NavItem>

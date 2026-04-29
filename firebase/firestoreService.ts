@@ -12,9 +12,12 @@ export const isPermissionError = (error: any): boolean => {
     return (
         errorStr.includes('permission_denied') || 
         errorStr.includes('permission denied') || 
+        errorStr.includes('unauthorized') ||
         error.code === 'PERMISSION_DENIED' ||
+        error.code === 'auth/operation-not-allowed' ||
         error.message?.toLowerCase().includes('permission_denied') ||
-        error.message?.toLowerCase().includes('permission denied')
+        error.message?.toLowerCase().includes('permission denied') ||
+        error.message?.toLowerCase().includes('unauthorized')
     );
 };
 
@@ -771,6 +774,130 @@ export const deleteCustomer = async (customerId: string): Promise<void> => {
     }
 };
 
+export const deleteUser = async (userId: string): Promise<void> => {
+    if (!isFirebaseConfigured) {
+        console.error("[Firebase] deleteUser failed: Firebase not configured.");
+        throw new Error("Firebase is not configured.");
+    }
+    if (!database) {
+        console.error("[Firebase] deleteUser failed: Database object is missing.");
+        throw new Error("Database connection is not available.");
+    }
+
+    if (!userId) {
+        console.error("[Firebase] deleteUser failed: No userId provided.");
+        throw new Error("Cannot delete user: No user ID provided.");
+    }
+
+    const userPath = `users/${userId}`;
+    console.log(`[Firebase] Attempting to delete user profile at path: ${userPath}`);
+
+    try {
+        // 1. Check if user exists first to provide better error feedback
+        const snapshot = await database.ref(userPath).once('value');
+        if (!snapshot.exists()) {
+            console.warn(`[Firebase] User profile not found at ${userPath}. It may have already been deleted.`);
+            // We still consider this a success for the UI since the goal was removal
+            return;
+        }
+
+        // 2. Perform the removal
+        await database.ref(userPath).remove();
+        console.log(`[Firebase] Successfully deleted user profile: ${userPath}`);
+    } catch (error: any) {
+        const errorMsg = error?.message || String(error);
+        console.error(`[Firebase] Error during user deletion for ${userId}:`, error);
+        
+        if (isPermissionError(error)) {
+            throw new Error(`Permission Denied: You do not have sufficient privileges to delete profiles. Path: ${userPath}. Error: ${errorMsg}`);
+        }
+        
+        throw new Error(`Failed to delete user profile: ${errorMsg}`);
+    }
+};
+
+// --- Roster & Availability Functions ---
+
+export const onAvailabilitiesUpdate = (callback: (availabilities: any[]) => void, errorCallback?: (error: any) => void): (() => void) => {
+    if (!isFirebaseConfigured || !database) return () => {};
+    const ref = database.ref('availabilities');
+    const listener = ref.on('value', (snapshot: any) => {
+        const array: any[] = [];
+        if (snapshot.exists()) {
+            snapshot.forEach((childSnapshot: any) => {
+                array.push({ ...childSnapshot.val(), id: childSnapshot.key });
+            });
+        }
+        callback(array);
+    }, (error: any) => {
+        if (errorCallback) errorCallback(error);
+        else console.error("Error listening for availability updates:", error);
+    });
+    return () => ref.off('value', listener);
+};
+
+export const saveAvailability = async (availability: any): Promise<void> => {
+    if (!isFirebaseConfigured || !database) return;
+    try {
+        const { id, ...data } = availability;
+        const sanitized = sanitizeForFirebase(data);
+        const final = JSON.parse(JSON.stringify(sanitized, (k, v) => v === undefined ? null : v));
+        if (id) {
+            await database.ref(`availabilities/${id}`).set(final);
+        } else {
+            await database.ref('availabilities').push(final);
+        }
+    } catch (error: any) {
+        console.error("Error saving availability:", error);
+        throw error;
+    }
+};
+
+export const onRostersUpdate = (callback: (rosters: any[]) => void, errorCallback?: (error: any) => void): (() => void) => {
+    if (!isFirebaseConfigured || !database) return () => {};
+    const ref = database.ref('rosters');
+    const listener = ref.on('value', (snapshot: any) => {
+        const array: any[] = [];
+        if (snapshot.exists()) {
+            snapshot.forEach((childSnapshot: any) => {
+                array.push({ ...childSnapshot.val(), id: childSnapshot.key });
+            });
+        }
+        callback(array);
+    }, (error: any) => {
+        if (errorCallback) errorCallback(error);
+        else console.error("Error listening for roster updates:", error);
+    });
+    return () => ref.off('value', listener);
+};
+
+export const saveRoster = async (roster: any): Promise<void> => {
+    if (!isFirebaseConfigured || !database) return;
+    try {
+        const { id, ...data } = roster;
+        const sanitized = sanitizeForFirebase(data);
+        const final = JSON.parse(JSON.stringify(sanitized, (k, v) => v === undefined ? null : v));
+        if (id) {
+            await database.ref(`rosters/${id}`).set(final);
+        } else {
+            await database.ref('rosters').push(final);
+        }
+    } catch (error: any) {
+        console.error("Error saving roster:", error);
+        throw error;
+    }
+};
+
+export const deleteRoster = async (rosterId: string): Promise<void> => {
+    if (!isFirebaseConfigured || !database) return;
+    try {
+        await database.ref(`rosters/${rosterId}`).remove();
+    } catch (error: any) {
+        console.error("Error deleting roster:", error);
+        throw error;
+    }
+};
+
 export const submitFeedback = async (feedback: Omit<Feedback, 'id' | 'createdAt'>) => {
     if (!database) return;
     const feedbackRef = database.ref('feedback').push();
@@ -853,19 +980,89 @@ export const uploadSharedPicture = async (file: File, authorName: string, author
     return pictureData;
 };
 
-export const onSharedPicturesUpdate = (callback: (pictures: SharedPicture[]) => void, onError?: (error: Error) => void) => {
-    if (!database) return () => {};
-    const picturesRef = database.ref('shared-pictures');
-    const listener = picturesRef.on('value', (snapshot: any) => {
-        const data = snapshot.val();
-        if (data) {
-            const picturesList = Object.values(data) as SharedPicture[];
-            callback(picturesList.sort((a, b) => b.createdAt - a.createdAt));
-        } else {
-            callback([]);
+export const mergeOrders = async (orderIds: string[], mergeId: string): Promise<void> => {
+    if (!database) return;
+    try {
+        for (const orderId of orderIds) {
+            await database.ref(`orders/${orderId}`).update({ mergeId });
         }
+    } catch (error) {
+        console.error("Error merging orders:", error);
+        throw error;
+    }
+};
+
+export const unmergeOrder = async (orderId: string): Promise<void> => {
+    if (!database) return;
+    try {
+        await database.ref(`orders/${orderId}/mergeId`).remove();
+    } catch (error) {
+        console.error("Error unmerging order:", error);
+        throw error;
+    }
+};
+
+export const unmergeGroup = async (mergeId: string): Promise<void> => {
+    if (!database) return;
+    try {
+        const ordersRef = database.ref('orders');
+        const snapshot = await ordersRef.orderByChild('mergeId').equalTo(mergeId).once('value');
+        if (snapshot.exists()) {
+            const updates: any = {};
+            snapshot.forEach(child => {
+                updates[`${child.key}/mergeId`] = null;
+            });
+            await ordersRef.update(updates);
+        }
+    } catch (err) {
+        console.error("Failed to unmerge group:", err);
+        throw err;
+    }
+};
+
+// --- Calendar Note Functions ---
+
+export const onCalendarNotesUpdate = (callback: (notes: any[]) => void, errorCallback?: (error: any) => void): (() => void) => {
+    if (!isFirebaseConfigured || !database) return () => {};
+    const ref = database.ref('calendarNotes');
+    const listener = ref.on('value', (snapshot: any) => {
+        const array: any[] = [];
+        if (snapshot.exists()) {
+            snapshot.forEach((childSnapshot: any) => {
+                array.push({ ...childSnapshot.val(), id: childSnapshot.key });
+            });
+        }
+        callback(array);
     }, (error: any) => {
-        if (onError) onError(error);
+        if (errorCallback) errorCallback(error);
+        else console.error("Error listening for calendar note updates:", error);
     });
-    return () => picturesRef.off('value', listener);
+    return () => ref.off('value', listener);
+};
+
+export const saveCalendarNote = async (note: any): Promise<void> => {
+    if (!isFirebaseConfigured || !database) return;
+    try {
+        const { id, ...data } = note;
+        const sanitized = sanitizeForFirebase(data);
+        const final = JSON.parse(JSON.stringify(sanitized, (k, v) => v === undefined ? null : v));
+        if (id) {
+            await database.ref(`calendarNotes/${id}`).set(final);
+        } else {
+            await database.ref('calendarNotes').push(final);
+        }
+    } catch (error: any) {
+        console.error("Error saving calendar note:", error);
+        throw error;
+    }
+};
+
+export const deleteCalendarNote = async (noteId: string): Promise<void> => {
+    if (!isFirebaseConfigured || !database) return;
+    try {
+        await database.ref(`calendarNotes/${noteId}`).remove();
+    } catch (error: any) {
+        console.error("Error deleting calendar note:", error);
+        throw error;
+    }
 };

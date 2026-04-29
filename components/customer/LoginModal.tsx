@@ -15,7 +15,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     const { state, dispatch, firebaseUser } = useApp();
     const { addToast } = useToast();
     const [viewMode, setViewMode] = useState<'login' | 'register' | 'forgot'>('login');
-    const [name, setName] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +25,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     React.useEffect(() => {
         const savedName = localStorage.getItem('last_user_name');
         const savedEmail = localStorage.getItem('last_user_email');
-        if (savedName) setName(savedName);
+        if (savedName) {
+            const parts = savedName.split(' ');
+            setFirstName(parts[0] || '');
+            setLastName(parts.slice(1).join(' ') || '');
+        }
         if (savedEmail) setEmail(savedEmail);
     }, []);
 
@@ -80,9 +85,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         e.preventDefault();
         if (!auth) return;
 
-        const trimmedName = name.trim();
-        if (!trimmedName) {
-            addToast('Please enter a name.', 'error');
+        const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+        if (!fullName) {
+            addToast('Please enter your name.', 'error');
             return;
         }
 
@@ -93,11 +98,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             
             if (user) {
                 // Save name for next time
-                if (trimmedName) localStorage.setItem('last_user_name', trimmedName);
-                if (email) localStorage.setItem('last_user_email', email);
+                localStorage.setItem('last_user_name', fullName);
+                localStorage.setItem('last_user_email', email);
 
-                await user.updateProfile({ displayName: trimmedName });
-                addToast(`Setting up your account, ${trimmedName}...`, 'success');
+                await user.updateProfile({ displayName: fullName });
+                addToast(`Setting up your account, ${fullName}...`, 'success');
                 onClose();
             }
         } catch (error: any) {
@@ -176,7 +181,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     };
     
     const handleClose = () => {
-        setName('');
+        setFirstName('');
+        setLastName('');
         setEmail('');
         setPassword('');
         setViewMode('login');
@@ -285,16 +291,29 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
             {viewMode === 'register' && (
                 <form onSubmit={handleRegister} className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 mb-2">Full Name</label>
-                        <input 
-                            type="text" 
-                            value={name} 
-                            onChange={e => setName(e.target.value)} 
-                            required 
-                            className="w-full p-3 border rounded-xl bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 dark:text-white focus:ring-2 focus:ring-brand-primary/20 focus:outline-none transition-all text-left"
-                            placeholder="e.g., John Doe"
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 mb-2">First Name</label>
+                            <input 
+                                type="text" 
+                                value={firstName} 
+                                onChange={e => setFirstName(e.target.value)} 
+                                required 
+                                className="w-full p-3 border rounded-xl bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 dark:text-white focus:ring-2 focus:ring-brand-primary/20 focus:outline-none transition-all text-left"
+                                placeholder="e.g., John"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 mb-2">Last Name</label>
+                            <input 
+                                type="text" 
+                                value={lastName} 
+                                onChange={e => setLastName(e.target.value)} 
+                                required 
+                                className="w-full p-3 border rounded-xl bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 dark:text-white focus:ring-2 focus:ring-brand-primary/20 focus:outline-none transition-all text-left"
+                                placeholder="e.g., Doe"
+                            />
+                        </div>
                     </div>
                     <div>
                         <label className="block text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 mb-2">Email Address</label>

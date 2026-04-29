@@ -8,8 +8,8 @@ import StripePaymentForm from './StripePaymentForm';
 import { useToast } from '../../context/ToastContext';
 
 // Robust check for the publishable key
-const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-const IS_STRIPE_CONFIGURED = !!(STRIPE_KEY && typeof STRIPE_KEY === 'string' && STRIPE_KEY.startsWith('pk_'));
+const STRIPE_KEY = (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '').trim();
+const IS_STRIPE_CONFIGURED = !!(STRIPE_KEY && STRIPE_KEY.startsWith('pk_'));
 
 interface CartFlyoutProps {
     isOpen: boolean;
@@ -371,7 +371,10 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                                 <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Payment</label>
                                 <div className="relative">
                                     <select value={paymentMethod} onChange={e => onPaymentMethodChange(e.target.value as PaymentMethod)} className="w-full p-3 md:p-4 border rounded-xl md:rounded-2xl bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-stone-900/10 focus:outline-none transition-all appearance-none font-serif italic text-sm">
-                                        {Object.values(PaymentMethod).map(method => <option key={method} value={method}>{method}</option>)}
+                                        {Object.values(PaymentMethod).map(method => {
+                                            if (method === PaymentMethod.ADMIN_PROCESSING && !isAdmin) return null;
+                                            return <option key={method} value={method}>{method}</option>;
+                                        })}
                                     </select>
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-stone-400">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
@@ -390,7 +393,8 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                                                 <div className="space-y-1">
                                                     <p className="text-sm font-serif font-bold text-stone-900 dark:text-white">Stripe Not Configured</p>
                                                     <p className="text-xs text-stone-500 dark:text-zinc-400 leading-relaxed">
-                                                        Card payments require a <code className="px-1.5 py-0.5 bg-stone-200 dark:bg-zinc-800 rounded font-mono text-[10px]">VITE_STRIPE_PUBLISHABLE_KEY</code>.
+                                                        Card payments require a <code className="px-1.5 py-0.5 bg-stone-200 dark:bg-zinc-800 rounded font-mono text-[10px]">VITE_STRIPE_PUBLISHABLE_KEY</code>. 
+                                                    Please ensure this key is added to the <strong>Settings &gt; Environment Variables</strong> menu in AI Studio.
                                                     </p>
                                                 </div>
                                             </div>

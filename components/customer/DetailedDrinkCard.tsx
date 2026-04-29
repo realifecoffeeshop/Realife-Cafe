@@ -73,8 +73,8 @@ const DetailedDrinkCard: React.FC<DetailedDrinkCardProps> = ({ drink, onSelect, 
           )}
         </div>
         
-        <div className="flex items-end justify-between mt-4">
-          <div className="flex flex-col">
+        <div className="flex items-end justify-between mt-4 flex-shrink-0">
+          <div className="flex flex-col min-w-0">
             <span className="text-[10px] sm:text-xs uppercase tracking-widest text-stone-400 font-bold mb-1">Price</span>
             <span className="text-lg sm:text-2xl md:text-3xl font-serif font-bold text-stone-900 dark:text-white whitespace-nowrap">
               {drink.variants && drink.variants.length > 0 ? (

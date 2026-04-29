@@ -18,6 +18,8 @@ export enum AdminView {
   QR_CODE = 'QR_CODE',
   ORDER_HISTORY = 'ORDER_HISTORY',
   CUSTOMERS = 'CUSTOMERS',
+  ROSTER = 'ROSTER',
+  CALENDAR = 'CALENDAR',
   DEV_MODE = 'DEV_MODE',
 }
 
@@ -32,6 +34,7 @@ export enum PaymentMethod {
   SERVING = 'Serving',
   CASH = 'Cash',
   COLLECTION = 'Pay on Collection',
+  ADMIN_PROCESSING = 'Admin Processing',
 }
 
 export interface ModifierOption {
@@ -142,6 +145,39 @@ export interface User {
     loyaltyPoints: number;
 }
 
+export interface Availability {
+    id: string;
+    userId: string;
+    userName: string;
+    date: string; // ISO date YYYY-MM-DD of the Sunday
+    status: 'available' | 'unavailable' | 'preference';
+    notes?: string;
+}
+
+export interface RosterEntry {
+    userId: string;
+    userName: string;
+    role: UserRole;
+}
+
+export interface SundayRoster {
+    id: string;
+    date: string; // ISO date YYYY-MM-DD
+    assignments: RosterEntry[];
+    isPublished: boolean;
+    isMonthPublished?: boolean; // New field to lock the entire month
+    notes?: string;
+}
+
+export interface CalendarNote {
+    id: string;
+    date: string; // ISO date YYYY-MM-DD
+    text: string;
+    color: 'stone' | 'amber' | 'blue' | 'green' | 'red';
+    createdBy: string;
+    createdAt: number;
+}
+
 export interface Feedback {
     id: string;
     rating: number; // 1-5
@@ -192,6 +228,9 @@ export interface AppState {
   isMenuLoaded: boolean;
   isOrdersLoaded: boolean;
   isConnected: boolean;
+  availabilities: Availability[];
+  rosters: SundayRoster[];
+  calendarNotes: CalendarNote[];
 }
 
 export type Action =
@@ -241,6 +280,15 @@ export type Action =
   | { type: 'REMOVE_FAVOURITE'; payload: string } // cart item id
   | { type: 'UPDATE_USER_ROLE'; payload: { userId: string; role: UserRole } }
   | { type: 'UPDATE_USER_PROFILE'; payload: { userId: string; name?: string; birthday?: string } }
+  | { type: 'DELETE_USER'; payload: string } // user id
+  | { type: 'SET_AVAILABILITIES'; payload: Availability[] }
+  | { type: 'UPDATE_AVAILABILITY'; payload: Availability }
+  | { type: 'SET_ROSTERS'; payload: SundayRoster[] }
+  | { type: 'UPDATE_ROSTER'; payload: SundayRoster }
+  | { type: 'DELETE_ROSTER'; payload: string } // roster id
+  | { type: 'SET_CALENDAR_NOTES'; payload: CalendarNote[] }
+  | { type: 'ADD_CALENDAR_NOTE'; payload: CalendarNote }
+  | { type: 'DELETE_CALENDAR_NOTE'; payload: string } // note id
   | { type: 'SUBMIT_FEEDBACK'; payload: { rating: number; message: string } }
   | { type: 'SET_THEME', payload: 'light' | 'dark' }
   | { type: 'ADD_CATEGORY', payload: { id?: string; name: string; imageUrl?: string } }

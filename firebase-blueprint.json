@@ -74,6 +74,54 @@
         "loyaltyPoints": { "type": "number" }
       },
       "required": ["name", "loyaltyPoints"]
+    },
+    "Availability": {
+      "title": "Availability",
+      "description": "Staff availability for a specific Sunday",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["available", "unavailable", "preference"] },
+        "notes": { "type": "string" }
+      },
+      "required": ["userId", "userName", "date", "status"]
+    },
+    "SundayRoster": {
+      "title": "SundayRoster",
+      "description": "Staff assignments for a specific Sunday",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "isPublished": { "type": "boolean" },
+        "notes": { "type": "string" },
+        "assignments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "userId": { "type": "string" },
+              "userName": { "type": "string" },
+              "role": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["date", "isPublished", "assignments"]
+    },
+    "CalendarNote": {
+      "title": "CalendarNote",
+      "description": "A note or event pinned to the calendar",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "text": { "type": "string" },
+        "color": { "type": "string", "enum": ["stone", "amber", "blue", "green", "red"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["date", "text", "color", "createdBy", "createdAt"]
     }
   },
   "firestore": {
@@ -81,6 +129,9 @@
     "/menu": { "schema": "object", "description": "Menu configuration including drinks, categories, and modifier groups" },
     "/users": { "schema": "User", "description": "User profiles and preferences" },
     "/customers": { "schema": "Customer", "description": "Global customer directory for staff" },
-    "/tutorialSteps": { "schema": "array", "description": "Tutorial content" }
+    "/tutorialSteps": { "schema": "array", "description": "Tutorial content" },
+    "/availabilities": { "schema": "Availability", "description": "Staff availability records" },
+    "/rosters": { "schema": "SundayRoster", "description": "Weekly rosters" },
+    "/calendarNotes": { "schema": "CalendarNote", "description": "Calendar notes and events" }
   }
 }

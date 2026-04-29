@@ -2,6 +2,7 @@ import React, { useContext, useMemo, useState } from 'react';
 import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
 import { CartItem, ModifierOption } from '../../types';
+import { updateUser } from '../../firebase/firestoreService';
 import ErrorBoundary from '../shared/ErrorBoundary';
 import OrderModal from './OrderModal';
 
@@ -11,6 +12,17 @@ const ProfileView: React.FC = () => {
   const { currentUser, orders, cart, discounts } = state;
   const [swipedFavouriteId, setSwipedFavouriteId] = useState<string | null>(null);
   const [birthday, setBirthday] = useState(currentUser?.birthday || '');
+  const [firstName, setFirstName] = useState(currentUser?.name?.split(' ')[0] || '');
+  const [lastName, setLastName] = useState(currentUser?.name?.split(' ').slice(1).join(' ') || '');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  // Sync with currentUser name updates
+  React.useEffect(() => {
+    if (currentUser?.name) {
+      setFirstName(currentUser.name.split(' ')[0] || '');
+      setLastName(currentUser.name.split(' ').slice(1).join(' ') || '');
+    }
+  }, [currentUser?.name]);
   const [editingCartItem, setEditingCartItem] = useState<CartItem | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editingFavourite, setEditingFavourite] = useState<CartItem | null>(null);
@@ -34,13 +46,29 @@ const ProfileView: React.FC = () => {
     return Math.max(0, total);
   }, [subtotal, appliedDiscount]);
 
-  const handleUpdateBirthday = () => {
+  const handleUpdateProfile = async () => {
     if (!currentUser) return;
-    dispatch({ 
-      type: 'UPDATE_USER_PROFILE', 
-      payload: { userId: currentUser.id, birthday } 
-    });
-    addToast('Birthday updated successfully!', 'success');
+    
+    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+    if (!fullName) {
+        addToast('Please enter your name.', 'error');
+        return;
+    }
+
+    setIsUpdatingProfile(true);
+    try {
+        await updateUser(currentUser.id, { name: fullName, birthday });
+        dispatch({ 
+            type: 'UPDATE_USER_PROFILE', 
+            payload: { userId: currentUser.id, name: fullName, birthday } 
+        });
+        addToast('Profile updated successfully!', 'success');
+    } catch (error) {
+        console.error("Profile update error:", error);
+        addToast('Failed to update profile.', 'error');
+    } finally {
+        setIsUpdatingProfile(false);
+    }
   };
 
   const userOrders = useMemo(() => {
@@ -281,29 +309,56 @@ const ProfileView: React.FC = () => {
           <div className="bg-white dark:bg-zinc-800 p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-bold mb-4 text-stone-900 dark:text-white">Personal Information</h2>
             <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="first-name-input" className="block text-sm font-medium text-stone-700 dark:text-zinc-300 mb-1">
+                    First Name
+                  </label>
+                  <input 
+                    id="first-name-input"
+                    type="text" 
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Arlo"
+                    className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="last-name-input" className="block text-sm font-medium text-stone-700 dark:text-zinc-300 mb-1">
+                    Last Name
+                  </label>
+                  <input 
+                    id="last-name-input"
+                    type="text" 
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Padua"
+                    className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"
+                  />
+                </div>
+              </div>
               <div>
                 <label htmlFor="birthday-input" className="block text-sm font-medium text-stone-700 dark:text-zinc-300 mb-1">
                   Your Birthday
                 </label>
-                <div className="flex gap-2">
-                  <input 
-                    id="birthday-input"
-                    type="date" 
-                    value={birthday}
-                    onChange={(e) => setBirthday(e.target.value)}
-                    className="flex-grow p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"
-                  />
-                  <button 
-                    onClick={handleUpdateBirthday}
-                    className="px-4 py-2 bg-[#A58D79] text-white rounded-md hover:bg-[#947D6A] transition-colors font-semibold text-sm"
-                  >
-                    Save
-                  </button>
-                </div>
-                <p className="mt-2 text-xs text-stone-500 dark:text-zinc-400">
-                  Set your birthday to receive a free drink on your special day!
-                </p>
+                <input 
+                  id="birthday-input"
+                  type="date" 
+                  value={birthday}
+                  onChange={(e) => setBirthday(e.target.value)}
+                  className="w-full p-2 border rounded-md bg-white dark:bg-zinc-700 border-stone-300 dark:border-zinc-600 dark:text-white"
+                />
               </div>
+              <button 
+                onClick={handleUpdateProfile}
+                disabled={isUpdatingProfile}
+                className="w-full py-4 bg-stone-900 dark:bg-white text-white dark:text-stone-900 rounded-[1.5rem] font-serif font-bold text-base shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 tracking-tight"
+              >
+                {isUpdatingProfile ? 'Saving...' : 'Save Profile Changes'}
+              </button>
+              <p className="text-xs text-stone-500 dark:text-zinc-400 text-center italic">
+                Set your birthday to receive a free drink on your special day!
+              </p>
             </div>
           </div>
         </div>

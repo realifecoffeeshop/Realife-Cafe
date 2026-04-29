@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
 import { UserRole } from '../../types';
-import { ChevronDown, Search, Filter, ShieldCheck, Users, Info, UserPlus, UserCircle } from 'lucide-react';
+import { updateUser, deleteUser as firestoreDeleteUser } from '../../firebase/firestoreService';
+import { ChevronDown, Search, Filter, ShieldCheck, Users, Info, UserPlus, UserCircle, Trash2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const ROLE_PERMISSIONS = {
@@ -65,13 +66,42 @@ const PermissionsManagement: React.FC = () => {
         });
     }, [users, searchQuery, roleFilter]);
 
-    const handleRoleChange = (userId: string, role: UserRole) => {
+    const handleRoleChange = async (userId: string, role: UserRole) => {
         if (userId === currentUser?.id) {
             addToast("For security reasons, you cannot change your own role.", 'error');
             return;
         }
-        dispatch({ type: 'UPDATE_USER_ROLE', payload: { userId, role } });
-        addToast(`User role updated to ${role} successfully.`, 'success');
+        try {
+            await updateUser(userId, { role });
+            dispatch({ type: 'UPDATE_USER_ROLE', payload: { userId, role } });
+            addToast(`User role updated to ${role} successfully.`, 'success');
+        } catch (err) {
+            console.error("Failed to update user role:", err);
+            addToast("Failed to update role", "error");
+        }
+    };
+
+    const [userToDelete, setUserToDelete] = useState<{ id: string, name: string } | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleDeleteUser = async () => {
+        if (!userToDelete) return;
+        
+        const { id: userId, name: userName } = userToDelete;
+        const nameToDisplay = userName || 'this user';
+        
+        setIsDeleting(true);
+        try {
+            await firestoreDeleteUser(userId);
+            dispatch({ type: 'DELETE_USER', payload: userId });
+            addToast(`User ${nameToDisplay} removed successfully.`, "success");
+            setUserToDelete(null);
+        } catch (error: any) {
+            console.error("Delete user error:", error);
+            addToast("Failed to delete user: " + error.message, "error");
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     const adminCount = users.filter(u => u.role === UserRole.ADMIN).length;
@@ -217,7 +247,7 @@ const PermissionsManagement: React.FC = () => {
 
             {/* User List */}
             <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl border border-stone-100 dark:border-zinc-800 overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-stone-50/50 dark:bg-zinc-800/30 border-b border-stone-50 dark:border-zinc-800/50">
                             <tr>
@@ -260,40 +290,113 @@ const PermissionsManagement: React.FC = () => {
                                             </div>
                                         </td>
                                         <td className="px-8 py-6 text-right">
-                                            <div className="relative inline-block w-full max-w-[160px]">
-                                                <select
-                                                    value={user.role}
-                                                    onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
+                                            <div className="flex items-center justify-end gap-3 w-full">
+                                                <div className="relative inline-block w-full max-w-[160px]">
+                                                    <select
+                                                        value={user.role}
+                                                        onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
+                                                        disabled={user.id === currentUser?.id}
+                                                        className="w-full pl-4 pr-10 py-3 bg-white dark:bg-zinc-900 border border-stone-100 dark:border-zinc-800 rounded-xl text-xs font-bold text-stone-900 dark:text-white focus:ring-4 focus:ring-stone-900/5 focus:outline-none transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed appearance-none shadow-sm font-serif italic"
+                                                    >
+                                                        {Object.values(UserRole).map(role => (
+                                                            <option key={role} value={role}>{ROLE_PERMISSIONS[role].title}</option>
+                                                        ))}
+                                                    </select>
+                                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-400 pointer-events-none" />
+                                                </div>
+                                                
+                                                <button
+                                                    onClick={() => setUserToDelete({ id: user.id, name: user.name })}
                                                     disabled={user.id === currentUser?.id}
-                                                    className="w-full pl-4 pr-10 py-3 bg-white dark:bg-zinc-900 border border-stone-100 dark:border-zinc-800 rounded-xl text-xs font-bold text-stone-900 dark:text-white focus:ring-4 focus:ring-stone-900/5 focus:outline-none transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed appearance-none shadow-sm font-serif italic"
+                                                    className="p-3 text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
+                                                    title={user.id === currentUser?.id ? "Cannot delete yourself" : `Delete ${user.name}`}
                                                 >
-                                                    {Object.values(UserRole).map(role => (
-                                                        <option key={role} value={role}>{ROLE_PERMISSIONS[role].title}</option>
-                                                    ))}
-                                                </select>
-                                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-400 pointer-events-none" />
+                                                    <Trash2 size={18} />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
                                 ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={3} className="px-8 py-20 text-center">
-                                        <div className="flex flex-col items-center gap-4">
-                                            <div className="w-20 h-20 rounded-[2rem] bg-stone-50 dark:bg-zinc-800 flex items-center justify-center text-stone-200 dark:text-zinc-700">
-                                                <Search size={40} />
-                                            </div>
-                                            <div>
-                                                <p className="text-xl font-serif font-bold text-stone-900 dark:text-white">No users found</p>
-                                                <p className="text-stone-400 dark:text-zinc-500 mt-1 font-medium">Try adjusting your search or filters.</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
+                            ) : null}
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile Cards */}
+                <div className="block sm:hidden divide-y divide-stone-50 dark:divide-zinc-800/50">
+                    {filteredUsers.length > 0 ? (
+                        filteredUsers.map(user => (
+                            <div key={user.id} className="p-6 space-y-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-stone-50 dark:bg-zinc-800 flex items-center justify-center text-stone-400 font-bold text-lg shadow-inner border border-stone-100 dark:border-zinc-700 relative">
+                                        {(user.name || 'U').charAt(0).toUpperCase()}
+                                        {user.id === currentUser?.id && (
+                                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white dark:border-zinc-900 rounded-full" />
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="font-serif font-bold text-stone-900 dark:text-white text-base tracking-tight truncate">
+                                            {user.name || 'Unknown'}
+                                        </span>
+                                        <span className="text-[10px] text-stone-400 font-bold uppercase tracking-widest truncate">
+                                            {user.email || 'No email'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">Current Role</span>
+                                        <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-[0.15em] border ${
+                                            user.role === UserRole.ADMIN ? 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/30' :
+                                            user.role === UserRole.KITCHEN ? 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30' :
+                                            'bg-stone-50 text-stone-700 border-stone-100 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                                        }`}>
+                                            {ROLE_PERMISSIONS[user.role]?.title || user.role}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        <div className="relative flex-1">
+                                            <select
+                                                value={user.role}
+                                                onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
+                                                disabled={user.id === currentUser?.id}
+                                                className="w-full pl-4 pr-10 py-3 bg-stone-50 dark:bg-zinc-800 border border-stone-100 dark:border-zinc-700 rounded-xl text-xs font-bold text-stone-900 dark:text-white focus:outline-none transition-all disabled:opacity-50 appearance-none font-serif italic"
+                                            >
+                                                {Object.values(UserRole).map(role => (
+                                                    <option key={role} value={role}>{ROLE_PERMISSIONS[role].title}</option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-400 pointer-events-none" />
+                                        </div>
+                                        <button
+                                            onClick={() => setUserToDelete({ id: user.id, name: user.name })}
+                                            disabled={user.id === currentUser?.id}
+                                            className="p-3 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-xl transition-all disabled:opacity-20"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    ) : null}
+                </div>
+
+                {filteredUsers.length === 0 && (
+                    <div className="px-8 py-20 text-center">
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="w-20 h-20 rounded-[2rem] bg-stone-50 dark:bg-zinc-800 flex items-center justify-center text-stone-200 dark:text-zinc-700">
+                                <Search size={40} />
+                            </div>
+                            <div>
+                                <p className="text-xl font-serif font-bold text-stone-900 dark:text-white">No users found</p>
+                                <p className="text-stone-400 dark:text-zinc-500 mt-1 font-medium">Try adjusting your search or filters.</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 
                 {filteredUsers.length > 0 && (
                     <div className="p-8 bg-stone-50/30 dark:bg-zinc-800/10 border-t border-stone-50 dark:border-zinc-800/50 flex items-center justify-between">
@@ -307,6 +410,51 @@ const PermissionsManagement: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {userToDelete && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white dark:bg-zinc-900 rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-stone-200 dark:border-zinc-800"
+                        >
+                            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Trash2 className="w-8 h-8 text-red-600 dark:text-red-400" />
+                            </div>
+                            <h3 className="text-xl font-serif font-bold text-center text-stone-900 dark:text-white mb-2">Delete User</h3>
+                            <p className="text-center text-stone-600 dark:text-zinc-400 mb-8">
+                                Are you sure you want to permanently delete <span className="font-bold text-stone-900 dark:text-white">{userToDelete.name || 'this user'}</span>? This action cannot be undone.
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setUserToDelete(null)}
+                                    disabled={isDeleting}
+                                    className="flex-1 py-3 px-4 rounded-xl border border-stone-200 dark:border-zinc-800 text-stone-600 dark:text-zinc-400 font-bold hover:bg-stone-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDeleteUser}
+                                    disabled={isDeleting}
+                                    className="flex-1 py-3 px-4 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {isDeleting ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Deleting...
+                                        </>
+                                    ) : (
+                                        'Delete'
+                                    )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

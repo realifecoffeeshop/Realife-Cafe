@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchOrderHistory } from '../../firebase/firestoreService';
 import { Order } from '../../types';
-import { Loader2, ChevronDown, Search, Calendar } from 'lucide-react';
+import { Loader2, ChevronDown, Search, Calendar as CalendarIcon } from 'lucide-react';
 
 const OrderHistory: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -101,7 +101,7 @@ const OrderHistory: React.FC = () => {
             </header>
 
             <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-stone-100 dark:border-zinc-800 overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="text-[10px] text-stone-400 dark:text-zinc-500 uppercase tracking-[0.2em] bg-stone-50/50 dark:bg-zinc-800/30">
                             <tr>
@@ -117,7 +117,7 @@ const OrderHistory: React.FC = () => {
                                 <tr key={order.id} className="hover:bg-stone-50/30 dark:hover:bg-zinc-800/20 transition-all duration-300">
                                     <td className="px-8 py-6 whitespace-nowrap text-sm text-stone-500 dark:text-zinc-400">
                                         <div className="flex items-center gap-3">
-                                            <Calendar className="w-4 h-4 opacity-30" />
+                                            <CalendarIcon className="w-4 h-4 opacity-30" />
                                             <span className="font-serif italic">{formatDate(order.createdAt)}</span>
                                         </div>
                                     </td>
@@ -145,6 +145,45 @@ const OrderHistory: React.FC = () => {
                             ))}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile Card List */}
+                <div className="block sm:hidden divide-y divide-stone-50 dark:divide-zinc-800/50">
+                    {filteredOrders.map((order) => (
+                        <div key={order.id} className="p-6 space-y-4">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className="text-lg font-serif font-bold text-stone-900 dark:text-white tracking-tight">{order.customerName || 'Guest'}</div>
+                                    <div className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-1">ID: {order.id?.slice(-8).toUpperCase() || 'N/A'}</div>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest border ${
+                                    order.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/30' :
+                                    order.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/30' :
+                                    order.status === 'scheduled' ? 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30' :
+                                    'bg-stone-50 text-stone-700 border-stone-100 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                                }`}>
+                                    {order.status}
+                                </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-sm">
+                                <div className="flex items-center gap-2 text-stone-500 dark:text-zinc-400">
+                                    <CalendarIcon size={12} className="opacity-40" />
+                                    <span className="font-serif italic text-xs">{formatDate(order.createdAt)}</span>
+                                </div>
+                                <div className="text-stone-500 dark:text-zinc-400 text-xs">
+                                    <span className="font-serif font-bold text-stone-900 dark:text-white">{(order.items || []).length}</span> {(order.items || []).length === 1 ? 'item' : 'items'}
+                                </div>
+                            </div>
+
+                            <div className="pt-3 border-t border-stone-50 dark:border-zinc-800 flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Amount Paid</span>
+                                <span className="text-xl font-serif font-bold text-stone-900 dark:text-white tracking-tighter">
+                                    ${(order.finalTotal || 0).toFixed(2)}
+                                </span>
+                            </div>
+                        </div>
+                    ))}
                 </div>
 
                 {filteredOrders.length === 0 && (

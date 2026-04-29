@@ -562,9 +562,9 @@ const MenuManagement: React.FC = () => {
                     {(state.drinks || []).map(drink => {
                         const categoryName = (state.categories || []).find(c => c.id === drink.category)?.name || 'N/A';
                         return (
-                            <div key={drink.id} className="bg-white dark:bg-zinc-900 px-6 py-3 rounded-2xl shadow-sm border border-stone-100 dark:border-zinc-800 flex items-center justify-between group hover:border-stone-900 dark:hover:border-white transition-all duration-300">
+                            <div key={drink.id} className="bg-white dark:bg-zinc-900 px-4 sm:px-6 py-3 rounded-2xl shadow-sm border border-stone-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between group hover:border-stone-900 dark:hover:border-white transition-all duration-300 gap-4 sm:gap-0">
                                 <div className="flex items-center gap-4 flex-1 min-w-0">
-                                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-stone-50 dark:bg-zinc-800 flex-shrink-0 border border-stone-100 dark:border-zinc-700 shadow-inner">
+                                    <div className="w-12 h-12 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-stone-50 dark:bg-zinc-800 flex-shrink-0 border border-stone-100 dark:border-zinc-700 shadow-inner">
                                         {drink.imageUrl ? (
                                             <img src={drink.imageUrl} alt={drink.name || 'Drink'} className="w-full h-full object-cover" />
                                         ) : (
@@ -574,19 +574,19 @@ const MenuManagement: React.FC = () => {
                                         )}
                                     </div>
                                     <div className="flex flex-col min-w-0">
-                                        <span className="font-serif font-bold text-stone-900 dark:text-white text-base tracking-tight truncate">{drink.name || 'Unnamed'}</span>
-                                        <span className="text-[9px] font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500">{categoryName}</span>
+                                        <span className="font-serif font-bold text-stone-900 dark:text-white text-base sm:text-base tracking-tight truncate">{drink.name || 'Unnamed'}</span>
+                                        <span className="text-[9px] font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500">{categoryName} • ${(drink.basePrice || 0).toFixed(2)}</span>
                                     </div>
                                 </div>
                                 
-                                <div className="flex items-center gap-8 ml-4">
-                                    <div className="hidden sm:flex flex-col items-end">
-                                        <span className="text-[8px] font-bold uppercase tracking-widest text-stone-400">Price</span>
+                                <div className="flex items-center justify-between sm:justify-end gap-8 sm:ml-4 border-t sm:border-t-0 border-stone-50 dark:border-zinc-800 pt-3 sm:pt-0">
+                                    <div className="sm:hidden flex flex-col">
+                                        <span className="text-[8px] font-bold uppercase tracking-widest text-stone-400">Base Price</span>
                                         <span className="font-serif font-bold text-stone-900 dark:text-white text-sm">${(drink.basePrice || 0).toFixed(2)}</span>
                                     </div>
                                     <div className="flex gap-4">
-                                        <button onClick={() => setEditingDrink(drink)} className="text-[10px] font-bold uppercase tracking-widest text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all">Edit</button>
-                                        <button onClick={() => handleDeleteDrink(drink.id)} className="text-[10px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600 transition-all">Delete</button>
+                                        <button onClick={() => setEditingDrink(drink)} className="text-[10px] sm:text-[10px] font-bold uppercase tracking-widest text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all bg-stone-50 dark:bg-zinc-800 sm:bg-transparent px-3 py-1.5 sm:p-0 rounded-lg">Edit</button>
+                                        <button onClick={() => handleDeleteDrink(drink.id)} className="text-[10px] sm:text-[10px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600 transition-all bg-red-50 dark:bg-red-900/20 sm:bg-transparent px-3 py-1.5 sm:p-0 rounded-lg">Delete</button>
                                     </div>
                                 </div>
                             </div>

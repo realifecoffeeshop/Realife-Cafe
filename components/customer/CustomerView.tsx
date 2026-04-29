@@ -77,12 +77,12 @@ const MenuControls: React.FC<{
     setViewMode: (mode: 'compact' | 'detailed') => void;
 }> = memo(({ searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, visibleCategories, viewMode, setViewMode }) => (
     <div className="space-y-8 mb-12">
-        <div className="flex flex-col md:flex-row justify-between md:items-end gap-6 border-b border-stone-100 dark:border-zinc-800 pb-8">
-            <div>
-                <h2 className="text-4xl md:text-5xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">Our Menu</h2>
-                <p className="text-stone-500 dark:text-zinc-400 mt-2 font-serif italic">Handcrafted with passion and precision.</p>
+        <div className="flex flex-col md:flex-row justify-between md:items-end gap-6 border-b border-stone-100 dark:border-zinc-800 pb-6 md:pb-8">
+            <div className="text-center md:text-left">
+                <h2 className="text-3xl md:text-5xl font-serif font-bold text-stone-900 dark:text-white tracking-tight leading-tight">Our Menu</h2>
+                <p className="text-stone-500 dark:text-zinc-400 mt-2 font-serif italic text-sm md:text-base">Handcrafted with passion and precision.</p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-hide">
                 <div className="flex bg-white dark:bg-zinc-800 rounded-full p-1.5 border border-stone-100 dark:border-zinc-700 shadow-sm">
                     <button
                         onClick={() => setViewMode('compact')}
@@ -118,22 +118,25 @@ const MenuControls: React.FC<{
                 </div>
             </div>
         </div>
-        <div id="menu-categories" className="flex flex-wrap items-center gap-4">
-            <CategoryButton 
-                id="all" 
-                name="All Items" 
-                isSelected={selectedCategory === 'all'} 
-                onClick={setSelectedCategory} 
-            />
-            {visibleCategories.map((cat) => (
+        <div id="menu-categories" className="flex flex-nowrap md:flex-wrap items-center gap-3 md:gap-4 overflow-x-auto pb-4 md:pb-0 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="flex-shrink-0">
                 <CategoryButton 
-                    key={cat.id}
-                    id={cat.id}
-                    name={cat.name}
-                    imageUrl={cat.imageUrl}
-                    isSelected={selectedCategory === cat.id}
-                    onClick={setSelectedCategory}
+                    id="all" 
+                    name="All Items" 
+                    isSelected={selectedCategory === 'all'} 
+                    onClick={setSelectedCategory} 
                 />
+            </div>
+            {visibleCategories.map((cat) => (
+                <div key={cat.id} className="flex-shrink-0">
+                    <CategoryButton 
+                        id={cat.id}
+                        name={cat.name}
+                        imageUrl={cat.imageUrl}
+                        isSelected={selectedCategory === cat.id}
+                        onClick={setSelectedCategory}
+                    />
+                </div>
             ))}
         </div>
     </div>
@@ -193,7 +196,11 @@ const CustomerView: React.FC = () => {
 
   useEffect(() => {
     if (currentUser) {
-      setCustomerName(currentUser.name || '');
+      if (currentUser.role === UserRole.ADMIN) {
+        setCustomerName('');
+      } else {
+        setCustomerName(currentUser.name || '');
+      }
     }
   }, [currentUser]);
 
@@ -254,10 +261,26 @@ const CustomerView: React.FC = () => {
 
   const handleQuickAdd = useCallback((drink: Drink) => {
     const initialSelections: { [groupId: string]: SelectedModifier[] } = {};
+    
     drink.modifierGroups.forEach(groupId => {
       const group = state.modifierGroups.find(g => g.id === groupId);
-      if (group && group.options.length > 0) {
-        initialSelections[groupId] = [{ option: group.options[0], quantity: 1 }];
+      if (!group) return;
+
+      // Skip groups that are not required for "Quick Add"
+      if (!group.isRequired) return;
+
+      // Specifically skip "Sugar" related groups in Quick Add as requested
+      const isSugarGroup = group.name.toLowerCase().includes('sugar');
+      if (isSugarGroup) return;
+
+      if (group.options.length > 0) {
+        // Find default or first option that isn't "sugar" related (just in case)
+        const preferredOption = group.options.find(opt => 
+          opt.id === group.defaultOptionId || 
+          !opt.name.toLowerCase().includes('sugar')
+        ) || group.options[0];
+
+        initialSelections[groupId] = [{ option: preferredOption, quantity: 1 }];
       }
     });
 
@@ -467,14 +490,15 @@ const CustomerView: React.FC = () => {
     }, 0);
 
     const isAdmin = currentUser?.role === UserRole.ADMIN;
+    const isAdminProcessing = paymentMethod === PaymentMethod.ADMIN_PROCESSING;
     const isPayOnCollection = paymentMethod === PaymentMethod.COLLECTION;
     const isCardPayment = paymentMethod === PaymentMethod.CARD;
-    const isVerified = (isAdmin && !isPayOnCollection) || isCardPayment;
-    const newStatus = pickupTimestamp ? 'scheduled' : (isVerified ? 'pending' : 'payment-required');
+    const isVerified = (isAdmin && !isPayOnCollection) || isCardPayment || isAdminProcessing;
+    const newStatus = isAdminProcessing ? 'pending' : (pickupTimestamp ? 'scheduled' : (isVerified ? 'pending' : 'payment-required'));
     
     const newOrder: Omit<Order, 'id'> = {
         customerName: orderCustomerName,
-        customerId: currentUser?.id || firebaseUser.uid, // Use the logged-in user ID or fallback to anonymous ID
+        customerId: currentUser?.id || firebaseUser.uid, 
         items: cart,
         total: subtotal,
         totalCost: totalCost,
@@ -484,7 +508,7 @@ const CustomerView: React.FC = () => {
         status: newStatus,
         isVerified,
         createdAt: Date.now(),
-        ...(pickupTimestamp && { pickupTime: pickupTimestamp }),
+        ...((pickupTimestamp && !isAdminProcessing) && { pickupTime: pickupTimestamp }),
         ...(tableNumber && { tableNumber }),
     };
 
@@ -508,7 +532,7 @@ const CustomerView: React.FC = () => {
 
         // Reset UI state
         setIsSubmitting(false);
-        if (!currentUser) {
+        if (!currentUser || currentUser.role === UserRole.ADMIN) {
             setCustomerName('');
         }
         setDiscountCode('');

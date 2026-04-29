@@ -1,7 +1,7 @@
 import React, { useReducer, useEffect, ReactNode, Dispatch, useState, useRef, useContext } from 'react';
 import { AppState, Action, Order, User, UserRole, Feedback, Category, Customer, PaymentMethod } from '../types';
 import { INITIAL_DISCOUNTS, INITIAL_DRINKS, INITIAL_CATEGORIES, INITIAL_MODIFIERS } from '../constants';
-import { updateOrder, deleteOrder, onOrdersUpdate, onActiveOrdersUpdate, fetchOrderHistory, onMenuUpdate, saveMenu, seedInitialMenu, onUsersUpdate, onUserUpdate, updateUser, saveUser, seedInitialUsers, isPermissionError, submitFeedback, onFeedbackUpdate, onCustomersUpdate, saveCustomer, deleteCustomer } from '../firebase/firestoreService';
+import { updateOrder, deleteOrder, onOrdersUpdate, onActiveOrdersUpdate, fetchOrderHistory, onMenuUpdate, saveMenu, seedInitialMenu, onUsersUpdate, onUserUpdate, updateUser, saveUser, seedInitialUsers, isPermissionError, submitFeedback, onFeedbackUpdate, onCustomersUpdate, saveCustomer, deleteCustomer, deleteUser, onAvailabilitiesUpdate, saveAvailability, onRostersUpdate, saveRoster, deleteRoster, onCalendarNotesUpdate } from '../firebase/firestoreService';
 import { database, auth, isFirebaseConfigured } from '../firebase/config';
 import { useToast } from './ToastContext';
 import { AppContext, useApp } from './useApp';
@@ -24,6 +24,9 @@ const initialState: AppState = {
   isMenuLoaded: false,
   isOrdersLoaded: false,
   isConnected: true,
+  availabilities: [],
+  rosters: [],
+  calendarNotes: [],
 };
 
 export const appReducer = (state: AppState, action: Action): AppState => {
@@ -44,33 +47,15 @@ export const appReducer = (state: AppState, action: Action): AppState => {
             ? (action.payload || []).find(u => u && u.id === state.currentUser?.id) || state.currentUser 
             : null;
         
-        // Ensure favourites is always an array
-        const normalizedUsers = (action.payload || []).map(u => u ? { ...u, favourites: u.favourites || [] } : u);
-        
-        let normalizedCurrentUser = updatedCurrentUser ? { ...updatedCurrentUser, favourites: updatedCurrentUser.favourites || [] } : null;
-
-        // Bootstrap Admin by Email or Specific Usernames to ensure role persistence
-        const adminNames = ['admin', 'joseph p', 'joseph admin', 'joseph'];
-        const kitchenNames = ['kitchen', 'staff'];
-        if (normalizedCurrentUser) {
-            const nameLower = (normalizedCurrentUser.name || '').toLowerCase();
-            const matchesAdminName = adminNames.includes(nameLower);
-            const matchesKitchenName = kitchenNames.includes(nameLower);
-            const isOwnerEmail = normalizedCurrentUser.email === 'realifecoffeeshop@gmail.com' || normalizedCurrentUser.email === 'josephpadua.24@gmail.com';
-            
-            if ((isOwnerEmail || matchesAdminName) && normalizedCurrentUser.role !== UserRole.ADMIN) {
-                normalizedCurrentUser.role = UserRole.ADMIN;
-                // Avoid saving if it's a guest ID
-                if (!normalizedCurrentUser.id.startsWith('guest-')) {
-                    updateUser(normalizedCurrentUser.id, { role: UserRole.ADMIN }).catch(err => console.error("Failed to sync admin role to DB:", err));
-                }
-            } else if (matchesKitchenName && normalizedCurrentUser.role !== UserRole.KITCHEN) {
-                normalizedCurrentUser.role = UserRole.KITCHEN;
-                if (!normalizedCurrentUser.id.startsWith('guest-')) {
-                    updateUser(normalizedCurrentUser.id, { role: UserRole.KITCHEN }).catch(err => console.error("Failed to sync kitchen role to DB:", err));
-                }
+        // Ensure favourites is always an array and deduplicate by ID
+        const uniqueUsersMap = new Map();
+        (action.payload || []).forEach(u => {
+            if (u && u.id) {
+                uniqueUsersMap.set(u.id, { ...u, favourites: u.favourites || [] });
             }
-        }
+        });
+        const normalizedUsers = Array.from(uniqueUsersMap.values());
+        const normalizedCurrentUser = updatedCurrentUser ? { ...updatedCurrentUser, favourites: updatedCurrentUser.favourites || [] } : null;
 
         return { ...state, users: normalizedUsers, currentUser: normalizedCurrentUser };
     }
@@ -111,22 +96,15 @@ export const appReducer = (state: AppState, action: Action): AppState => {
         return { ...state, currentUser: existingUser };
       }
       
-      // Auto-promote specific users to admin role
-      const nameLower = (action.payload.name || '').toLowerCase();
-      const isInitialAdmin = nameLower === 'admin' || nameLower === 'joseph p' || nameLower === 'joseph admin' || nameLower === 'joseph';
-      const isInitialKitchen = nameLower === 'kitchen';
-      
       const newUser: User = {
         name: action.payload.name,
         id: action.payload.userId,
         email: action.payload.email,
-        role: isInitialAdmin ? UserRole.ADMIN : (isInitialKitchen ? UserRole.KITCHEN : UserRole.CUSTOMER),
+        role: UserRole.CUSTOMER, // Note: Auto-promotion handled in side-effect now
         favourites: [],
         loyaltyPoints: 0,
       };
       
-      saveUser(newUser).catch(err => console.error("Failed to save new user to Firebase:", err));
-
       return {
         ...state,
         users: [...state.users, newUser],
@@ -137,31 +115,12 @@ export const appReducer = (state: AppState, action: Action): AppState => {
         const baseUser = action.payload ? { ...action.payload, favourites: action.payload.favourites || [] } : null;
         if (!baseUser) return { ...state, currentUser: null };
 
-        // Ensure admin/staff roles are preserved for bootstrap names/emails
-        const nameLower = (baseUser.name || '').toLowerCase();
-        const emailLower = (baseUser.email || '').toLowerCase();
-        const isOwnerEmail = emailLower === 'realifecoffeeshop@gmail.com' || emailLower === 'josephpadua.24@gmail.com';
-        const matchesAdminName = nameLower === 'admin' || nameLower === 'joseph p' || nameLower === 'joseph admin' || nameLower === 'joseph';
-        const matchesKitchenName = nameLower === 'kitchen' || nameLower === 'staff';
-        
-        const normalizedUser = { ...baseUser };
-        if (isOwnerEmail || matchesAdminName) {
-            normalizedUser.role = UserRole.ADMIN;
-        } else if (matchesKitchenName) {
-            normalizedUser.role = UserRole.KITCHEN;
-        }
-
-        // If the role was upgraded by local logic, sync it back to DB
-        if (normalizedUser.role !== baseUser.role && !normalizedUser.id.startsWith('guest-')) {
-            updateUser(normalizedUser.id, { role: normalizedUser.role }).catch(err => console.error("Failed to sync role upgrade:", err));
-        }
-
         return { 
             ...state, 
-            currentUser: normalizedUser,
-            users: state.users.some(u => u.id === normalizedUser.id)
-                ? state.users.map(u => u.id === normalizedUser.id ? normalizedUser : u)
-                : [...state.users, normalizedUser]
+            currentUser: baseUser,
+            users: state.users.some(u => u.id === baseUser.id)
+                ? state.users.map(u => u.id === baseUser.id ? baseUser : u)
+                : [...state.users, baseUser]
         };
     }
     case 'LOGIN': {
@@ -171,43 +130,21 @@ export const appReducer = (state: AppState, action: Action): AppState => {
       );
       
       if (!user) {
-        // Allow guest login if user doesn't exist
-        const isJoseph = nameLower === 'joseph p' || nameLower === 'joseph admin' || nameLower === 'joseph' || nameLower === 'admin';
         const guestUser: User = {
             name: action.payload.name,
             id: action.payload.userId || `guest-${Date.now()}`,
             email: action.payload.email,
-            role: isJoseph ? UserRole.ADMIN : UserRole.CUSTOMER,
+            role: UserRole.CUSTOMER,
             favourites: [],
             loyaltyPoints: 0,
         };
         
-        // If they are an authenticated user (have a userId) and matched as an admin, 
-        // we MUST save them to the DB as an admin so rules work.
-        if (action.payload.userId && isJoseph) {
-             saveUser(guestUser).catch(err => console.error("Failed to persist initial admin:", err));
-        }
-        
         return { ...state, currentUser: guestUser };
       }
 
-      // Auto-promote Joseph P if they exist but aren't admin yet
-      if (nameLower === 'joseph p' && user.role !== UserRole.ADMIN) {
-          const promotedUser = { ...user, role: UserRole.ADMIN };
-          updateUser(user.id, { role: UserRole.ADMIN }).catch(err => console.error("Failed to promote Joseph P:", err));
-          return {
-              ...state,
-              currentUser: promotedUser,
-              users: state.users.map(u => u.id === user.id ? promotedUser : u)
-          };
-      }
-
-      // Migration: If the user ID in the database doesn't match the Firebase Auth UID,
-      // we should update the ID to ensure future writes (like loyalty points) succeed.
+      // Migration: local update only, side effect handles persistence
       if (action.payload.userId && user.id !== action.payload.userId) {
           const migratedUser = { ...user, id: action.payload.userId };
-          saveUser(migratedUser).catch(err => console.error("Failed to migrate user ID:", err));
-          // We also update the local state to use the new ID immediately
           return { 
               ...state, 
               currentUser: migratedUser,
@@ -218,22 +155,6 @@ export const appReducer = (state: AppState, action: Action): AppState => {
       return { ...state, currentUser: user };
     }
     case 'LOGOUT': {
-      if (auth) {
-          auth.signOut().catch(err => console.error("Firebase sign-out failed:", err));
-      }
-      
-      // Immediately clear the currentUser from localStorage to prevent "ghost" sessions on instant refresh
-      try {
-          const localData = localStorage.getItem('cafe-pos-data');
-          if (localData) {
-              const parsed = JSON.parse(localData);
-              delete parsed.currentUser;
-              localStorage.setItem('cafe-pos-data', JSON.stringify(parsed));
-          }
-      } catch (e) {
-          console.warn("Failed to clear session from localStorage:", e);
-      }
-
       return { 
           ...state, 
           currentUser: null,
@@ -259,12 +180,6 @@ export const appReducer = (state: AppState, action: Action): AppState => {
         favourites: updatedFavourites
       };
       
-      // Update Firebase
-      if (!state.currentUser.id.startsWith('guest-')) {
-          updateUser(state.currentUser.id, { favourites: updatedFavourites })
-            .catch(err => console.error("Failed to add favourite in Firebase:", err));
-      }
-
       return {
         ...state,
         currentUser: updatedUser,
@@ -279,12 +194,6 @@ export const appReducer = (state: AppState, action: Action): AppState => {
            ...state.currentUser,
            favourites: updatedFavourites
        };
-
-       // Update Firebase
-       if (!state.currentUser.id.startsWith('guest-')) {
-           updateUser(state.currentUser.id, { favourites: updatedFavourites })
-             .catch(err => console.error("Failed to remove favourite in Firebase:", err));
-       }
 
        return {
            ...state,
@@ -303,12 +212,6 @@ export const appReducer = (state: AppState, action: Action): AppState => {
            favourites: updatedFavourites
        };
 
-       // Update Firebase
-       if (!state.currentUser.id.startsWith('guest-')) {
-           updateUser(state.currentUser.id, { favourites: updatedFavourites })
-             .catch(err => console.error("Failed to update favourite in Firebase:", err));
-       }
-
        return {
            ...state,
            currentUser: updatedUser,
@@ -316,25 +219,15 @@ export const appReducer = (state: AppState, action: Action): AppState => {
        };
     }
     case 'PLACE_ORDER': {
-      // This action now only updates the local state after an order has been successfully placed in the database.
       if (state.cart.length === 0) return state;
-      
-      // As requested, add a check to ensure customerId is present before updating local state.
-      // FIX: `console.assert` expects a boolean condition. Explicitly convert the string to a boolean.
       console.assert(!!action.payload.customerId, "PLACE_ORDER action dispatched without a customerId.");
 
-      let newState = { ...state };
-      newState.cart = [];
-      
-      return newState;
+      return { ...state, cart: [] };
     }
     case 'TOGGLE_ORDER_ITEM_COMPLETION': {
         const { orderId, itemId } = action.payload;
         const orderToUpdate = state.orders.find(o => o.id === orderId);
-        if (!orderToUpdate) {
-            console.warn(`Order with id ${orderId} not found for toggling item completion.`);
-            return state;
-        }
+        if (!orderToUpdate) return state;
 
         const updatedItems = orderToUpdate.items.map(item => {
             if (item.id === itemId) {
@@ -343,138 +236,52 @@ export const appReducer = (state: AppState, action: Action): AppState => {
             return item;
         });
 
-        updateOrder(orderId, { items: updatedItems })
-            .catch(err => console.error("Failed to toggle item completion:", err));
-        
-        return state;
+        return {
+            ...state,
+            orders: state.orders.map(o => o.id === orderId ? { ...o, items: updatedItems } : o)
+        };
     }
     case 'VERIFY_PAYMENT': {
-        const orderToVerify = state.orders.find(o => o.id === action.payload);
-        if (!orderToVerify) return state;
-
-        const nextStatus = (orderToVerify.pickupTime && orderToVerify.pickupTime > Date.now()) ? 'scheduled' : 'pending';
-        
-        updateOrder(action.payload, { status: nextStatus, isVerified: true, createdAt: Date.now() })
-            .catch(err => console.error("Failed to verify payment:", err));
-        
-        return state;
+        return state; // Purely DB driven
     }
     case 'MERGE_ORDERS': {
-        const { orderIds, mergeId } = action.payload;
-        orderIds.forEach(id => {
-            updateOrder(id, { mergeId })
-                .catch(err => console.error(`Failed to merge order ${id}:`, err));
-        });
-        return state;
+        return state; // Purely DB driven
     }
     case 'UNMERGE_ORDER': {
-        updateOrder(action.payload, { mergeId: null as any })
-            .catch(err => console.error(`Failed to unmerge order ${action.payload}:`, err));
-        return state;
+        return state; // Purely DB driven
     }
     case 'UNMERGE_GROUP': {
-        const mergeId = action.payload;
-        state.orders.forEach(order => {
-            if (order.mergeId === mergeId) {
-                updateOrder(order.id, { mergeId: null as any })
-                    .catch(err => console.error(`Failed to unmerge order ${order.id} from group ${mergeId}:`, err));
-            }
-        });
-        return state;
+        return state; // Purely DB driven
     }
     case 'MERGE_ORDERS_PERMANENT': {
-        const { orderIds, targetOrderId } = action.payload;
-        const targetOrder = state.orders.find(o => o.id === targetOrderId);
-        if (!targetOrder) return state;
-
-        const otherOrders = state.orders.filter(o => orderIds.includes(o.id) && o.id !== targetOrderId);
-        const combinedItems = [...targetOrder.items];
-        
-        otherOrders.forEach(o => {
-            combinedItems.push(...o.items);
-            deleteOrder(o.id).catch(err => console.error(`Failed to delete merged order ${o.id}:`, err));
-        });
-
-        updateOrder(targetOrderId, { items: combinedItems })
-            .catch(err => console.error(`Failed to update target order ${targetOrderId} with merged items:`, err));
-            
-        return state;
+        return state; // Purely DB driven
     }
     case 'ADD_CUSTOMER': {
         const newCustomer = { ...action.payload, loyaltyPoints: action.payload.loyaltyPoints || 0 };
-        saveCustomer(newCustomer).catch(err => console.error("Failed to save new customer:", err));
         return { ...state, customers: [...state.customers, newCustomer] };
     }
     case 'UPDATE_CUSTOMER': {
         const updatedCustomer = action.payload;
-        saveCustomer(updatedCustomer).catch(err => console.error("Failed to update customer:", err));
         return { ...state, customers: state.customers.map(c => c.id === updatedCustomer.id ? updatedCustomer : c) };
     }
     case 'DELETE_CUSTOMER': {
-        deleteCustomer(action.payload).catch(err => console.error("Failed to delete customer:", err));
         return { ...state, customers: state.customers.filter(c => c.id !== action.payload) };
     }
     case 'UPDATE_ORDER': {
-        const { id, updates } = action.payload;
-        updateOrder(id, updates).catch(err => console.error(`Failed to update order ${id}:`, err));
-        return state;
+        return state; // DB driven
     }
     case 'COMPLETE_ORDER': {
-      const orderId = action.payload;
-      const order = state.orders.find(o => o.id === orderId);
-      
-      if (order && order.customerId) {
-          const eligibleMethods = [PaymentMethod.CARD, PaymentMethod.CASH, PaymentMethod.COLLECTION];
-          if (eligibleMethods.includes(order.paymentMethod)) {
-              const pointsEarned = order.items.reduce((sum, item) => sum + item.quantity, 0);
-              
-              // Update User if exists
-              const user = state.users.find(u => u.id === order.customerId);
-              if (user) {
-                  let newPoints = (user.loyaltyPoints || 0) + pointsEarned;
-                  if (newPoints >= 15) {
-                      newPoints = 0; // Clear points when free drink earned
-                  }
-                  updateUser(user.id, { loyaltyPoints: newPoints })
-                    .catch(err => console.error("Failed to update user loyalty points:", err));
-              }
-
-              // Update Customer if exists
-              const customer = state.customers.find(c => c.id === order.customerId);
-              if (customer) {
-                  let newPoints = (customer.loyaltyPoints || 0) + pointsEarned;
-                  if (newPoints >= 15) {
-                      newPoints = 0;
-                  }
-                  saveCustomer({ ...customer, loyaltyPoints: newPoints })
-                    .catch(err => console.error("Failed to update customer loyalty points:", err));
-              }
-          }
-      }
-
-      updateOrder(action.payload, { status: 'completed', completedAt: Date.now() })
-        .catch(err => console.error("Failed to complete order:", err));
-      return state;
+      return state; // DB driven
     }
     case 'DELETE_ORDER':
-      deleteOrder(action.payload)
-        .catch(err => console.error("Failed to delete order:", err));
-      return state;
+      return state; // DB driven
     case 'REQUEUE_ORDER':
-      updateOrder(action.payload, { status: 'pending', completedAt: undefined })
-        .catch(err => console.error("Failed to re-queue order:", err));
-      return state;
+      return state; // DB driven
     case 'ACTIVATE_SCHEDULED_ORDER': {
-      const order = state.orders.find(o => o.id === action.payload);
-      if (!order) return state;
-      const nextStatus = order.isVerified ? 'pending' : 'payment-required';
-      updateOrder(action.payload, { status: nextStatus })
-        .catch(err => console.error("Failed to activate scheduled order:", err));
-      return state;
+      return state; // DB driven via side effect
     }
     case 'ADD_DRINK': {
       const newDrink = { ...action.payload, imageUrl: action.payload.imageUrl || "" };
-      // Prevent duplicates in local state
       if (state.drinks.some(d => d.id === newDrink.id)) {
           return {
               ...state,
@@ -500,7 +307,6 @@ export const appReducer = (state: AppState, action: Action): AppState => {
             id: action.payload.id || `cat-${Date.now()}`,
             name: action.payload.name
         };
-        // Prevent duplicates
         if (state.categories.some(c => c.id === newCategory.id)) {
             return {
                 ...state,
@@ -517,10 +323,7 @@ export const appReducer = (state: AppState, action: Action): AppState => {
     }
     case 'DELETE_CATEGORY': {
         const uncategorisedId = 'cat-4';
-        if (action.payload === uncategorisedId) {
-            console.warn("Cannot delete the default 'Uncategorised' category.");
-            return state;
-        }
+        if (action.payload === uncategorisedId) return state;
         return {
             ...state,
             categories: state.categories.filter(c => c.id !== action.payload),
@@ -531,7 +334,6 @@ export const appReducer = (state: AppState, action: Action): AppState => {
     }
     case 'ADD_MODIFIER_GROUP': {
       const newGroup = action.payload;
-      // Prevent duplicates
       if (state.modifierGroups.some(mg => mg.id === newGroup.id)) {
           return {
               ...state,
@@ -563,7 +365,6 @@ export const appReducer = (state: AppState, action: Action): AppState => {
         };
     case 'UPDATE_USER_ROLE': {
         const { userId, role } = action.payload;
-        updateUser(userId, { role }).catch(err => console.error("Failed to update user role in Firebase:", err));
         return {
             ...state,
             users: state.users.map(user => 
@@ -571,14 +372,58 @@ export const appReducer = (state: AppState, action: Action): AppState => {
             ),
         };
     }
+    case 'DELETE_USER': {
+        const userId = action.payload;
+        return {
+            ...state,
+            users: state.users.filter(u => u.id !== userId)
+        };
+    }
+    case 'SET_AVAILABILITIES': {
+        return { ...state, availabilities: action.payload };
+    }
+    case 'UPDATE_AVAILABILITY': {
+        return {
+            ...state,
+            availabilities: state.availabilities.some(a => a.id === action.payload.id)
+                ? state.availabilities.map(a => a.id === action.payload.id ? action.payload : a)
+                : [...state.availabilities, action.payload]
+        };
+    }
+    case 'SET_ROSTERS': {
+        const normalizedRosters = (action.payload || []).map((r: any) => ({
+            ...r,
+            assignments: r.assignments || []
+        }));
+        return { ...state, rosters: normalizedRosters };
+    }
+    case 'UPDATE_ROSTER': {
+        const normalizedRoster = {
+            ...action.payload,
+            assignments: action.payload.assignments || []
+        };
+        return {
+            ...state,
+            rosters: state.rosters.some(r => r.id === normalizedRoster.id)
+                ? state.rosters.map(r => r.id === normalizedRoster.id ? normalizedRoster : r)
+                : [...state.rosters, normalizedRoster]
+        };
+    }
+    case 'DELETE_ROSTER': {
+        return { ...state, rosters: state.rosters.filter(r => r.id !== action.payload) };
+    }
+    case 'SET_CALENDAR_NOTES': {
+        return { ...state, calendarNotes: action.payload };
+    }
+    case 'ADD_CALENDAR_NOTE': {
+        return { ...state, calendarNotes: [...state.calendarNotes, action.payload] };
+    }
+    case 'DELETE_CALENDAR_NOTE': {
+        return { ...state, calendarNotes: state.calendarNotes.filter(n => n.id !== action.payload) };
+    }
     case 'UPDATE_USER_PROFILE': {
         const { userId, name, birthday } = action.payload;
         
-        updateUser(userId, { 
-            ...(name && { name }), 
-            ...(birthday !== undefined && { birthday }) 
-        }).catch(err => console.error("Failed to update user profile in Firebase:", err));
-
         const updatedUsers = state.users.map(user => {
             if (user.id === userId) {
                 return { 
@@ -600,10 +445,6 @@ export const appReducer = (state: AppState, action: Action): AppState => {
         };
     }
     case 'SUBMIT_FEEDBACK': {
-        const { rating, message } = action.payload;
-        submitFeedback({ rating, message })
-            .catch(err => console.error("Failed to submit feedback to Firebase:", err));
-        
         const newFeedback: Feedback = {
             ...action.payload,
             id: `feedback-${Date.now()}`,
@@ -960,6 +801,20 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   }, [database]);
 
+  // Effect to perform specific character renames for staff (one-time logic)
+  useEffect(() => {
+    const userToRename = state.users.find(u => 
+        u.name === 'ltleakama' || 
+        (u.email && u.email.toLowerCase() === 'ltleakama@gmail.com') ||
+        (u.name && u.name.toLowerCase().includes('leakama'))
+    );
+    
+    if (userToRename && userToRename.name !== 'Mel C') {
+        console.log(`[ACL] Character rename detected: ${userToRename.name} -> Mel C`);
+        updateUser(userToRename.id, { name: 'Mel C' }).catch(err => console.error("Failed to rename user:", err));
+    }
+  }, [state.users]);
+  
   // Effect to listen for real-time updates for the current user's profile
   useEffect(() => {
     if (database && firebaseUser) {
@@ -969,17 +824,26 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             (user) => {
                 if (isCancelled) return;
                 if (user) {
+                    // One-time check: Ensure the owner email always has Administrator role in the DB
+                    if (firebaseUser.email?.toLowerCase() === 'realifecoffeeshop@gmail.com' && user.role !== UserRole.ADMIN) {
+                        console.log("[Auth] Owner detected with non-admin role. Upgrading to Administrator in database...");
+                        updateUser(user.id, { role: UserRole.ADMIN }).catch(err => console.error("Failed to upgrade owner role:", err));
+                    }
                     dispatch({ type: 'SET_CURRENT_USER', payload: user });
                 } else if (!firebaseUser.isAnonymous) {
                     // AUTO-REGISTRATION: 
                     // If user is authenticated (not anonymous) but has no profile, auto-create one.
                     console.log("[Auth] Authenticated user has no profile. Auto-registering...");
-                    const displayName = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User';
+                    const savedName = localStorage.getItem('last_user_name');
+                    const displayName = (firebaseUser.displayName && !firebaseUser.displayName.includes('@')) 
+                        ? firebaseUser.displayName 
+                        : (savedName || firebaseUser.email?.split('@')[0] || 'User');
+                        
                     const newUser: User = {
                         id: firebaseUser.uid,
                         name: displayName,
                         email: firebaseUser.email || undefined,
-                        role: UserRole.CUSTOMER,
+                        role: firebaseUser.email?.toLowerCase() === 'realifecoffeeshop@gmail.com' ? UserRole.ADMIN : UserRole.CUSTOMER,
                         favourites: [],
                         loyaltyPoints: 0,
                     };
@@ -1001,6 +865,92 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   }, [database, firebaseUser]);
 
+  // Effect to sync session data and handle role auto-promotion/persistence
+  useEffect(() => {
+    if (!state.currentUser) {
+        // Clear local storage on logout
+        try {
+            const localData = localStorage.getItem('cafe-pos-data');
+            if (localData) {
+                const parsed = JSON.parse(localData);
+                if (parsed.currentUser) {
+                    delete parsed.currentUser;
+                    localStorage.setItem('cafe-pos-data', JSON.stringify(parsed));
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to clear session from localStorage:", e);
+        }
+        return;
+    }
+
+    const { currentUser } = state;
+    if (currentUser.id.startsWith('guest-')) return;
+
+    // Side effect: Persistence for role auto-promotion
+    const adminNames = ['joseph p', 'joseph admin', 'joseph'];
+    const kitchenNames = ['staff'];
+    const nameLower = (currentUser.name || '').toLowerCase();
+    const emailLower = (currentUser.email || '').toLowerCase();
+    const matchesAdminName = adminNames.includes(nameLower);
+    const matchesKitchenName = kitchenNames.includes(nameLower);
+    const isOwnerEmail = emailLower === 'realifecoffeeshop@gmail.com' || emailLower === 'josephpadua.24@gmail.com';
+    
+    let desiredRole = currentUser.role;
+    if (isOwnerEmail || matchesAdminName) {
+        desiredRole = UserRole.ADMIN;
+    } else if (matchesKitchenName) {
+        desiredRole = UserRole.KITCHEN;
+    }
+
+    if (desiredRole !== currentUser.role) {
+        console.log(`[ACL] Role mismatch detected for ${currentUser.name}. Syncing ${desiredRole} to DB.`);
+        updateUser(currentUser.id, { role: desiredRole }).catch(err => console.error("Failed to sync role to DB:", err));
+    }
+
+    // Side effect: Migration (if login provided a new UID)
+    // This is trickier because we need to know if the ID just changed.
+    // For now, most dispatches for LOGIN/REGISTER will handle this if we update the component logic.
+
+  }, [state.currentUser?.id, state.currentUser?.name, state.currentUser?.email, state.currentUser?.role]);
+
+  // Effect for bulk user cleanup and name corrections (requested by admin)
+  useEffect(() => {
+    const ACCOUNTS_TO_REMOVE = ['lp', 'kl', 'unknown user', 'lk', 'JP1', 'kitchen', 'admin', '140320261012'];
+    const NAME_CORRECTIONS = {
+        'arlesbarkley@gmail.com': 'Arlo Padua',
+        'chloemoore1708@gmail.com': 'Chloe Moore'
+    };
+
+    const isAdmin = state.currentUser?.role === UserRole.ADMIN || 
+                    state.currentUser?.email === 'realifecoffeeshop@gmail.com' ||
+                    state.currentUser?.email === 'josephpadua.24@gmail.com';
+    
+    if (isAdmin && state.users.length > 0) {
+        state.users.forEach((u) => {
+            if (!u || !u.id) return;
+
+            // 1. Handle Cleanup
+            const isTargetedForRemoval = ACCOUNTS_TO_REMOVE.some(target => 
+                target.toLowerCase() === (u.name || '').toLowerCase() || 
+                target === u.id
+            );
+            
+            if (isTargetedForRemoval) {
+                console.log(`[Cleanup] System auto-removing requested account: ${u.name} (${u.id})`);
+                deleteUser(u.id).catch(() => {});
+            }
+
+            // 2. Handle Name Corrections
+            const targetName = NAME_CORRECTIONS[u.email as keyof typeof NAME_CORRECTIONS];
+            if (targetName && u.name !== targetName) {
+                console.log(`[Correction] Updating name for ${u.email}: ${u.name} -> ${targetName}`);
+                updateUser(u.id, { name: targetName }).catch(() => {});
+            }
+        });
+    }
+  }, [state.currentUser?.id, state.users.length]);
+
   // Effect to listen for real-time updates from Firebase (Auth-dependent)
   useEffect(() => {
     if (database && firebaseUser && !isInitializingAuth) {
@@ -1008,6 +958,9 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         let unsubscribeUsers: (() => void) | undefined;
         let unsubscribeFeedback: (() => void) | undefined;
         let unsubscribeCustomers: (() => void) | undefined;
+        let unsubscribeAvailabilities: (() => void) | undefined;
+        let unsubscribeRosters: (() => void) | undefined;
+        let unsubscribeCalendarNotes: (() => void) | undefined;
 
         const setupAuthListeners = async () => {
             const emailLower = (firebaseUser.email || '').toLowerCase();
@@ -1076,23 +1029,7 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                             if (error.message?.toLowerCase().includes('permission_denied')) {
                                 dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/orders'.` });
                                 dispatch({ type: 'SET_ORDERS', payload: [] });
-                                // Auto-fix for admins, but avoid infinite reload loops
-                                if (isAdminByEmail) {
-                                    const lastReload = parseInt(sessionStorage.getItem('last_permission_reload') || '0');
-                                    const now = Date.now();
-                                    
-                                    if (now - lastReload > 30000) { // Only reload once every 30 seconds max
-                                        sessionStorage.setItem('last_permission_reload', now.toString());
-                                        firebaseUser.getIdToken(true).then(() => {
-                                            console.log("Token refreshed after permission error, reloading...");
-                                            window.location.reload();
-                                        }).catch(err => {
-                                            console.warn("[AppContext] Background token refresh failed (network?):", err.message);
-                                        });
-                                    } else {
-                                        console.warn("[AppContext] Suppressing permission-related reload to avoid loop.");
-                                    }
-                                }
+                                console.warn("[AppContext] Permission denied for /orders.");
                             }
                         }
                     );
@@ -1106,23 +1043,7 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                         (error: any) => {
                             if (error.message?.toLowerCase().includes('permission_denied')) {
                                 dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/users'.` });
-                                // Auto-fix for admins, but avoid infinite reload loops
-                                if (isAdminByEmail) {
-                                    const lastReload = parseInt(sessionStorage.getItem('last_permission_reload') || '0');
-                                    const now = Date.now();
-                                    
-                                    if (now - lastReload > 30000) { // Only reload once every 30 seconds max
-                                        sessionStorage.setItem('last_permission_reload', now.toString());
-                                        firebaseUser.getIdToken(true).then(() => {
-                                            console.log("Token refreshed after permission error, reloading...");
-                                            window.location.reload();
-                                        }).catch(err => {
-                                            console.warn("[AppContext] Background token refresh failed (network?):", err.message);
-                                        });
-                                    } else {
-                                        console.warn("[AppContext] Suppressing permission-related reload to avoid loop.");
-                                    }
-                                }
+                                console.warn("[AppContext] Permission denied for /users.");
                             }
                         }
                     );
@@ -1142,23 +1063,48 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                         (error: any) => {
                             if (error.message?.toLowerCase().includes('permission_denied')) {
                                 dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/customers'.` });
-                                // Auto-fix for admins, but avoid infinite reload loops
-                                if (isAdminByEmail) {
-                                    const lastReload = parseInt(sessionStorage.getItem('last_permission_reload') || '0');
-                                    const now = Date.now();
-                                    
-                                    if (now - lastReload > 30000) { // Only reload once every 30 seconds max
-                                        sessionStorage.setItem('last_permission_reload', now.toString());
-                                        firebaseUser.getIdToken(true).then(() => {
-                                            console.log("Token refreshed after permission error, reloading...");
-                                            window.location.reload();
-                                        }).catch(err => {
-                                            console.warn("[AppContext] Background token refresh failed (network?):", err.message);
-                                        });
-                                    } else {
-                                        console.warn("[AppContext] Suppressing permission-related reload to avoid loop.");
-                                    }
-                                }
+                                console.warn("[AppContext] Permission denied for /customers.");
+                            }
+                        }
+                    );
+
+                    unsubscribeAvailabilities = onAvailabilitiesUpdate(
+                        (availabilities: any[]) => {
+                            dispatch({ type: 'SET_AVAILABILITIES', payload: availabilities });
+                            if (state.permissionError?.includes("'/availabilities'")) {
+                                dispatch({ type: 'SET_PERMISSION_ERROR', payload: null });
+                            }
+                        },
+                        (error: any) => {
+                            if (error.message?.toLowerCase().includes('permission_denied')) {
+                                dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/availabilities'.` });
+                                console.warn("[AppContext] Permission denied for /availabilities.");
+                            }
+                        }
+                    );
+
+                    unsubscribeRosters = onRostersUpdate(
+                        (rosters: any[]) => {
+                            dispatch({ type: 'SET_ROSTERS', payload: rosters });
+                            if (state.permissionError?.includes("'/rosters'")) {
+                                dispatch({ type: 'SET_PERMISSION_ERROR', payload: null });
+                            }
+                        },
+                        (error: any) => {
+                            if (error.message?.toLowerCase().includes('permission_denied')) {
+                                dispatch({ type: 'SET_PERMISSION_ERROR', payload: `Firebase read permission denied for '/rosters'.` });
+                                console.warn("[AppContext] Permission denied for /rosters.");
+                            }
+                        }
+                    );
+
+                    unsubscribeCalendarNotes = onCalendarNotesUpdate(
+                        (notes: any[]) => {
+                            dispatch({ type: 'SET_CALENDAR_NOTES', payload: notes });
+                        },
+                        (error: any) => {
+                            if (error.message?.toLowerCase().includes('permission_denied')) {
+                                console.warn("[AppContext] Permission denied for /calendarNotes.");
                             }
                         }
                     );
@@ -1179,6 +1125,9 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             if (unsubscribeUsers) unsubscribeUsers();
             if (unsubscribeFeedback) unsubscribeFeedback();
             if (unsubscribeCustomers) unsubscribeCustomers();
+            if (unsubscribeAvailabilities) unsubscribeAvailabilities();
+            if (unsubscribeRosters) unsubscribeRosters();
+            if (unsubscribeCalendarNotes) unsubscribeCalendarNotes();
         };
     }
   }, [database, firebaseUser, state.currentUser?.role, isInitializingAuth]);
@@ -1217,6 +1166,9 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         const now = Date.now();
         ordersRef.current.forEach(order => {
             if (order.status === 'scheduled' && order.pickupTime && (order.pickupTime - now) <= PREPARATION_LEAD_TIME) {
+                const nextStatus = order.isVerified ? 'pending' : 'payment-required';
+                updateOrder(order.id, { status: nextStatus })
+                    .catch(err => console.error("Failed to activate scheduled order:", err));
                 dispatch({ type: 'ACTIVATE_SCHEDULED_ORDER', payload: order.id });
             }
         });

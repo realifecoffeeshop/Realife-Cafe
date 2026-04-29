@@ -61,7 +61,7 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ isOpen, onClose, onLinkCl
                                     </li>
                                     <li className="md:hidden">
                                         <button onClick={() => onNavClick(View.BIRTHDAYS)} className="w-full flex items-center px-4 py-3.5 text-lg font-serif font-bold text-stone-900 dark:text-zinc-50 rounded-xl hover:bg-stone-50 dark:hover:bg-zinc-800 transition-all border border-transparent hover:border-stone-100 dark:hover:border-zinc-700">
-                                            Birthdays
+                                            Calendar
                                         </button>
                                     </li>
                                 </>

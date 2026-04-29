@@ -44,6 +44,7 @@ const DevMode: React.FC = () => {
         { id: 'focaccia-sunday', name: 'Focaccia Sunday Window', description: 'Simulates a Focaccia preorder with specific Sunday collection constraints.' },
         { id: 'loyalty-accrual', name: 'Loyalty: Points Accrual', description: 'Places an order with 2 drinks, completes it, and verifies points increase.' },
         { id: 'kds-group-test', name: 'KDS: Group & Ungroup', description: 'Visual simulation: Creates 2 orders, groups them, then ungroups them after 3s.' },
+        { id: 'admin-processing-test', name: 'Admin Processing Flow', description: 'Simulates an order using the Admin Processing payment method (Bypasses schedule, sets status: pending).' },
     ];
 
     const createRandomCartItem = (drink: Drink, customName?: string): CartItem => {
@@ -89,11 +90,18 @@ const DevMode: React.FC = () => {
             let customerName = "Test User";
             let discountApplied: Discount | null = null;
             let burstMode = false;
+            let paymentMethod = PaymentMethod.CASH;
 
             switch (testId) {
                 case 'single-drink':
                     items = [createRandomCartItem(state.drinks[Math.floor(Math.random() * state.drinks.length)])];
                     customerName = "Single Drink Test";
+                    break;
+                case 'admin-processing-test':
+                    items = [createRandomCartItem(state.drinks[0])];
+                    customerName = "Admin Processing Simulation";
+                    paymentMethod = PaymentMethod.ADMIN_PROCESSING;
+                    // Bypassing scheduled status is handled by the fact that we don't set pickupTime for this test
                     break;
                 case 'multiple-items':
                     const itemCount = 2 + Math.floor(Math.random() * 3);
@@ -211,6 +219,10 @@ const DevMode: React.FC = () => {
                 return sum + (baseCost + modCost) * item.quantity;
             }, 0);
 
+            const isVerified = true;
+            const isAdminProcessing = paymentMethod === PaymentMethod.ADMIN_PROCESSING;
+            const newStatus = isAdminProcessing ? 'pending' : ((pickupTime && pickupTime > Date.now()) ? 'scheduled' : (isVerified ? 'pending' : 'payment-required'));
+
             const newOrder: Omit<Order, 'id'> = {
                 customerName,
                 customerId: state.currentUser?.id || 'simulation-admin',
@@ -219,11 +231,11 @@ const DevMode: React.FC = () => {
                 totalCost,
                 discountApplied,
                 finalTotal,
-                paymentMethod: PaymentMethod.CASH,
-                status: (pickupTime && pickupTime > Date.now()) ? 'scheduled' : 'pending',
-                isVerified: true,
+                paymentMethod,
+                status: newStatus,
+                isVerified,
                 createdAt: Date.now(),
-                pickupTime,
+                pickupTime: (pickupTime && !isAdminProcessing) ? pickupTime : undefined,
                 tableNumber
             };
 
@@ -309,6 +321,7 @@ const DevMode: React.FC = () => {
                 o.customerName === "Discount Test" ||
                 o.customerName.includes("Burst Order") ||
                 o.customerName === "Sunday Focaccia Simulation" ||
+                o.customerName === "Admin Processing Simulation" ||
                 o.customerName.startsWith("Boundary Test") ||
                 o.customerName === "Test User"
             );

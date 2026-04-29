@@ -71,7 +71,7 @@ const CustomerManagement: React.FC = () => {
             </div>
 
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-stone-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
+                <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-stone-50 dark:bg-zinc-800/50 border-b border-stone-100 dark:border-zinc-800">
@@ -83,7 +83,7 @@ const CustomerManagement: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-stone-100 dark:divide-zinc-800">
-                            {customers.length > 0 ? customers.map(user => (
+                            {customers.length > 0 && customers.map(user => (
                                 <tr key={user.id} className="hover:bg-stone-50/50 dark:hover:bg-zinc-800/30 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="font-bold text-stone-900 dark:text-white">{user.name}</div>
@@ -118,16 +118,58 @@ const CustomerManagement: React.FC = () => {
                                         </button>
                                     </td>
                                 </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-stone-400 italic">
-                                        No customers found matching your search.
-                                    </td>
-                                </tr>
-                            )}
+                            ))}
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile View */}
+                <div className="block sm:hidden divide-y divide-stone-100 dark:divide-zinc-800">
+                    {customers.length > 0 && customers.map(user => (
+                        <div key={user.id} className="p-6 space-y-4">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className="font-bold text-stone-900 dark:text-white text-base">{user.name}</div>
+                                    <div className="text-[10px] text-stone-400 font-mono mt-1">{user.id}</div>
+                                </div>
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                                    {user.loyaltyPoints} pts
+                                </span>
+                            </div>
+                            
+                            <div className="text-xs text-stone-600 dark:text-zinc-400 bg-stone-50 dark:bg-zinc-800/50 p-2 rounded-lg">
+                                {user.email || <span className="text-stone-300 italic">No email associated</span>}
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2">
+                                <select 
+                                    value={user.role}
+                                    onChange={(e) => handleUpdateRole(user.id, e.target.value as UserRole)}
+                                    className="bg-stone-100 dark:bg-zinc-800 border-none rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-brand-primary/20 appearance-none"
+                                >
+                                    <option value={UserRole.CUSTOMER}>Customer</option>
+                                    <option value={UserRole.KITCHEN}>Kitchen</option>
+                                    <option value={UserRole.ADMIN}>Admin</option>
+                                </select>
+                                
+                                <button 
+                                    onClick={() => handleResetPassword(user)}
+                                    disabled={isResetting === user.id || !user.email}
+                                    className="bg-amber-50 dark:bg-amber-900/10 text-amber-900 dark:text-amber-400 px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-colors disabled:opacity-30"
+                                >
+                                    {isResetting === user.id ? 'Sending...' : 'Reset Password'}
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {customers.length === 0 && (
+                    <div className="px-6 py-20 text-center text-stone-400 italic font-serif">
+                        <div className="mb-4 text-4xl opacity-20">🔍</div>
+                        "No customers found matching your search."
+                    </div>
+                )}
             </div>
         </div>
     );

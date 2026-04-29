@@ -1,6 +1,7 @@
 import React, { useContext, useState, memo } from 'react';
 import { View, UserRole } from '../../types';
 import { useApp } from '../../context/useApp';
+import { auth } from '../../firebase/config';
 import Logo from './Logo';
 import HamburgerMenu from './HamburgerMenu';
 
@@ -29,9 +30,17 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLoginClick, onM
   const { currentUser, theme } = state;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    dispatch({ type: 'LOGOUT' });
-    setView(View.CUSTOMER);
+  const handleLogout = async () => {
+    try {
+      if (auth) await auth.signOut();
+      dispatch({ type: 'LOGOUT' });
+      setView(View.CUSTOMER);
+    } catch (e) {
+      console.error("Logout failed:", e);
+      // Still dispatch logout locally to clear state
+      dispatch({ type: 'LOGOUT' });
+      setView(View.CUSTOMER);
+    }
   };
   
   const handleThemeToggle = () => {
@@ -60,17 +69,17 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLoginClick, onM
               {(currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN) && (
                   <>
                       <NavButton view={View.KDS} currentView={currentView} setView={setView}>KDS</NavButton>
-                      <NavButton view={View.BIRTHDAYS} currentView={currentView} setView={setView}>Birthdays</NavButton>
+                      <NavButton view={View.BIRTHDAYS} currentView={currentView} setView={setView}>Calendar</NavButton>
                   </>
               )}
               {currentUser?.role === UserRole.ADMIN && (
                   <NavButton view={View.ADMIN} currentView={currentView} setView={setView}>Admin</NavButton>
               )}
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-1 sm:gap-4">
             <button
               onClick={handleThemeToggle}
-              className="p-2.5 rounded-full text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-zinc-800 transition-all"
+              className="p-2 sm:p-2.5 rounded-full text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-zinc-800 transition-all focus:outline-none focus:ring-2 focus:ring-stone-200 dark:focus:ring-zinc-700"
               aria-label="Toggle theme"
             >
               {theme === 'light' ? (
@@ -79,25 +88,26 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLoginClick, onM
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
               )}
             </button>
-            <div className="border-l border-stone-100 dark:border-zinc-800 h-6"></div>
+            <div className="hidden sm:block border-l border-stone-100 dark:border-zinc-800 h-6"></div>
             {currentUser ? (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-1 sm:gap-2">
                 <button
                   onClick={() => setView(View.PROFILE)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all ${
+                  className={`flex items-center justify-center sm:justify-start gap-2 p-2 sm:px-4 sm:py-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-stone-200 dark:focus:ring-zinc-700 ${
                       currentView === View.PROFILE 
-                      ? 'bg-stone-100 dark:bg-zinc-800 text-stone-900 dark:text-white' 
+                      ? 'bg-stone-100 dark:bg-zinc-800 text-stone-900 dark:text-white shadow-inner' 
                       : 'text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white'
                   }`}
+                  aria-label="View Profile"
                 >
-                  <div className="w-6 h-6 rounded-full bg-stone-200 dark:bg-zinc-700 flex items-center justify-center text-[10px] font-bold">
+                  <div className="w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-stone-200 dark:bg-zinc-700 flex items-center justify-center text-[10px] font-bold shadow-sm">
                       {currentUser.name.charAt(0)}
                   </div>
-                  <span className="text-sm font-bold hidden sm:inline">{currentUser.name.split(' ')[0]}</span>
+                  <span className="text-sm font-bold hidden sm:inline">{currentUser.name}</span>
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="p-2 text-stone-400 hover:text-red-500 transition-colors"
+                  className="p-2 sm:p-2.5 text-stone-400 hover:text-red-500 transition-colors focus:outline-none focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/10 rounded-full"
                   title="Logout"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
@@ -106,7 +116,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLoginClick, onM
             ) : (
               <button
                 onClick={onLoginClick}
-                className="px-6 py-2.5 bg-stone-900 text-white dark:bg-white dark:text-stone-900 rounded-full font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-sm text-sm"
+                className="px-4 py-2.5 sm:px-6 sm:py-3 bg-stone-900 text-white dark:bg-white dark:text-stone-900 rounded-full font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-md active:scale-95 text-xs sm:text-sm whitespace-nowrap"
               >
                 Sign In
               </button>

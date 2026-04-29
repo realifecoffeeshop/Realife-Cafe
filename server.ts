@@ -19,7 +19,8 @@ async function startServer() {
   let stripeClient: Stripe | null = null;
   const getStripe = () => {
     if (!stripeClient) {
-      const key = process.env.STRIPE_SECRET_KEY;
+      const rawKey = process.env.STRIPE_SECRET_KEY;
+      const key = rawKey ? rawKey.trim() : null;
       if (!key) {
         throw new Error('STRIPE_SECRET_KEY environment variable is required');
       }
@@ -45,11 +46,12 @@ async function startServer() {
         return res.status(400).json({ error: 'Invalid amount. Amount must be a positive number.' });
       }
 
-      const key = process.env.STRIPE_SECRET_KEY;
-      if (!key) {
-        console.error('Missing STRIPE_SECRET_KEY');
+      const rawKey = process.env.STRIPE_SECRET_KEY;
+      const key = rawKey ? rawKey.trim() : null;
+      if (!key || !key.startsWith('sk_')) {
+        console.error('Missing or invalid STRIPE_SECRET_KEY');
         return res.status(500).json({ 
-          error: 'Stripe is not configured on the server. Please add STRIPE_SECRET_KEY to your environment variables.' 
+          error: 'Stripe is not correctly configured on the server. Please add a valid STRIPE_SECRET_KEY (starting with sk_) to your environment variables in AI Studio Settings.' 
         });
       }
 

@@ -150,7 +150,7 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
               ) : (
                 <div className="flex items-center gap-2 group/name">
                   <h3 
-                    className={`font-bold text-lg text-stone-900 dark:text-white truncate ${isAdmin ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
+                    className={`font-bold text-xl text-stone-900 dark:text-white truncate ${isAdmin ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
                     onClick={(e) => {
                       if (isAdmin) {
                         e.stopPropagation();
@@ -161,7 +161,7 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
                     {order.customerName || 'Unknown'}
                   </h3>
                   {order.tableNumber && (
-                    <div className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 rounded-lg px-2.5 py-0.5 text-xs font-bold tracking-wider uppercase shadow-sm">
+                    <div className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 rounded-lg px-3 py-1 text-sm font-bold tracking-wider uppercase shadow-sm">
                       T{order.tableNumber}
                     </div>
                   )}
@@ -247,7 +247,7 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
                 }}
                 aria-label={`${isComplete ? 'Mark as incomplete' : 'Mark as complete'}: ${item.quantity}x ${item.drink?.name || 'Unknown Drink'}`}
               >
-                <p className={`font-semibold text-sm ${isComplete ? '' : 'text-stone-800 dark:text-zinc-200'}`}>
+                <p className={`font-semibold text-base ${isComplete ? '' : 'text-stone-800 dark:text-zinc-200'}`}>
                   <span>{item.quantity}x </span>
                   {item.selectedVariantId && item.drink?.variants && (
                     <span className="uppercase mr-1">
@@ -256,10 +256,10 @@ const OrderTicket: React.FC<OrderTicketProps> = ({ order, onComplete, onDelete, 
                   )}
                   <span>{item.drink?.name || 'Unknown Drink'}</span>
                 </p>
-                {item.customName && <p className={`pl-4 font-medium italic ${isComplete ? '' : 'text-stone-700 dark:text-zinc-300'}`}>- {item.customName}</p>}
+                {item.customName && <p className={`pl-4 font-bold italic text-sm ${isComplete ? '' : 'text-stone-700 dark:text-zinc-300'}`}>- {item.customName}</p>}
                 <ul className={`pl-4 list-disc list-inside ${isComplete ? '' : 'text-stone-600 dark:text-zinc-400'}`}>
                   {Object.values(item.selectedModifiers || {}).flatMap(mods => mods).map((sm: SelectedModifier) => (
-                    <li key={sm.option?.id || Math.random()} className="text-[11px] leading-tight">{sm.quantity > 1 ? `${sm.quantity}x ` : ''}{sm.option?.name || 'Unknown'}</li>
+                    <li key={sm.option?.id || Math.random()} className="text-xs leading-tight font-medium">{sm.quantity > 1 ? `${sm.quantity}x ` : ''}{sm.option?.name || 'Unknown'}</li>
                   ))}
                 </ul>
               </motion.div>

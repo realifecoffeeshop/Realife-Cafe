@@ -6,12 +6,12 @@ import { fetchOrdersByDateRange } from '../../firebase/firestoreService';
 import { Loader2 } from 'lucide-react';
 
 const StatCard: React.FC<{ title: string; value: string; isLoading?: boolean }> = memo(({ title, value, isLoading }) => (
-  <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-zinc-800 group hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+  <div className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-zinc-800 group hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
     <h3 className="text-[10px] font-bold text-stone-400 dark:text-zinc-500 uppercase tracking-[0.2em] mb-4 ml-1">{title}</h3>
     {isLoading ? (
       <div className="h-10 w-24 bg-stone-100 dark:bg-zinc-800 animate-pulse rounded-lg"></div>
     ) : (
-      <p className="text-4xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">{value}</p>
+      <p className="text-3xl sm:text-4xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">{value}</p>
     )}
     <div className="mt-4 h-1 w-8 bg-stone-100 dark:bg-zinc-800 rounded-full group-hover:w-16 group-hover:bg-stone-900 dark:group-hover:bg-white transition-all duration-500"></div>
   </div>
@@ -400,29 +400,29 @@ const Dashboard: React.FC = () => {
     : { backgroundColor: '#ffffff', border: '1px solid #f5f5f4', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.1)', padding: '20px' };
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 sm:p-8 space-y-6 sm:space-y-8">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h2 className="text-2xl font-serif font-bold text-stone-900 dark:text-white">Business Insights</h2>
-          <p className="text-stone-500 dark:text-zinc-400 mt-1">Real-time performance metrics and sales data.</p>
+          <p className="text-stone-500 dark:text-zinc-400 mt-1">Real-time performance metrics.</p>
         </div>
         
-        <div className="flex flex-col sm:flex-row items-center gap-3 bg-white dark:bg-zinc-800 p-2 rounded-xl shadow-sm border border-stone-100 dark:border-zinc-700/50">
+        <div className="flex flex-col sm:flex-row items-center gap-3 bg-white dark:bg-zinc-800 p-2 rounded-xl shadow-sm border border-stone-100 dark:border-zinc-700/50 w-full sm:w-auto">
           {isLoading && (
             <div className="flex items-center gap-2 px-2">
               <Loader2 className="w-4 h-4 animate-spin text-stone-400" />
             </div>
           )}
-          <div className="flex items-center gap-2 px-3">
+          <div className="hidden sm:flex items-center gap-2 px-3">
             <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Period</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-1 items-center gap-2 w-full">
             <input
                 type="date"
                 id="startDate"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className={`text-sm p-2 bg-stone-50 dark:bg-zinc-900 border-none rounded-lg dark:text-white focus:ring-1 focus:ring-stone-200 ${dateError ? 'text-red-500' : ''}`}
+                className={`text-xs sm:text-sm p-2 bg-stone-50 dark:bg-zinc-900 border-none rounded-lg dark:text-white focus:ring-1 focus:ring-stone-200 flex-1 ${dateError ? 'text-red-500' : ''}`}
                 aria-label="Start Date"
             />
             <span className="text-stone-300 dark:text-zinc-600">—</span>
@@ -432,7 +432,7 @@ const Dashboard: React.FC = () => {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 min={startDate}
-                className={`text-sm p-2 bg-stone-50 dark:bg-zinc-900 border-none rounded-lg dark:text-white focus:ring-1 focus:ring-stone-200 ${dateError ? 'text-red-500' : ''}`}
+                className={`text-xs sm:text-sm p-2 bg-stone-50 dark:bg-zinc-900 border-none rounded-lg dark:text-white focus:ring-1 focus:ring-stone-200 flex-1 ${dateError ? 'text-red-500' : ''}`}
                 aria-label="End Date"
             />
           </div>
@@ -453,15 +453,17 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <StatCard title="Total Revenue" value={`$${totalRevenue.toFixed(2)}`} isLoading={isLoading} />
-        <StatCard title="Net Adjusted" value={`$${netAdjustedRevenue.toFixed(2)}`} isLoading={isLoading} />
-        <StatCard title="Total Profit" value={`$${totalProfit.toFixed(2)}`} isLoading={isLoading} />
-        <StatCard title="Drinks Processed" value={drinksProcessed.toString()} isLoading={isLoading} />
-        <StatCard title="Avg. Time" value={`${avgProcessingTime.toFixed(1)}m`} isLoading={isLoading} />
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+        <StatCard title="Revenue" value={`$${totalRevenue.toFixed(0)}`} isLoading={isLoading} />
+        <StatCard title="Profit" value={`$${totalProfit.toFixed(0)}`} isLoading={isLoading} />
+        <StatCard title="Drinks" value={drinksProcessed.toString()} isLoading={isLoading} />
+        <StatCard title="Avg Time" value={`${avgProcessingTime.toFixed(0)}m`} isLoading={isLoading} />
+        <div className="hidden lg:block">
+          <StatCard title="Net Adjusted" value={`$${netAdjustedRevenue.toFixed(0)}`} isLoading={isLoading} />
+        </div>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-zinc-800">
+      <div className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-zinc-800">
         <h3 className="text-lg font-serif font-bold text-stone-900 dark:text-white mb-6">Financial Summary</h3>
         <div className="space-y-4">
           <div className="flex justify-between items-center pb-4 border-b border-stone-50 dark:border-zinc-800">

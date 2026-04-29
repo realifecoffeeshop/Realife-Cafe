@@ -5,6 +5,14 @@ import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
 import { Drink, ModifierOption, Order, SelectedModifier, Customer, UserRole } from '../../types';
 import { Loader2, Download } from 'lucide-react';
+import { 
+    updateOrder, 
+    deleteOrder, 
+    saveCustomer,
+    mergeOrders as firestoreMergeOrders,
+    unmergeOrder as firestoreUnmergeOrder,
+    unmergeGroup as firestoreUnmergeGroup
+} from '../../firebase/firestoreService';
 import OrderTicket from './OrderTicket';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import Modal from '../shared/Modal';
@@ -526,29 +534,46 @@ const KDSView: React.FC = () => {
   const handleCompleteOrder = useCallback(async (id: string) => {
     setIsProcessing(true);
     try {
+      await updateOrder(id, { status: 'completed', completedAt: Date.now() });
       dispatch({ type: 'COMPLETE_ORDER', payload: id });
+    } catch (err) {
+      console.error("Failed to complete order:", err);
+      addToast('Failed to complete order', 'error');
     } finally {
       setIsProcessing(false);
     }
-  }, [dispatch]);
+  }, [dispatch, addToast]);
 
   const handleToggleItemCompletion = useCallback(async (orderId: string, itemId: string) => {
     setIsProcessing(true);
     try {
-      dispatch({ type: 'TOGGLE_ORDER_ITEM_COMPLETION', payload: { orderId, itemId } });
+        const order = state.orders.find(o => o.id === orderId);
+        if (!order) return;
+        const items = order.items.map(item => 
+            item.id === itemId ? { ...item, isCompleted: !item.isCompleted } : item
+        );
+        await updateOrder(orderId, { items });
+        dispatch({ type: 'TOGGLE_ORDER_ITEM_COMPLETION', payload: { orderId, itemId } });
+    } catch (err) {
+        console.error("Failed to toggle item completion:", err);
+        addToast('Failed to update item', 'error');
     } finally {
       setIsProcessing(false);
     }
-  }, [dispatch]);
+  }, [dispatch, state.orders, addToast]);
   
   const handleVerifyPayment = useCallback(async (id: string) => {
       setIsProcessing(true);
       try {
+        await updateOrder(id, { isVerified: true, status: 'pending' });
         dispatch({ type: 'VERIFY_PAYMENT', payload: id });
+      } catch (err) {
+        console.error("Failed to verify payment:", err);
+        addToast('Failed to verify payment', 'error');
       } finally {
         setIsProcessing(false);
       }
-  }, [dispatch]);
+  }, [dispatch, addToast]);
 
   const handleGroupOrders = useCallback(async () => {
     if (selectedOrders.length < 2) {
@@ -558,10 +583,14 @@ const KDSView: React.FC = () => {
     setIsProcessing(true);
     try {
       const mergeId = `group-${Date.now()}`;
+      await firestoreMergeOrders(selectedOrders, mergeId);
       dispatch({ type: 'MERGE_ORDERS', payload: { orderIds: selectedOrders, mergeId } });
       setSelectedOrders([]);
       setIsMergeMode(false);
       addToast('Orders grouped successfully', 'success');
+    } catch (err) {
+      console.error("Failed to group orders:", err);
+      addToast('Failed to group orders', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -575,25 +604,49 @@ const KDSView: React.FC = () => {
     setIsProcessing(true);
     try {
       const targetOrderId = selectedOrders[0];
+      const sourceOrderIds = selectedOrders.slice(1);
+      
+      const targetOrder = state.orders.find(o => o.id === targetOrderId);
+      if (!targetOrder) throw new Error("Target order not found");
+      
+      let mergedItems = [...targetOrder.items];
+      for (const sourceId of sourceOrderIds) {
+          const sourceOrder = state.orders.find(o => o.id === sourceId);
+          if (sourceOrder) {
+              mergedItems = [...mergedItems, ...sourceOrder.items];
+              await deleteOrder(sourceId);
+          }
+      }
+      
+      await updateOrder(targetOrderId, { items: mergedItems });
+      
       dispatch({ type: 'MERGE_ORDERS_PERMANENT', payload: { orderIds: selectedOrders, targetOrderId } });
       setSelectedOrders([]);
       setIsMergeMode(false);
       addToast('Orders merged permanently', 'success');
+    } catch (err) {
+      console.error("Failed to merge orders:", err);
+      addToast('Failed to merge orders', 'error');
     } finally {
       setIsProcessing(false);
     }
-  }, [selectedOrders, dispatch, addToast]);
+  }, [selectedOrders, dispatch, addToast, state.orders]);
 
   const handleUngroupOrder = useCallback(async (id: string) => {
     setIsProcessing(true);
     try {
       if (id.startsWith('group-')) {
+          await firestoreUnmergeGroup(id);
           dispatch({ type: 'UNMERGE_GROUP', payload: id });
           addToast('Group unmerged', 'success');
       } else {
+          await firestoreUnmergeOrder(id);
           dispatch({ type: 'UNMERGE_ORDER', payload: id });
           addToast('Order ungrouped', 'success');
       }
+    } catch (err) {
+      console.error("Failed to ungroup:", err);
+      addToast('Failed to ungroup', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -679,8 +732,16 @@ const KDSView: React.FC = () => {
             }
         });
 
-        dispatch({ type: 'UPDATE_CUSTOMER', payload: { ...existingCustomer, favouriteDrinks: newFavs } });
-        addToast(`Updated favourites for ${order.customerName}`, 'success');
+        const updatedCustomer = { ...existingCustomer, favouriteDrinks: newFavs };
+        saveCustomer(updatedCustomer)
+            .then(() => {
+                dispatch({ type: 'UPDATE_CUSTOMER', payload: updatedCustomer });
+                addToast(`Updated favourites for ${order.customerName}`, 'success');
+            })
+            .catch(err => {
+                console.error("Failed to update customer:", err);
+                addToast("Failed to update directory", "error");
+            });
     } else {
         // Create new customer
         const newCustomer: Customer = {
@@ -690,8 +751,15 @@ const KDSView: React.FC = () => {
             notes: '',
             loyaltyPoints: 0
         };
-        dispatch({ type: 'ADD_CUSTOMER', payload: newCustomer });
-        addToast(`Added ${order.customerName} to directory with ${order.items.length} favourite(s)`, 'success');
+        saveCustomer(newCustomer)
+            .then(() => {
+                dispatch({ type: 'ADD_CUSTOMER', payload: newCustomer });
+                addToast(`Added ${order.customerName} to directory with ${order.items.length} favourite(s)`, 'success');
+            })
+            .catch(err => {
+                console.error("Failed to add customer:", err);
+                addToast("Failed to update directory", "error");
+            });
     }
   }, [state.customers, dispatch, addToast]);
 
@@ -717,10 +785,15 @@ const KDSView: React.FC = () => {
     if (deleteCandidate) {
         setIsProcessing(true);
         try {
+          // Persist deletion to Firebase
+          await deleteOrder(deleteCandidate);
+          
           dispatch({ type: 'DELETE_ORDER', payload: deleteCandidate });
           setDeleteCandidate(null);
-          await new Promise(resolve => setTimeout(resolve, 500));
           addToast('Order deleted successfully', 'success');
+        } catch (err) {
+          console.error("Failed to delete order:", err);
+          addToast('Failed to delete order from server', 'error');
         } finally {
           setIsProcessing(false);
         }
@@ -728,7 +801,7 @@ const KDSView: React.FC = () => {
   };
 
   const containerClasses = scrollDirection === 'vertical' 
-    ? 'columns-xs space-y-4 gap-4 h-full' 
+    ? 'columns-sm space-y-4 gap-4 h-full' 
     : 'flex flex-row gap-4 overflow-x-auto pb-4 items-start scrollbar-thin scrollbar-thumb-stone-300 dark:scrollbar-thumb-zinc-600';
 
   const ticketWrapperClasses = scrollDirection === 'horizontal' ? 'w-80 flex-shrink-0' : 'break-inside-avoid mb-4';
@@ -1035,7 +1108,7 @@ const KDSView: React.FC = () => {
               transition={{ duration: 0.3, ease: "easeOut" }}
             >
               <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-stone-200 dark:border-zinc-800 overflow-hidden">
-            <div className="overflow-x-auto scrollbar-hide">
+            <div className="hidden sm:block overflow-x-auto scrollbar-hide">
                 <table className="w-full text-sm text-left text-stone-600 dark:text-zinc-400 min-w-[700px]">
                 <thead className="text-sm text-stone-700 dark:text-zinc-300 uppercase bg-stone-100 dark:bg-zinc-700">
                     <tr>
@@ -1091,30 +1164,25 @@ const KDSView: React.FC = () => {
                             <td className="px-6 py-4">
                                 <div className="font-bold text-stone-900 dark:text-white">${(order.finalTotal || 0).toFixed(2)}</div>
                                 <div className="text-[10px] text-stone-400 dark:text-zinc-500 uppercase tracking-tighter">{order.paymentMethod}</div>
-                                {!order.isVerified && (
-                                    <div className="text-[9px] text-red-500 dark:text-red-400 font-bold uppercase tracking-tighter mt-0.5">Payment Required</div>
-                                )}
                             </td>
-                            <td className="px-6 py-4 text-right space-x-3">
+                            <td className="px-6 py-4 text-right space-x-3 whitespace-nowrap">
                                 {!order.isVerified && (
                                     <button 
                                         onClick={() => dispatch({ type: 'VERIFY_PAYMENT', payload: order.id })} 
-                                        className="text-blue-600 hover:text-blue-800 dark:hover:text-blue-400 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-zinc-800 rounded"
+                                        className="text-blue-600 hover:text-blue-800 dark:hover:text-blue-400 font-medium"
                                     >
                                         Verify
                                     </button>
                                 )}
                                 <button 
                                     onClick={() => handleCompleteOrder(order.id)} 
-                                    className="text-green-600 hover:text-green-800 dark:hover:text-green-400 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-zinc-800 rounded"
-                                    aria-label={`Complete scheduled order for ${order.customerName || 'Unknown'}`}
+                                    className="text-green-600 hover:text-green-800 dark:hover:text-green-400 font-medium"
                                 >
                                     Complete
                                 </button>
                                 <button 
                                     onClick={() => setDeleteCandidate(order.id)} 
-                                    className="text-red-600 hover:text-red-800 dark:hover:text-red-400 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-zinc-800 rounded"
-                                    aria-label={`Delete scheduled order for ${order.customerName || 'Unknown'}`}
+                                    className="text-red-600 hover:text-red-800 dark:hover:text-red-400 font-medium"
                                 >
                                     Delete
                                 </button>
@@ -1123,13 +1191,53 @@ const KDSView: React.FC = () => {
                     ))}
                 </tbody>
             </table>
+            </div>
+
+            {/* Mobile View for Scheduled */}
+            <div className="block sm:hidden divide-y divide-stone-100 dark:divide-zinc-800">
+                {scheduledOrders.map(order => (
+                    <div key={order.id} className="p-4 space-y-4">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <div className="font-bold text-stone-900 dark:text-white">{order.customerName || 'Unknown'}</div>
+                                <div className="text-[10px] text-stone-400 font-mono">#{(order.id || '').slice(-6).toUpperCase()}</div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-xs font-bold text-blue-600">
+                                    {order.pickupTime && !isNaN(new Date(order.pickupTime).getTime()) ? new Date(order.pickupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <ul className="space-y-2 bg-stone-50 dark:bg-zinc-800/50 p-3 rounded-lg">
+                            {(order.items || []).map(item => (
+                                <li key={item.id} className="text-xs">
+                                    <div className="font-bold text-stone-900 dark:text-white">
+                                        {item.quantity}x {item.drink?.name}
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+
+                        <div className="flex justify-between items-center text-[10px] font-bold">
+                            <div className="text-stone-900 dark:text-white">${(order.finalTotal || 0).toFixed(2)}</div>
+                            <div className="flex gap-4">
+                                {!order.isVerified && (
+                                    <button onClick={() => dispatch({ type: 'VERIFY_PAYMENT', payload: order.id })} className="text-blue-600 uppercase">Verify</button>
+                                )}
+                                <button onClick={() => handleCompleteOrder(order.id)} className="text-green-600 uppercase">Complete</button>
+                                <button onClick={() => setDeleteCandidate(order.id)} className="text-red-600 uppercase">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
             {scheduledOrders.length === 0 && (
                 <div className="p-6 text-center">
                     {renderEmptyState('No orders scheduled for the future.')}
                 </div>
             )}
         </div>
-      </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1154,7 +1262,7 @@ const KDSView: React.FC = () => {
                 </button>
               </div>
               <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-stone-200 dark:border-zinc-800 overflow-hidden">
-                  <div className="overflow-x-auto scrollbar-hide">
+                  <div className="hidden sm:block overflow-x-auto scrollbar-hide">
                       <table className="w-full text-sm text-left text-stone-600 dark:text-zinc-400 min-w-[700px]">
                           <thead className="text-sm text-stone-700 dark:text-zinc-300 uppercase bg-stone-100 dark:bg-zinc-700">
                               <tr>
@@ -1204,25 +1312,25 @@ const KDSView: React.FC = () => {
                                               ))}
                                           </ul>
                                       </td>
-                                      <td className="px-6 py-4 font-bold text-stone-900 dark:text-white">${(order.finalTotal || 0).toFixed(2)}</td>
-                                      <td className="px-6 py-4 text-right space-x-3">
+                                      <td className="px-6 py-4 font-bold text-stone-900 dark:text-white whitespace-nowrap">${(order.finalTotal || 0).toFixed(2)}</td>
+                                      <td className="px-6 py-4 text-right space-x-3 whitespace-nowrap">
                                           <button 
                                               onClick={() => handleAddToDirectory(order)} 
-                                              className="text-green-600 hover:text-green-800 dark:hover:text-green-400 font-medium transition-colors"
+                                              className="text-green-600 hover:text-green-800 font-medium"
                                               title="Add Customer & Favourites to Directory"
                                           >
-                                              Add to Directory
+                                              Add
                                           </button>
                                           <button 
                                               onClick={() => setRequeueCandidate(order.id)} 
-                                              className="text-blue-600 hover:text-blue-800 dark:hover:text-blue-400 font-medium transition-colors"
+                                              className="text-blue-600 hover:text-blue-800 font-medium"
                                               title="Re-queue Order"
                                           >
                                               Re-queue
                                           </button>
                                           <button 
                                               onClick={() => setDeleteCandidate(order.id)} 
-                                              className="text-red-600 hover:text-red-800 dark:hover:text-red-400 font-medium transition-colors"
+                                              className="text-red-600 hover:text-red-800 font-medium"
                                               title="Delete Permanently"
                                           >
                                               Delete
@@ -1232,6 +1340,37 @@ const KDSView: React.FC = () => {
                               ))}
                           </tbody>
                       </table>
+                  </div>
+
+                  {/* Mobile View for History */}
+                  <div className="block sm:hidden divide-y divide-stone-100 dark:divide-zinc-800">
+                    {completedOrders.map(order => (
+                        <div key={order.id} className="p-4 space-y-4">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className="font-bold text-stone-900 dark:text-white">{order.customerName || 'Unknown'}</div>
+                                    <div className="text-[10px] text-stone-400 font-mono">#{(order.id || '').slice(-6).toUpperCase()}</div>
+                                </div>
+                                <div className="text-right text-[10px] text-stone-400">
+                                    <div>{order.completedAt ? new Date(order.completedAt).toLocaleDateString() : ''}</div>
+                                </div>
+                            </div>
+
+                            <ul className="space-y-1 bg-stone-50 dark:bg-zinc-800/50 p-2 rounded-lg">
+                                {(order.items || []).map(item => (
+                                    <li key={item.id} className="text-xs font-medium text-stone-700 dark:text-zinc-300">
+                                        {item.quantity}x {item.drink?.name}
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <div className="flex flex-wrap gap-3 pt-1">
+                                <button onClick={() => handleAddToDirectory(order)} className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Add Directory</button>
+                                <button onClick={() => setRequeueCandidate(order.id)} className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Re-queue</button>
+                                <button onClick={() => setDeleteCandidate(order.id)} className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Delete</button>
+                            </div>
+                        </div>
+                    ))}
                   </div>
 
                   {completedOrders.length > 0 && (

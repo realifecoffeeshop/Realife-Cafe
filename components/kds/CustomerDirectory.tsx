@@ -3,7 +3,7 @@ import React, { useContext, useState, memo } from 'react';
 import { useApp } from '../../context/useApp';
 import { Customer, CartItem, Drink, SelectedModifier, Order } from '../../types';
 import { useToast } from '../../context/ToastContext';
-import { addOrder } from '../../firebase/firestoreService';
+import { addOrder, saveCustomer, deleteCustomer } from '../../firebase/firestoreService';
 import OrderModal from '../customer/OrderModal';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import { Plus, Trash2, Edit2 } from 'lucide-react';
@@ -36,7 +36,7 @@ const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ onSelectCustomer 
     (c?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleAddCustomer = () => {
+  const handleAddCustomer = async () => {
     if (!newCustomerName.trim()) return;
     const newCustomer: Customer = {
       id: `cust-${Date.now()}`,
@@ -45,35 +45,59 @@ const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ onSelectCustomer 
       notes: '',
       loyaltyPoints: 0
     };
-    dispatch({ type: 'ADD_CUSTOMER', payload: newCustomer });
-    setNewCustomerName('');
-    setIsAddingCustomer(false);
-    addToast(`Customer ${newCustomerName} added to directory`, 'success');
+    try {
+        await saveCustomer(newCustomer);
+        dispatch({ type: 'ADD_CUSTOMER', payload: newCustomer });
+        setNewCustomerName('');
+        setIsAddingCustomer(false);
+        addToast(`Customer ${newCustomerName} added to directory`, 'success');
+    } catch (err) {
+        console.error("Failed to add customer:", err);
+        addToast('Failed to add customer', 'error');
+    }
   };
 
-  const handleDeleteCustomer = (id: string) => {
-    dispatch({ type: 'DELETE_CUSTOMER', payload: id });
-    addToast('Customer removed from directory', 'info');
+  const handleDeleteCustomer = async (id: string) => {
+    try {
+        await deleteCustomer(id);
+        dispatch({ type: 'DELETE_CUSTOMER', payload: id });
+        addToast('Customer removed from directory', 'info');
+    } catch (err) {
+        console.error("Failed to delete customer:", err);
+        addToast('Failed to remove customer', 'error');
+    }
   };
 
-  const handleUpdateNotes = (customer: Customer, notes: string) => {
-    dispatch({ type: 'UPDATE_CUSTOMER', payload: { ...customer, notes } });
+  const handleUpdateNotes = async (customer: Customer, notes: string) => {
+    try {
+        const updatedCustomer = { ...customer, notes };
+        await saveCustomer(updatedCustomer);
+        dispatch({ type: 'UPDATE_CUSTOMER', payload: updatedCustomer });
+    } catch (err) {
+        console.error("Failed to update notes:", err);
+        addToast('Failed to update notes', 'error');
+    }
   };
 
-  const handleRemoveFavourite = (customer: Customer, favId: string) => {
+  const handleRemoveFavourite = async (customer: Customer, favId: string) => {
     if (!favId) {
       addToast('Could not identify favourite to remove', 'error');
       return;
     }
     const updatedFavourites = customer.favouriteDrinks.filter(f => f.id !== favId);
     if (updatedFavourites.length === customer.favouriteDrinks.length) {
-      // If nothing was removed, maybe the ID didn't match. 
-      // This could happen if IDs were not stable before.
       addToast('Favourite not found', 'error');
       return;
     }
-    dispatch({ type: 'UPDATE_CUSTOMER', payload: { ...customer, favouriteDrinks: updatedFavourites } });
-    addToast('Favourite removed', 'info');
+    try {
+        const updatedCustomer = { ...customer, favouriteDrinks: updatedFavourites };
+        await saveCustomer(updatedCustomer);
+        dispatch({ type: 'UPDATE_CUSTOMER', payload: updatedCustomer });
+        addToast('Favourite removed', 'info');
+    } catch (err) {
+        console.error("Failed to remove favorite:", err);
+        addToast('Failed to remove favourite', 'error');
+    }
   };
 
   const handleOpenAddFavourite = (customer: Customer) => {
@@ -95,7 +119,7 @@ const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ onSelectCustomer 
     setIsOrderModalOpen(true);
   };
 
-  const handleSaveFavourite = (item: CartItem) => {
+  const handleSaveFavourite = async (item: CartItem) => {
     if (!activeCustomerForFav) return;
 
     let updatedFavourites = [...(activeCustomerForFav.favouriteDrinks || [])];
@@ -109,11 +133,19 @@ const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ onSelectCustomer 
       updatedFavourites.push({ ...item, id: `fav-${Date.now()}` });
     }
 
-    dispatch({ type: 'UPDATE_CUSTOMER', payload: { ...activeCustomerForFav, favouriteDrinks: updatedFavourites } });
-    setIsOrderModalOpen(false);
-    setActiveCustomerForFav(null);
-    setCartItemToEdit(null);
-    setSelectedDrinkForModal(null);
+    try {
+        const updatedCustomer = { ...activeCustomerForFav, favouriteDrinks: updatedFavourites };
+        await saveCustomer(updatedCustomer);
+        dispatch({ type: 'UPDATE_CUSTOMER', payload: updatedCustomer });
+        setIsOrderModalOpen(false);
+        setActiveCustomerForFav(null);
+        setCartItemToEdit(null);
+        setSelectedDrinkForModal(null);
+        addToast(cartItemToEdit ? 'Favourite updated' : 'Favourite added', 'success');
+    } catch (err) {
+        console.error("Failed to save favorite:", err);
+        addToast('Failed to save favourite', 'error');
+    }
   };
 
   const handleQuickOrder = async (customer: Customer, item: CartItem) => {

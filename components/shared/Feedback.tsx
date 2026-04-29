@@ -27,17 +27,25 @@ const Feedback = () => {
     const [hoverRating, setHoverRating] = useState(0);
     const [message, setMessage] = useState('');
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (rating === 0) {
             addToast('Please select a rating before submitting.', 'error');
             return;
         }
-        dispatch({ type: 'SUBMIT_FEEDBACK', payload: { rating, message } });
-        setIsOpen(false);
-        setRating(0);
-        setMessage('');
-        addToast('Thank you for your feedback!', 'success');
+        
+        try {
+            const { submitFeedback } = await import('../../firebase/firestoreService');
+            await submitFeedback({ rating, message });
+            dispatch({ type: 'SUBMIT_FEEDBACK', payload: { rating, message } });
+            setIsOpen(false);
+            setRating(0);
+            setMessage('');
+            addToast('Thank you for your feedback!', 'success');
+        } catch (err) {
+            console.error("Failed to submit feedback:", err);
+            addToast('Failed to submit feedback. Please try again.', 'error');
+        }
     };
 
     return (

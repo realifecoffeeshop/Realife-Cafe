@@ -4,7 +4,8 @@ import { useApp } from '../../context/useApp';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../shared/Modal';
 
-import { Loader2, Heart } from 'lucide-react';
+import { Loader2, Heart, Plus, Minus, Info, ClipboardList, PenTool, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface OrderModalProps {
   drink: Drink | null;
@@ -198,166 +199,252 @@ const OrderModal: React.FC<OrderModalProps> = ({ drink, isOpen, onClose, onSaveI
 
   if (!activeDrink) return null;
 
-  const modalTitle = `Customise ${customName.trim() ? `${customName.trim()} (${activeDrink.name || 'Drink'})` : (activeDrink.name || 'Drink')}`;
+  const modalTitle = cartItemToEdit ? `Edit ${activeDrink.name}` : `Customise ${activeDrink.name}`;
+
+  const footerContent = (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-stone-400 dark:text-zinc-500 uppercase tracking-widest">Total Price</span>
+          <span className="text-3xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">${totalPrice.toFixed(2)}</span>
+        </div>
+        
+        {currentUser && (
+          <button 
+            onClick={handleSaveFavourite} 
+            disabled={isSavingFavourite}
+            className={`p-4 rounded-xl transition-all border ${
+              isSavingFavourite 
+                ? 'bg-stone-50 dark:bg-zinc-900 text-stone-300 border-stone-100 dark:border-zinc-800' 
+                : 'bg-white dark:bg-zinc-900 text-stone-900 dark:text-white border-stone-100 dark:border-zinc-800 hover:border-amber-200'
+            }`}
+          >
+            {isSavingFavourite ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Heart className={`h-5 w-5 ${currentUser.favourites?.some(f => f.id === currentCartItem.id) ? 'fill-amber-500 text-amber-500' : ''}`} />
+            )}
+          </button>
+        )}
+      </div>
+
+      <button 
+        id="add-to-order-button" 
+        onClick={handleSaveItemClick} 
+        className="w-full bg-stone-900 dark:bg-white text-white dark:text-stone-900 py-4 px-6 rounded-2xl font-bold text-base hover:opacity-90 active:scale-95 transition-all shadow-xl shadow-stone-900/10 dark:shadow-white/5 flex items-center justify-center gap-2 group"
+      >
+        <CheckCircle2 size={18} className="group-hover:scale-110 transition-transform" />
+        {cartItemToEdit ? 'Update My Item' : 'Add to My Order'}
+      </button>
+    </div>
+  );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
-      <div className="space-y-8 text-stone-800 dark:text-zinc-200 order-modal-content p-2">
-        {activeDrink.description && (
-          <div className="bg-stone-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-stone-100 dark:border-zinc-800">
-            <p className="text-sm text-stone-500 dark:text-zinc-400 font-serif italic leading-relaxed">
-              {activeDrink.description}
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} footer={footerContent}>
+      <div className="space-y-6 max-w-2xl mx-auto py-2">
+        
+        {/* Drink Header Info */}
+        <div className="bg-stone-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-stone-100 dark:border-zinc-800 flex items-start gap-3">
+          <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-xl text-amber-600 dark:text-amber-400">
+            <Info size={18} />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-stone-900 dark:text-white mb-0.5">{activeDrink.name}</h4>
+            <p className="text-xs text-stone-500 dark:text-zinc-400 leading-relaxed italic">
+              {activeDrink.description || "The perfect brew, precisely how you like it."}
             </p>
           </div>
-        )}
-
-        <div id="variants-section" className="space-y-4 sm:space-y-8">
-          {activeDrink.variants && activeDrink.variants.length > 0 && (
-            <div className="border-b border-stone-100 dark:border-zinc-700/50 pb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-serif text-lg sm:text-xl font-bold text-stone-900 dark:text-white">Select Size / Variant</h4>
-                <span className="text-[10px] uppercase tracking-widest bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded-full text-amber-700 dark:text-amber-400 font-bold">Required</span>
-              </div>
-              <div className="flex flex-wrap gap-2 sm:gap-4">
-                {activeDrink.variants.map(variant => {
-                  const isVarUnavailable = variant.isAvailable === false;
-                  return (
-                    <button
-                      key={variant.id}
-                      disabled={isVarUnavailable}
-                      onClick={() => setSelectedVariantId(variant.id)}
-                      className={`px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold rounded-xl sm:rounded-2xl border transition-all duration-500 ${
-                        selectedVariantId === variant.id
-                          ? 'bg-stone-900 text-white border-stone-900 shadow-xl transform scale-105'
-                          : isVarUnavailable
-                            ? 'bg-stone-50 dark:bg-zinc-800 border-stone-100 dark:border-zinc-800 text-stone-300 dark:text-zinc-600 cursor-not-allowed opacity-50'
-                            : 'bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 text-stone-500 dark:text-zinc-400 hover:border-stone-900 dark:hover:border-white hover:bg-stone-50 dark:hover:bg-zinc-800'
-                      }`}
-                    >
-                      {variant.name} <span className="ml-1 sm:ml-2 opacity-60 font-serif italic">(${(variant.price || 0).toFixed(2)})</span>
-                      {isVarUnavailable && <span className="ml-2 text-[8px] uppercase tracking-tighter opacity-100">(Out of stock)</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
 
-        <div id="modifiers-section" className="space-y-4 sm:space-y-8">
-          {drinkModifierGroups.map(group => (
-            <div key={group.id} className="border-b border-stone-100 dark:border-zinc-700/50 pb-6 last:border-0">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-serif text-lg sm:text-xl font-bold text-stone-900 dark:text-white">{group?.name || 'Group'}</h4>
-                {group?.isRequired ? (
-                  <span className="text-[10px] uppercase tracking-widest bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded-full text-amber-700 dark:text-amber-400 font-bold">Required</span>
-                ) : (
-                  <span className="text-[10px] uppercase tracking-widest text-stone-400 dark:text-zinc-500 font-semibold">Optional</span>
-                )}
+        {/* Individual Drink Name */}
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-6 h-6 flex items-center justify-center rounded-full bg-stone-900 text-white dark:bg-zinc-800 text-[10px] font-mono">01</div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500">Order Label</h3>
+          </div>
+          <div className="relative group">
+            <PenTool className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-300 dark:text-zinc-600 transition-colors group-focus-within:text-amber-600" size={16} />
+            <input
+              id="customName"
+              type="text"
+              value={customName}
+              onChange={(e) => setCustomName(e.target.value)}
+              placeholder="Who is this for? (e.g. Sarah's Oat Latte)"
+              className="w-full pl-12 pr-4 py-4 border rounded-2xl bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 dark:text-white focus:ring-4 focus:ring-amber-500/5 focus:border-amber-500/30 focus:outline-none transition-all font-serif italic text-sm placeholder:text-stone-300 dark:placeholder:text-zinc-700"
+            />
+          </div>
+        </section>
+
+        {/* Size / Variants Section */}
+        {activeDrink.variants && activeDrink.variants.length > 0 && (
+          <section className="space-y-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 flex items-center justify-center rounded-full bg-stone-900 text-white dark:bg-zinc-800 text-[10px] font-mono">02</div>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500">Select Size</h3>
               </div>
-              <div className="flex flex-wrap gap-2 sm:gap-4">
-                {group?.options?.map(option => {
-                  const selection = (selectedModifiers[group.id] || []).find(s => s?.option?.id === option?.id);
-                  const isSelected = !!selection;
-                  const isOptUnavailable = option.isAvailable === false;
-                  
-                  return (
-                    <div key={option?.id} className="flex items-center gap-2 sm:gap-3">
+              <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full uppercase tracking-tighter">Required</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {activeDrink.variants.map(variant => {
+                const isVarUnavailable = variant.isAvailable === false;
+                const isSelected = selectedVariantId === variant.id;
+                return (
+                  <button
+                    key={variant.id}
+                    disabled={isVarUnavailable}
+                    onClick={() => setSelectedVariantId(variant.id)}
+                    className={`relative p-4 rounded-2xl border text-left transition-all duration-300 group ${
+                      isSelected
+                        ? 'bg-amber-50 border-amber-500/30 ring-1 ring-amber-500/20 dark:bg-amber-900/10'
+                        : isVarUnavailable
+                          ? 'bg-stone-50 dark:bg-zinc-800/30 border-stone-100 dark:border-zinc-800 opacity-40 cursor-not-allowed'
+                          : 'bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 hover:border-amber-200 dark:hover:border-zinc-700'
+                    }`}
+                  >
+                    <div className="flex flex-col gap-1">
+                      <span className={`text-sm font-bold ${isSelected ? 'text-amber-900 dark:text-amber-200' : 'text-stone-700 dark:text-zinc-300'}`}>
+                        {variant.name}
+                      </span>
+                      <span className={`text-xs ${isSelected ? 'text-amber-700 dark:text-amber-400' : 'text-stone-400 dark:text-zinc-500'}`}>
+                        ${(variant.price || 0).toFixed(2)}
+                      </span>
+                    </div>
+                    {isSelected && (
+                      <div className="absolute top-2 right-2 text-amber-600">
+                         <CheckCircle2 size={16} />
+                      </div>
+                    )}
+                    {isVarUnavailable && (
+                      <span className="absolute bottom-2 right-2 text-[8px] uppercase font-bold text-stone-400">Sold Out</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Modifiers Sections */}
+        {drinkModifierGroups.map((group, idx) => (
+          <section key={group.id} className="space-y-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 flex items-center justify-center rounded-full bg-stone-900 text-white dark:bg-zinc-800 text-[10px] font-mono">
+                  {(idx + 3).toString().padStart(2, '0')}
+                </div>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500">{group.name}</h3>
+              </div>
+              {group.isRequired ? (
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full uppercase tracking-tighter">Required</span>
+              ) : (
+                <span className="text-[10px] font-bold text-stone-400 dark:text-zinc-600 uppercase tracking-tighter">Optional</span>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              {group.options.map(option => {
+                const selection = (selectedModifiers[group.id] || []).find(s => s.option.id === option.id);
+                const isSelected = !!selection;
+                const isOptUnavailable = option.isAvailable === false;
+                
+                return (
+                  <div key={option.id} className="group">
+                    <div className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-300 ${
+                      isSelected 
+                        ? 'bg-amber-50 border-amber-500/30 dark:bg-amber-900/10' 
+                        : isOptUnavailable
+                          ? 'bg-stone-50 dark:bg-zinc-800 opacity-40 cursor-not-allowed'
+                          : 'bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 hover:border-amber-200'
+                    }`}>
                       <button
                         disabled={isOptUnavailable}
                         onClick={() => handleModifierChange(group.id, option)}
-                        className={`px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold rounded-xl sm:rounded-2xl border transition-all duration-500 ${
-                          isSelected
-                            ? 'bg-stone-900 text-white border-stone-900 shadow-xl transform scale-105'
-                            : isOptUnavailable
-                              ? 'bg-stone-50 dark:bg-zinc-800 border-stone-100 dark:border-zinc-800 text-stone-300 dark:text-zinc-600 cursor-not-allowed opacity-50'
-                              : 'bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 text-stone-500 dark:text-zinc-400 hover:border-stone-900 dark:hover:border-white hover:bg-stone-50 dark:hover:bg-zinc-800'
-                        }`}
+                        className="flex-1 text-left flex flex-col"
                       >
-                        {option?.name || 'Option'} {option?.price > 0 && <span className="ml-1 sm:ml-2 opacity-60 font-serif italic">(+${(option?.price || 0).toFixed(2)})</span>}
-                        {isOptUnavailable && <span className="ml-2 text-[8px] uppercase tracking-tighter opacity-100">(Out of stock)</span>}
+                        <span className={`text-sm font-bold ${isSelected ? 'text-amber-900 dark:text-amber-200' : 'text-stone-700 dark:text-zinc-300'}`}>
+                          {option.name}
+                        </span>
+                        {option.price > 0 && (
+                          <span className={`text-[10px] ${isSelected ? 'text-amber-600' : 'text-stone-400'}`}>
+                            + ${(option.price || 0).toFixed(2)}
+                          </span>
+                        )}
                       </button>
                       
-                      {isSelected && group?.allowQuantity && (
-                        <div className="flex items-center gap-2 sm:gap-3 bg-stone-50 dark:bg-zinc-900 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-1 sm:py-1.5 border border-stone-100 dark:border-zinc-800 shadow-inner">
+                      {isSelected ? (
+                        <div className="flex items-center gap-1">
+                          {group.allowQuantity && (
+                            <div className="flex items-center gap-3 bg-white dark:bg-zinc-800 rounded-xl px-2 py-1 shadow-sm border border-amber-200/50 dark:border-amber-900/30">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleModifierQuantityChange(group.id, option.id, -1); }}
+                                className="p-1 text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                              >
+                                <Minus size={14} />
+                              </button>
+                              <span className="text-xs font-bold min-w-[0.75rem] text-center text-amber-900 dark:text-amber-200">{selection.quantity}</span>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleModifierQuantityChange(group.id, option.id, 1); }}
+                                className="p-1 text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                              >
+                                <Plus size={14} />
+                              </button>
+                            </div>
+                          )}
                           <button 
-                            onClick={(e) => { e.stopPropagation(); handleModifierQuantityChange(group.id, option?.id, -1); }}
-                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg sm:rounded-xl bg-white dark:bg-zinc-800 text-stone-900 dark:text-white hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all shadow-sm"
+                            onClick={() => handleModifierChange(group.id, option)}
+                            className="p-2 text-amber-600"
                           >
-                            -
-                          </button>
-                          <span className="text-xs sm:text-sm font-bold min-w-[1rem] sm:min-w-[1.5rem] text-center">{selection?.quantity || 1}</span>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleModifierQuantityChange(group.id, option?.id, 1); }}
-                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg sm:rounded-xl bg-white dark:bg-zinc-800 text-stone-900 dark:text-white hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all shadow-sm"
-                          >
-                            +
+                            <CheckCircle2 size={18} />
                           </button>
                         </div>
+                      ) : (
+                        !isOptUnavailable && (
+                          <button 
+                            onClick={() => handleModifierChange(group.id, option)}
+                            className="p-2 text-stone-200 hover:text-amber-200 transition-colors"
+                          >
+                            <Plus size={18} />
+                          </button>
+                        )
+                      )}
+                      
+                      {isOptUnavailable && (
+                        <span className="text-[8px] uppercase font-bold text-stone-400">Sold Out</span>
                       )}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          </section>
+        ))}
 
-        <div id="quantity-and-name-section" className="space-y-4 sm:space-y-8 pt-6">
-            <div className="space-y-2">
-                <label htmlFor="customName" className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 dark:text-zinc-500 ml-1">Individual Drink Name</label>
-                <input
-                    id="customName"
-                    type="text"
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    placeholder={`e.g., "Sarah's Latte"`}
-                    className="w-full p-3 sm:p-4 border rounded-xl sm:rounded-2xl bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 focus:outline-none transition-all font-serif italic text-sm sm:text-base"
-                />
+        {/* Final Quantity Section */}
+        <section className="space-y-3 pt-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-6 h-6 flex items-center justify-center rounded-full bg-stone-900 text-white dark:bg-zinc-800 text-[10px] font-mono">
+              {(drinkModifierGroups.length + 3).toString().padStart(2, '0')}
             </div>
-            
-            <div className="flex items-center justify-between bg-stone-50 dark:bg-zinc-900/30 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-zinc-800">
-              <h4 className="font-serif text-lg sm:text-xl font-bold text-stone-900 dark:text-white">Quantity</h4>
-              <div className="flex items-center gap-4 sm:gap-6">
-                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all border border-stone-100 dark:border-zinc-700 font-bold text-lg sm:text-xl">-</button>
-                <span className="text-xl sm:text-2xl font-serif font-bold w-6 sm:w-8 text-center">{quantity}</span>
-                <button onClick={() => setQuantity(q => q + 1)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all border border-stone-100 dark:border-zinc-700 font-bold text-lg sm:text-xl">+</button>
-              </div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500">How many?</h3>
+          </div>
+          <div className="flex items-center justify-between bg-stone-50 dark:bg-zinc-900/30 p-4 rounded-2xl border border-stone-100 dark:border-zinc-800">
+            <span className="text-sm font-bold text-stone-700 dark:text-zinc-300">Total Quantity</span>
+            <div className="flex items-center gap-6">
+              <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all border border-stone-100 dark:border-zinc-700">
+                <Minus size={18} />
+              </button>
+              <span className="text-xl font-serif font-bold w-6 text-center text-stone-900 dark:text-white">{quantity}</span>
+              <button onClick={() => setQuantity(q => q + 1)} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900 transition-all border border-stone-100 dark:border-zinc-700">
+                <Plus size={18} />
+              </button>
             </div>
-        </div>
-
-        <div className="pt-10 border-t border-stone-100 dark:border-zinc-800">
-            <div className="flex justify-between items-center mb-8">
-                <span className="text-stone-400 dark:text-zinc-500 font-bold uppercase tracking-[0.2em] text-[10px]">Total Amount</span>
-                <span className="text-4xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">${totalPrice.toFixed(2)}</span>
-            </div>
-            <div className="flex items-center gap-4">
-                <button id="add-to-order-button" onClick={handleSaveItemClick} className="flex-1 bg-stone-900 text-white dark:bg-white dark:text-stone-900 py-5 rounded-full font-bold text-xl hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl transform active:scale-95 flex items-center justify-center leading-none">
-                    {cartItemToEdit ? 'Update Item' : 'Add to Order'}
-                </button>
-                {currentUser && (
-                    <button 
-                      onClick={handleSaveFavourite} 
-                      disabled={isSavingFavourite}
-                      title="Save as Favourite" 
-                      className={`p-5 rounded-2xl transition-all shadow-lg border border-stone-100 dark:border-zinc-800 flex items-center justify-center min-w-[68px] ${
-                        isSavingFavourite 
-                          ? 'bg-stone-100 dark:bg-zinc-800 text-stone-400 cursor-not-allowed' 
-                          : 'bg-white text-stone-900 dark:bg-zinc-900 dark:text-white hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-stone-900'
-                      }`}
-                    >
-                        {isSavingFavourite ? (
-                          <Loader2 className="h-7 w-7 animate-spin" />
-                        ) : (
-                          <Heart className="h-7 w-7" />
-                        )}
-                    </button>
-                )}
-            </div>
-        </div>
+          </div>
+        </section>
       </div>
     </Modal>
   );
+
 };
 
 export default memo(OrderModal);

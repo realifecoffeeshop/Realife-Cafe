@@ -18,7 +18,7 @@ import { lazyWithRetry } from './lib/utils';
 const KDSView = lazyWithRetry(() => import('./components/kds/KDSView'));
 const AdminView = lazyWithRetry(() => import('./components/admin/AdminView'));
 const ProfileView = lazyWithRetry(() => import('./components/customer/ProfileView'));
-const BirthdaysView = lazyWithRetry(() => import('./components/shared/BirthdaysView'));
+const CalendarView = lazyWithRetry(() => import('./components/shared/CalendarView'));
 const LoginModal = lazyWithRetry(() => import('./components/customer/LoginModal'));
 const DevMode = lazyWithRetry(() => import('./components/admin/DevMode'));
 
@@ -274,9 +274,9 @@ const AppContent: React.FC = () => {
                 ) : <AccessDenied />;
               case View.BIRTHDAYS:
                 return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? (
-                  <ViewErrorBoundary viewName="Birthdays">
+                  <ViewErrorBoundary viewName="Calendar">
                     <React.Suspense fallback={<LoadingSpinner />}>
-                      <BirthdaysView />
+                      <CalendarView />
                     </React.Suspense>
                   </ViewErrorBoundary>
                 ) : <AccessDenied />;
