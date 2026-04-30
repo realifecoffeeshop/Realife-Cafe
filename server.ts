@@ -51,7 +51,7 @@ async function startServer() {
       if (!key || !key.startsWith('sk_')) {
         console.error('Missing or invalid STRIPE_SECRET_KEY');
         return res.status(500).json({ 
-          error: 'Stripe is not correctly configured on the server. Please add a valid STRIPE_SECRET_KEY (starting with sk_) to your environment variables in AI Studio Settings.' 
+          error: 'Stripe is not correctly configured on the server. Please add a valid STRIPE_SECRET_KEY (starting with sk_) to your environment variables (Netlify Site > Environment Variables in production).'
         });
       }
 
