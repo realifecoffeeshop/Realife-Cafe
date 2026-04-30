@@ -26,36 +26,37 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
-        target: 'esnext',
+        target: 'es2020',
         minify: 'esbuild',
         cssMinify: true,
         rollupOptions: {
           output: {
             manualChunks(id) {
-              if (id.includes('node_modules')) {
-                if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
-                  return 'vendor-react';
-                }
-                if (id.includes('firebase')) {
-                  return 'vendor-firebase';
-                }
-                if (id.includes('recharts') || id.includes('d3')) {
-                  return 'vendor-charts';
-                }
-                if (id.includes('motion') || id.includes('framer-motion')) {
-                  return 'vendor-animation';
-                }
-                if (id.includes('lucide-react')) {
-                  return 'vendor-icons';
-                }
-                if (id.includes('@dnd-kit')) {
-                  return 'vendor-dnd';
-                }
-                if (id.includes('stripe')) {
-                  return 'vendor-stripe';
-                }
-                return 'vendor-others';
+              if (!id.includes('node_modules')) return;
+              const normalized = id.replace(/\\/g, '/');
+
+              if (/\/node_modules\/(react|react-dom|scheduler)\//.test(normalized)) {
+                return 'vendor-react';
               }
+              if (/\/node_modules\/(@firebase|firebase)\//.test(normalized)) {
+                return 'vendor-firebase';
+              }
+              if (/\/node_modules\/(recharts|d3-[^/]+|victory-vendor)\//.test(normalized)) {
+                return 'vendor-charts';
+              }
+              if (/\/node_modules\/(motion|framer-motion)\//.test(normalized)) {
+                return 'vendor-animation';
+              }
+              if (/\/node_modules\/lucide-react\//.test(normalized)) {
+                return 'vendor-icons';
+              }
+              if (/\/node_modules\/@dnd-kit\//.test(normalized)) {
+                return 'vendor-dnd';
+              }
+              if (/\/node_modules\/(@stripe|stripe)\//.test(normalized)) {
+                return 'vendor-stripe';
+              }
+              return 'vendor-others';
             }
           }
         },
