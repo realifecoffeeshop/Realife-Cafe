@@ -399,8 +399,8 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                                                 <div className="space-y-1">
                                                     <p className="text-sm font-serif font-bold text-stone-900 dark:text-white">Stripe Not Configured</p>
                                                     <p className="text-xs text-stone-500 dark:text-zinc-400 leading-relaxed">
-                                                        Card payments require a <code className="px-1.5 py-0.5 bg-stone-200 dark:bg-zinc-800 rounded font-mono text-[10px]">VITE_STRIPE_PUBLISHABLE_KEY</code>. 
-                                                    Please ensure this key is added to the <strong>Settings &gt; Environment Variables</strong> menu in AI Studio.
+                                                        Card payments require a <code className="px-1.5 py-0.5 bg-stone-200 dark:bg-zinc-800 rounded font-mono text-[10px]">VITE_STRIPE_PUBLISHABLE_KEY</code>.
+                                                    Please ensure this key is added under <strong>Netlify Site &gt; Environment Variables</strong> and redeploy.
                                                     </p>
                                                 </div>
                                             </div>
