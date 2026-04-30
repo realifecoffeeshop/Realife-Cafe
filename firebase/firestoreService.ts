@@ -836,18 +836,25 @@ export const onAvailabilitiesUpdate = (callback: (availabilities: any[]) => void
     return () => ref.off('value', listener);
 };
 
-export const saveAvailability = async (availability: any): Promise<void> => {
-    if (!isFirebaseConfigured || !database) return;
+export const saveAvailability = async (availability: any): Promise<string> => {
+    if (!isFirebaseConfigured || !database) return '';
     try {
         const { id, ...data } = availability;
         const sanitized = sanitizeForFirebase(data);
         const final = JSON.parse(JSON.stringify(sanitized, (k, v) => v === undefined ? null : v));
-        if (id) {
+        if (id && id.length > 0) {
             await database.ref(`availabilities/${id}`).set(final);
+            return id;
         } else {
-            await database.ref('availabilities').push(final);
+            const newRef = database.ref('availabilities').push();
+            await newRef.set(final);
+            return newRef.key as string;
         }
     } catch (error: any) {
+        if (isPermissionError(error)) {
+            console.error("Firebase Permission Denied in saveAvailability:", error.message || error);
+            throw new Error(`Permission Denied: You do not have permission to save this availability. Path: availabilities/${availability.id || 'new'}`);
+        }
         console.error("Error saving availability:", error);
         throw error;
     }
@@ -855,9 +862,17 @@ export const saveAvailability = async (availability: any): Promise<void> => {
 
 export const deleteAvailability = async (id: string): Promise<void> => {
     if (!isFirebaseConfigured || !database) return;
+    if (!id || id.trim() === '') {
+        console.warn("[Firebase] Attempted to delete availability with empty ID. Ignoring.");
+        return;
+    }
     try {
         await database.ref(`availabilities/${id}`).remove();
     } catch (error: any) {
+        if (isPermissionError(error)) {
+            console.error("Firebase Permission Denied in deleteAvailability:", error.message || error);
+            throw new Error(`Permission Denied: You do not have permission to delete this availability record. Path: availabilities/${id}`);
+        }
         console.error("Error deleting availability:", error);
         throw error;
     }
@@ -881,16 +896,19 @@ export const onRostersUpdate = (callback: (rosters: any[]) => void, errorCallbac
     return () => ref.off('value', listener);
 };
 
-export const saveRoster = async (roster: any): Promise<void> => {
-    if (!isFirebaseConfigured || !database) return;
+export const saveRoster = async (roster: any): Promise<string> => {
+    if (!isFirebaseConfigured || !database) return '';
     try {
         const { id, ...data } = roster;
         const sanitized = sanitizeForFirebase(data);
         const final = JSON.parse(JSON.stringify(sanitized, (k, v) => v === undefined ? null : v));
-        if (id) {
+        if (id && id.length > 0) {
             await database.ref(`rosters/${id}`).set(final);
+            return id;
         } else {
-            await database.ref('rosters').push(final);
+            const newRef = database.ref('rosters').push();
+            await newRef.set(final);
+            return newRef.key as string;
         }
     } catch (error: any) {
         console.error("Error saving roster:", error);
@@ -900,6 +918,7 @@ export const saveRoster = async (roster: any): Promise<void> => {
 
 export const deleteRoster = async (rosterId: string): Promise<void> => {
     if (!isFirebaseConfigured || !database) return;
+    if (!rosterId || rosterId.trim() === '') return;
     try {
         await database.ref(`rosters/${rosterId}`).remove();
     } catch (error: any) {

@@ -65,12 +65,23 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({
   };
 
   return (
-    <form id="payment-form" onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement 
-        id="payment-element" 
-        options={{ layout: 'tabs' }} 
-        onReady={() => setIsReady(true)}
-      />
+    <form id="payment-form" onSubmit={handleSubmit} className="space-y-4 min-h-[150px] flex flex-col">
+      {!isReady && (
+        <div className="flex flex-col items-center justify-center py-8 space-y-2 flex-grow">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-stone-900 dark:border-white opacity-40"></div>
+          <p className="text-[10px] uppercase tracking-widest text-stone-400 font-bold">Secure Input Loading...</p>
+        </div>
+      )}
+      <div className={isReady ? 'block' : 'hidden'}>
+        <PaymentElement 
+          id="payment-element" 
+          options={{ layout: 'tabs' }} 
+          onReady={() => {
+            console.log('[Stripe] PaymentElement ready');
+            setIsReady(true);
+          }}
+        />
+      </div>
       {message && (
         <div id="payment-message" className="text-red-500 text-xs font-bold uppercase tracking-widest text-center bg-red-50 dark:bg-red-900/20 p-3 rounded-xl border border-red-100 dark:border-red-900/30">
           {message}

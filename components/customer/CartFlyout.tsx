@@ -118,7 +118,9 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
         if (paymentMethod === PaymentMethod.CARD && finalTotal > 0 && isOpen && IS_STRIPE_CONFIGURED) {
             const fetchPaymentIntent = async () => {
                 setIsStripeLoading(true);
+                setClientSecret(null); // Clear previous secret while loading
                 try {
+                    console.log('[Stripe] Fetching PaymentIntent for amount:', finalTotal);
                     const response = await fetch('/api/create-payment-intent', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -127,12 +129,13 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                     
                     if (!response.ok) {
                         const errorText = await response.text();
+                        console.error('[Stripe] Server error response:', errorText);
                         let errorMsg = `Server error: ${response.status}`;
                         try {
                             const errorJson = JSON.parse(errorText);
                             errorMsg = errorJson.error || errorMsg;
                         } catch (e) {
-                            // Non-JSON error, keep the original errorMsg
+                            // Non-JSON error
                         }
                         throw new Error(errorMsg);
                     }
@@ -141,10 +144,12 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                     if (data.clientSecret) {
                         setClientSecret(data.clientSecret);
                     } else {
-                        console.error('Failed to get client secret:', data.error);
+                        console.error('[Stripe] Failed to get client secret from data:', data);
+                        throw new Error('No client secret returned from server.');
                     }
                 } catch (err: any) {
-                    console.error('Error fetching payment intent:', err.message || err);
+                    console.error('[Stripe] Error fetching payment intent:', err.message || err);
+                    addToast(`Payment Setup Failed: ${err.message}`, 'error');
                 } finally {
                     setIsStripeLoading(false);
                 }
@@ -373,6 +378,7 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                                     <select value={paymentMethod} onChange={e => onPaymentMethodChange(e.target.value as PaymentMethod)} className="w-full p-3 md:p-4 border rounded-xl md:rounded-2xl bg-white dark:bg-zinc-900 border-stone-100 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-stone-900/10 focus:outline-none transition-all appearance-none font-serif italic text-sm">
                                         {Object.values(PaymentMethod).map(method => {
                                             if (method === PaymentMethod.ADMIN_PROCESSING && !isAdmin) return null;
+                                            if (method === PaymentMethod.CARD && finalTotal === 0) return null;
                                             return <option key={method} value={method}>{method}</option>;
                                         })}
                                     </select>
@@ -422,8 +428,8 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                                             <p className="text-[10px] uppercase tracking-widest text-stone-400">Initializing Secure Payment...</p>
                                         </div>
                                     ) : clientSecret ? (
-                                        <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-stone-100 dark:border-zinc-800 shadow-sm">
-                                            <Elements stripe={lazyStripePromise} options={stripeOptions}>
+                                        <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border-2 border-stone-100 dark:border-zinc-800 shadow-inner min-h-[180px]">
+                                            <Elements key={clientSecret} stripe={lazyStripePromise} options={stripeOptions}>
                                                 <StripePaymentForm 
                                                     amount={finalTotal} 
                                                     onSuccess={handleStripeSuccess}
@@ -434,8 +440,15 @@ const CartFlyout: React.FC<CartFlyoutProps> = ({
                                             </Elements>
                                         </div>
                                     ) : (
-                                        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl text-xs text-red-800 dark:text-red-200">
-                                            <p>Failed to initialize payment. Please try again or choose another method.</p>
+                                        <div className="p-5 bg-red-50 dark:bg-red-900/10 border-2 border-red-100 dark:border-red-900/30 rounded-3xl text-center space-y-2">
+                                            <div className="text-red-500 dark:text-red-400 font-bold uppercase tracking-widest text-[10px]">Payment Setup Error</div>
+                                            <p className="text-xs text-red-700 dark:text-red-300">Clicking 'Credit/Debit Card' again may fix this, or try another method.</p>
+                                            <button 
+                                                onClick={() => { onPaymentMethodChange(PaymentMethod.COLLECTION); setTimeout(() => onPaymentMethodChange(PaymentMethod.CARD), 100); }}
+                                                className="text-[10px] font-bold text-red-600 dark:text-red-400 underline uppercase tracking-tighter"
+                                            >
+                                                Retry Initialization
+                                            </button>
                                         </div>
                                     )}
                                 </div>

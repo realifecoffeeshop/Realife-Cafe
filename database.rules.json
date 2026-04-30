@@ -1,34 +1,34 @@
 {
   "rules": {
     // 🔒 Deny everything by default, but allow owners full access
-    // Note: Email checks in RTDB rules are case-sensitive.
-    ".read": "auth != null && (auth.token.email === 'realifecoffeeshop@gmail.com' || auth.token.email === 'josephpadua.24@gmail.com')",
-    ".write": "auth != null && (auth.token.email === 'realifecoffeeshop@gmail.com' || auth.token.email === 'josephpadua.24@gmail.com')",
+    // Note: Email checks in RTDB rules are now case-insensitive using .matches() with (?i)
+    ".read": "auth != null && (auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || auth.token.email.matches('(?i)^josephpadua\\\\.24@gmail\\\\.com$'))",
+    ".write": "auth != null && (auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || auth.token.email.matches('(?i)^josephpadua\\\\.24@gmail\\\\.com$'))",
 
     "users": {
       // Administrators and the owner can see the full user list
-      ".read": "auth != null && (auth.token.email === 'realifecoffeeshop@gmail.com' || auth.token.email === 'josephpadua.24@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'Administrator')",
-      ".write": "auth != null && (auth.token.email === 'realifecoffeeshop@gmail.com' || auth.token.email === 'josephpadua.24@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'Administrator')",
+      ".read": "auth != null && (auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || auth.token.email.matches('(?i)^josephpadua\\\\.24@gmail\\\\.com$') || root.child('users').child(auth.uid).child('role').val() === 'Administrator')",
+      ".write": "auth != null && (auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || auth.token.email.matches('(?i)^josephpadua\\\\.24@gmail\\\\.com$') || root.child('users').child(auth.uid).child('role').val() === 'Administrator')",
       "$uid": {
         // Users can read/write their own profiles; Admins/Owner can read/write any profile
-        ".read": "auth != null && ($uid === auth.uid || auth.token.email === 'realifecoffeeshop@gmail.com' || auth.token.email === 'josephpadua.24@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'Administrator')",
-        ".write": "auth != null && ($uid === auth.uid || auth.token.email === 'realifecoffeeshop@gmail.com' || auth.token.email === 'josephpadua.24@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'Administrator')"
+        ".read": "auth != null && ($uid === auth.uid || auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || auth.token.email.matches('(?i)^josephpadua\\\\.24@gmail\\\\.com$') || root.child('users').child(auth.uid).child('role').val() === 'Administrator')",
+        ".write": "auth != null && ($uid === auth.uid || auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || auth.token.email.matches('(?i)^josephpadua\\\\.24@gmail\\\\.com$') || root.child('users').child(auth.uid).child('role').val() === 'Administrator')"
       },
       ".indexOn": ["role"]
     },
 
     "customers": {
        // Only Staff and Owner can access historical customer data
-       ".read": "auth != null && (auth.token.email === 'realifecoffeeshop@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'Administrator' || root.child('users').child(auth.uid).child('role').val() === 'Kitchen Staff')",
-       ".write": "auth != null && (auth.token.email === 'realifecoffeeshop@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'Administrator' || root.child('users').child(auth.uid).child('role').val() === 'Kitchen Staff')"
+       ".read": "auth != null && (auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || root.child('users').child(auth.uid).child('role').val() === 'Administrator' || root.child('users').child(auth.uid).child('role').val() === 'Kitchen Staff')",
+       ".write": "auth != null && (auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || root.child('users').child(auth.uid).child('role').val() === 'Administrator' || root.child('users').child(auth.uid).child('role').val() === 'Kitchen Staff')"
     },
 
     "orders": {
       // Global read for staff; restricted for customers
-      ".read": "auth != null && (auth.token.email === 'realifecoffeeshop@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'Administrator' || root.child('users').child(auth.uid).child('role').val() === 'Kitchen Staff')",
+      ".read": "auth != null && (auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || root.child('users').child(auth.uid).child('role').val() === 'Administrator' || root.child('users').child(auth.uid).child('role').val() === 'Kitchen Staff')",
       "$orderId": {
-        ".read": "auth != null && (auth.token.email === 'realifecoffeeshop@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'Administrator' || root.child('users').child(auth.uid).child('role').val() === 'Kitchen Staff' || data.child('customerId').val() === auth.uid)",
-        ".write": "auth != null && (auth.token.email === 'realifecoffeeshop@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'Administrator' || root.child('users').child(auth.uid).child('role').val() === 'Kitchen Staff' || (!data.exists() && (newData.child('customerId').val() === auth.uid || newData.child('customerId').val().contains('simulation-'))) || (data.exists() && data.child('customerId').val() === auth.uid && newData.child('status').val() === data.child('status').val()))",
+        ".read": "auth != null && (auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || root.child('users').child(auth.uid).child('role').val() === 'Administrator' || root.child('users').child(auth.uid).child('role').val() === 'Kitchen Staff' || data.child('customerId').val() === auth.uid)",
+        ".write": "auth != null && (auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || root.child('users').child(auth.uid).child('role').val() === 'Administrator' || root.child('users').child(auth.uid).child('role').val() === 'Kitchen Staff' || (!data.exists() && (newData.child('customerId').val() === auth.uid || newData.child('customerId').val().contains('simulation-'))) || (data.exists() && data.child('customerId').val() === auth.uid && newData.child('status').val() === data.child('status').val()))",
         ".validate": "!newData.exists() || newData.hasChildren(['customerId', 'createdAt', 'items'])"
       },
       ".indexOn": ["createdAt", "status", "customerId"]
@@ -36,15 +36,16 @@
 
     "menu": {
       ".read": true,
-      ".write": "auth != null && (auth.token.email === 'realifecoffeeshop@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'Administrator')"
+      ".write": "auth != null && (auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || root.child('users').child(auth.uid).child('role').val() === 'Administrator')"
     },
 
     "availabilities": {
       // Staff can read all availabilities for coordination; Admins have full access
       ".read": "auth != null",
+      ".write": "auth != null && (auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || auth.token.email.matches('(?i)^josephpadua\\\\.24@gmail\\\\.com$') || root.child('users').child(auth.uid).child('role').val() === 'Administrator')",
       "$availabilityId": {
-        // Admins can write any; Staff can write/delete their own availability
-        ".write": "auth != null && (auth.token.email === 'realifecoffeeshop@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'Administrator' || (newData.exists() && newData.child('userId').val() === auth.uid) || (data.exists() && data.child('userId').val() === auth.uid))"
+        // Staff can write/delete their own availability
+        ".write": "auth != null && (!newData.exists() ? (data.exists() && data.child('userId').val() === auth.uid) : (newData.child('userId').val() === auth.uid))"
       },
       ".indexOn": ["userId", "date"]
     },
@@ -52,12 +53,12 @@
     "rosters": {
       // Authenticated users can read rosters; Only Admins can write
       ".read": "auth != null",
-      ".write": "auth != null && (auth.token.email === 'realifecoffeeshop@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'Administrator')",
+      ".write": "auth != null && (auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || root.child('users').child(auth.uid).child('role').val() === 'Administrator')",
       ".indexOn": ["date"]
     },
 
     "feedback": {
-      ".read": "auth != null && (auth.token.email === 'realifecoffeeshop@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'Administrator')",
+      ".read": "auth != null && (auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || root.child('users').child(auth.uid).child('role').val() === 'Administrator')",
       "$feedbackId": {
         ".write": "auth != null && !data.exists()"
       }
@@ -78,7 +79,7 @@
     },
     "calendarNotes": {
       ".read": "auth != null",
-      ".write": "auth != null && (auth.token.email === 'realifecoffeeshop@gmail.com' || auth.token.email === 'josephpadua.24@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'Administrator')",
+      ".write": "auth != null && (auth.token.email.matches('(?i)^realifecoffeeshop@gmail\\\\.com$') || auth.token.email.matches('(?i)^josephpadua\\\\.24@gmail\\\\.com$') || root.child('users').child(auth.uid).child('role').val() === 'Administrator')",
       "$noteId": {
         ".validate": "newData.hasChildren(['date', 'text', 'color', 'createdBy', 'createdAt'])"
       },

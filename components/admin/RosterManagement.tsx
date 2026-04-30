@@ -28,17 +28,17 @@ interface TeamMemberLabelProps {
 
 const TeamMemberLabel: React.FC<TeamMemberLabelProps> = ({ name, role }) => {
     return (
-        <div className="flex items-center gap-3 py-1">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+        <div className="flex items-center gap-1.5 sm:gap-3 py-1">
+            <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-[8px] sm:text-xs shrink-0 ${
                 role === UserRole.ADMIN ? 'bg-amber-100 text-amber-700' :
                 role === UserRole.KITCHEN ? 'bg-blue-100 text-blue-700' :
                 'bg-stone-100 text-stone-700'
             }`}>
                 {name.charAt(0).toUpperCase()}
             </div>
-            <div>
-                <div className="font-serif font-bold text-stone-900 dark:text-white leading-tight">{name}</div>
-                <div className="text-[10px] text-stone-400 uppercase tracking-widest font-sans">{role}</div>
+            <div className="min-w-0">
+                <div className="font-serif font-bold text-stone-900 dark:text-white leading-tight truncate text-[10px] sm:text-base">{name}</div>
+                <div className="text-[7px] sm:text-[10px] text-stone-400 uppercase tracking-widest font-sans truncate">{role}</div>
             </div>
         </div>
     );
@@ -54,32 +54,32 @@ interface RosterCellProps {
 
 const RosterCell: React.FC<RosterCellProps> = ({ date, isAssigned, avail, onToggle, isDisabled }) => {
     return (
-        <td className={`p-2 text-center align-middle transition-colors ${isDisabled ? 'opacity-40 grayscale' : ''}`}>
-            <div className={`flex flex-row items-center justify-center gap-2 whitespace-nowrap ${isDisabled ? 'pointer-events-none' : ''}`}>
+        <td className={`px-0.5 sm:px-2 py-1 sm:py-2 text-center align-middle transition-colors ${isDisabled ? 'opacity-40 grayscale' : ''}`}>
+            <div className={`flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 whitespace-nowrap ${isDisabled ? 'pointer-events-none' : ''}`}>
                 {avail && (
                     <div 
-                        className={`flex items-center justify-center w-6 h-6 rounded-lg ${
+                        className={`flex items-center justify-center w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg shrink-0 ${
                             avail.status === 'available' ? 'bg-green-100 text-green-600' :
                             avail.status === 'unavailable' ? 'bg-red-100 text-red-600' :
                             'bg-yellow-100 text-yellow-600'
                         }`}
                         title={avail.notes || avail.status}
                     >
-                        {avail.status === 'available' ? <Check size={12} strokeWidth={3} /> :
-                         avail.status === 'unavailable' ? <X size={12} strokeWidth={3} /> :
-                         <Clock size={12} strokeWidth={3} />}
+                        {avail.status === 'available' ? <Check size={8} strokeWidth={4} className="sm:w-3 sm:h-3" /> :
+                         avail.status === 'unavailable' ? <X size={8} strokeWidth={4} className="sm:w-3 sm:h-3" /> :
+                         <Clock size={8} strokeWidth={4} className="sm:w-3 sm:h-3" />}
                     </div>
                 )}
                 <button
                     onClick={onToggle}
                     disabled={isDisabled}
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm ${
+                    className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center transition-all shadow-sm shrink-0 ${
                         isAssigned 
                             ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900 shadow-stone-900/10' 
                             : 'bg-white text-stone-300 hover:text-stone-500 border border-stone-100 hover:border-stone-200 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-600'
                     }`}
                 >
-                    <Calendar size={16} />
+                    <Calendar size={12} className="sm:w-4 sm:h-4" />
                 </button>
             </div>
         </td>
@@ -167,8 +167,9 @@ const RosterManagement: React.FC = () => {
         };
 
         try {
-            await saveRoster(updatedRoster);
-            dispatch({ type: 'UPDATE_ROSTER', payload: updatedRoster });
+            const savedId = await saveRoster(updatedRoster);
+            const savedRoster = { ...updatedRoster, id: savedId };
+            dispatch({ type: 'UPDATE_ROSTER', payload: savedRoster });
             addToast(`Assigned ${user.name} for ${date}`, 'success');
         } catch (err) {
             console.error("Failed to add assignment:", err);
@@ -261,9 +262,10 @@ const RosterManagement: React.FC = () => {
         
         if (myStatus === null) {
             // Delete existing if it exists
-            if (existing) {
+            if (existing && existing.id) {
                 try {
                     await deleteAvailability(existing.id);
+                    // Local optimistic update
                     dispatch({ type: 'SET_AVAILABILITIES', payload: availabilities.filter(a => a.id !== existing.id) });
                 } catch (err) {
                     console.error("Failed to delete availability:", err);
@@ -283,8 +285,9 @@ const RosterManagement: React.FC = () => {
         };
 
         try {
-            await saveAvailability(newAvailability);
-            dispatch({ type: 'UPDATE_AVAILABILITY', payload: newAvailability });
+            const savedId = await saveAvailability(newAvailability);
+            const savedAvailability = { ...newAvailability, id: savedId };
+            dispatch({ type: 'UPDATE_AVAILABILITY', payload: savedAvailability });
             if (!isSavingBulk) addToast("Your availability updated.", 'success');
         } catch (err) {
             console.error("Failed to update availability:", err);
@@ -295,7 +298,7 @@ const RosterManagement: React.FC = () => {
 
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
+        <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-4 sm:space-y-8">
             <header className="flex flex-col md:flex-row justify-between items-center gap-6">
                 <div>
                     <h2 className="text-4xl font-serif font-bold text-stone-900 dark:text-white tracking-tight">
@@ -324,10 +327,10 @@ const RosterManagement: React.FC = () => {
             </header>
 
             {/* Quick Summary View (Table) */}
-            <section className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-stone-100 dark:border-zinc-800 overflow-hidden shadow-2xl">
-                <div className="p-8 border-b border-stone-100 dark:border-zinc-800 flex items-center justify-between">
-                    <h3 className="text-xl font-serif font-bold text-stone-900 dark:text-white">Monthly Summary</h3>
-                    <div className="flex items-center gap-4">
+            <section className="bg-white dark:bg-zinc-900 rounded-3xl sm:rounded-[2.5rem] border border-stone-100 dark:border-zinc-800 overflow-hidden shadow-2xl">
+                <div className="p-4 sm:p-8 border-b border-stone-100 dark:border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <h3 className="text-lg sm:text-xl font-serif font-bold text-stone-900 dark:text-white">Monthly Summary</h3>
+                    <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
                         <div className="flex items-center gap-2 text-[10px] text-stone-400 font-bold uppercase tracking-widest bg-stone-50 dark:bg-zinc-800/50 px-4 py-2 rounded-full hidden md:flex">
                             <Info size={12} />
                             Assigned Days are highlighted.
@@ -335,7 +338,7 @@ const RosterManagement: React.FC = () => {
                         <button
                             onClick={handleToggleMonthPublish}
                             disabled={isSavingBulk}
-                            className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-md active:scale-95 ${
+                            className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest transition-all shadow-md active:scale-95 flex-1 sm:flex-none ${
                                 isMonthPublished 
                                     ? 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400' 
                                     : 'bg-green-600 text-white hover:bg-green-700 shadow-green-900/10'
@@ -352,14 +355,14 @@ const RosterManagement: React.FC = () => {
                     </div>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-left border-separate border-spacing-0">
                         <thead>
                             <tr className="bg-stone-50/50 dark:bg-zinc-800/30">
-                                <th className="px-8 py-4 text-[10px] text-stone-400 font-bold uppercase tracking-widest border-r border-stone-100 dark:border-zinc-800 sticky left-0 bg-stone-50 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Team</th>
+                                <th className="px-2 sm:px-8 py-3 sm:py-4 text-[7px] sm:text-[10px] text-stone-400 font-bold uppercase tracking-widest border-r border-stone-100 dark:border-zinc-800 sticky left-0 bg-stone-50 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)] max-w-[70px] sm:max-w-none">Team</th>
                                 {monthSundays.map(sunday => (
-                                    <th key={formatDate(sunday)} className="px-4 py-4 text-center min-w-[80px]">
-                                        <div className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">{currentDate.toLocaleString('default', { month: 'short' })}</div>
-                                        <div className="text-xl font-serif font-bold text-stone-900 dark:text-white leading-none">{sunday.getDate()}</div>
+                                    <th key={formatDate(sunday)} className="px-0.5 sm:px-4 py-2 sm:py-4 text-center min-w-[35px] sm:min-w-[80px]">
+                                        <div className="text-[7px] sm:text-[10px] text-stone-400 font-bold uppercase tracking-widest leading-none mb-0.5">{currentDate.toLocaleString('default', { month: 'short' })}</div>
+                                        <div className="text-xs sm:text-xl font-serif font-bold text-stone-900 dark:text-white leading-none whitespace-nowrap">{sunday.getDate()}</div>
                                     </th>
                                 ))}
                             </tr>
@@ -367,7 +370,7 @@ const RosterManagement: React.FC = () => {
                         <tbody className="divide-y divide-stone-50 dark:divide-zinc-800/50">
                             {users.filter(u => u.role !== UserRole.CUSTOMER).map(staff => (
                                 <tr key={staff.id} className="hover:bg-stone-50/10 dark:hover:bg-zinc-800/10 group">
-                                    <td className="px-8 py-4 border-r border-stone-100 dark:border-zinc-800 bg-stone-50 dark:bg-zinc-900 sticky left-0 z-10 group-hover:bg-stone-100 dark:group-hover:bg-zinc-800 transition-colors shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                    <td className="px-2 sm:px-8 py-2 sm:py-4 border-r border-stone-100 dark:border-zinc-800 bg-stone-50 dark:bg-zinc-900 sticky left-0 z-10 group-hover:bg-stone-100 dark:group-hover:bg-zinc-800 transition-colors shadow-[2px_0_5px_rgba(0,0,0,0.05)] max-w-[70px] sm:max-w-none">
                                         <TeamMemberLabel name={staff.name} role={staff.role} />
                                     </td>
                                     {monthSundays.map(sunday => {
