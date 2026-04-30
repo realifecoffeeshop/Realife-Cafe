@@ -2,6 +2,7 @@
 import React, { useState, memo } from 'react';
 import { motion } from 'motion/react';
 import { Drink } from '../../types';
+import SmartImage from '../shared/SmartImage';
 
 interface DrinkCardProps {
   drink: Drink;
@@ -11,21 +12,6 @@ interface DrinkCardProps {
 }
 
 const DrinkCard: React.FC<DrinkCardProps> = ({ drink, onSelect, onQuickAdd, priority = false }) => {
-  const [imageLoaded, setImageLoaded] = useState(false);
-
-  // Optimization: Use smaller width for compact grid items
-  const getOptimizedUrl = (width: number) => {
-    if (!drink.imageUrl?.includes('unsplash.com')) return drink.imageUrl;
-    const separator = drink.imageUrl.includes('?') ? '&' : '?';
-    // Use lower quality (60) for mobile thumbnails to save bandwidth
-    return `${drink.imageUrl}${separator}w=${width}&q=60&auto=format`;
-  };
-
-  const optimizedImage = getOptimizedUrl(300);
-  const srcSet = drink.imageUrl?.includes('unsplash.com') 
-    ? `${getOptimizedUrl(200)} 200w, ${getOptimizedUrl(300)} 300w, ${getOptimizedUrl(500)} 500w`
-    : undefined;
-
   const isUnavailable = drink.isAvailable === false;
 
   return (
@@ -37,23 +23,15 @@ const DrinkCard: React.FC<DrinkCardProps> = ({ drink, onSelect, onQuickAdd, prio
       onClick={() => !isUnavailable && onSelect(drink)}
       aria-label={`Select ${drink?.name || 'Item'}${isUnavailable ? ' (Unavailable)' : ''}`}
     >
-      <div className="absolute inset-0 bg-stone-100 dark:bg-zinc-800">
-        <motion.img 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: imageLoaded ? 1 : 0 }}
-            transition={{ duration: 0.5 }}
-            whileHover={{ scale: 1.1 }}
-            className="w-full h-full object-cover"
-            src={optimizedImage} 
-            srcSet={srcSet}
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 200px"
-            alt={drink?.name || 'Drink'} 
-            loading={priority ? "eager" : "lazy"}
-            decoding="async"
-            onLoad={() => setImageLoaded(true)}
-            {...(priority ? { fetchPriority: "high" } : {})}
-        />
-      </div>
+      <SmartImage 
+          src={drink.imageUrl || ''}
+          alt={drink?.name || 'Drink'}
+          width={300}
+          quality={60}
+          containerClassName="absolute inset-0"
+          className="w-full h-full object-cover group-hover:scale-110"
+          loading={priority ? "eager" : "lazy"}
+      />
 
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-500"></div>
       

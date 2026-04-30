@@ -1,4 +1,5 @@
-import * as React from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import ErrorBoundary from './components/shared/ErrorBoundary';
 import { AppProvider } from './context/AppContext';
 import { useApp } from './context/useApp';
@@ -155,19 +156,18 @@ const ViewErrorBoundary: React.FC<{ children: React.ReactNode; viewName: string 
   </ErrorBoundary>
 );
 
-import { motion, AnimatePresence } from 'motion/react';
 
 const AppContent: React.FC = () => {
   const { state, dispatch, isInitializingAuth } = useApp();
   const { addToast } = useToast();
   const { currentUser, theme, permissionError, globalError } = state;
-  const [currentView, setCurrentView] = React.useState<View>(View.CUSTOMER);
-  const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
-  const [infoModalContent, setInfoModalContent] = React.useState<{ title: string; content: React.ReactNode } | null>(null);
-  const [localError, setLocalError] = React.useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<View>(View.CUSTOMER);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [infoModalContent, setInfoModalContent] = useState<{ title: string; content: React.ReactNode } | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   
   // Listen for global errors from context or other sources
-  React.useEffect(() => {
+  useEffect(() => {
     const handleGlobalError = (event: ErrorEvent) => {
         if (event.message.includes('Firebase')) return; // Handled by permissionError or context
         setLocalError(event.message);
@@ -176,7 +176,7 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('error', handleGlobalError);
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const root = window.document.documentElement;
     if (theme === 'dark') {
         root.classList.add('dark');
@@ -243,49 +243,49 @@ const AppContent: React.FC = () => {
               case View.CUSTOMER:
                 return (
                   <ViewErrorBoundary viewName="Menu">
-                    <React.Suspense fallback={<LoadingSpinner />}>
+                    <Suspense fallback={<LoadingSpinner />}>
                         <CustomerView />
-                    </React.Suspense>
+                    </Suspense>
                   </ViewErrorBoundary>
                 );
               case View.KDS:
                 return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? (
                   <ViewErrorBoundary viewName="KDS">
-                    <React.Suspense fallback={<LoadingSpinner />}>
+                    <Suspense fallback={<LoadingSpinner />}>
                       <KDSView />
-                    </React.Suspense>
+                    </Suspense>
                   </ViewErrorBoundary>
                 ) : <AccessDenied />;
               case View.ADMIN:
                 return currentUser?.role === UserRole.ADMIN ? (
                   <ViewErrorBoundary viewName="Admin Dashboard">
-                    <React.Suspense fallback={<LoadingSpinner />}>
+                    <Suspense fallback={<LoadingSpinner />}>
                       <AdminView />
-                    </React.Suspense>
+                    </Suspense>
                   </ViewErrorBoundary>
                 ) : <AccessDenied />;
               case View.PROFILE:
                 return currentUser ? (
                   <ViewErrorBoundary viewName="Profile">
-                    <React.Suspense fallback={<LoadingSpinner />}>
+                    <Suspense fallback={<LoadingSpinner />}>
                       <ProfileView />
-                    </React.Suspense>
+                    </Suspense>
                   </ViewErrorBoundary>
                 ) : <AccessDenied />;
               case View.BIRTHDAYS:
                 return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? (
                   <ViewErrorBoundary viewName="Calendar">
-                    <React.Suspense fallback={<LoadingSpinner />}>
+                    <Suspense fallback={<LoadingSpinner />}>
                       <CalendarView />
-                    </React.Suspense>
+                    </Suspense>
                   </ViewErrorBoundary>
                 ) : <AccessDenied />;
               case View.DEV_MODE:
                 return currentUser?.role === UserRole.ADMIN ? (
                   <ViewErrorBoundary viewName="Dev Mode">
-                    <React.Suspense fallback={<LoadingSpinner />}>
+                    <Suspense fallback={<LoadingSpinner />}>
                       <DevMode />
-                    </React.Suspense>
+                    </Suspense>
                   </ViewErrorBoundary>
                 ) : <AccessDenied />;
               default:
@@ -362,9 +362,9 @@ const AppContent: React.FC = () => {
         {renderCurrentView()}
       </main>
       <Feedback />
-      <React.Suspense fallback={null}>
+      <Suspense fallback={null}>
         <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
-      </React.Suspense>
+      </Suspense>
       {infoModalContent && (
         <Modal 
             isOpen={!!infoModalContent} 
