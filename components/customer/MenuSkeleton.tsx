@@ -8,10 +8,10 @@ const MenuSkeleton: React.FC<MenuSkeletonProps> = ({ viewMode = 'compact' }) => 
   return (
     <div className={viewMode === 'compact' 
       ? "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-4 lg:gap-6"
-      : "grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6"
+      : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"
     }>
       {[...Array(viewMode === 'compact' ? 12 : 6)].map((_, i) => (
-        <div key={i} className={`${viewMode === 'compact' ? 'h-56 sm:h-64' : 'h-[12rem] sm:h-[14rem] md:h-[16rem]'} bg-stone-100 dark:bg-zinc-800 rounded-[2rem] animate-pulse relative overflow-hidden`}>
+        <div key={i} className={`${viewMode === 'compact' ? 'h-56 sm:h-64' : 'h-44 sm:h-48 md:h-52'} bg-stone-100 dark:bg-zinc-800 rounded-[2rem] animate-pulse relative overflow-hidden`}>
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-stone-200/50 dark:via-zinc-700/50 to-transparent -translate-x-full animate-shimmer"></div>
           {viewMode === 'compact' ? (
             <div className="absolute bottom-6 left-6 right-6 space-y-3">

@@ -1,7 +1,6 @@
 
 import React, { useState, memo } from 'react';
 import { Drink } from '../../types';
-import SmartImage from '../shared/SmartImage';
 
 interface DetailedDrinkCardProps {
   drink: Drink;
@@ -11,6 +10,21 @@ interface DetailedDrinkCardProps {
 }
 
 const DetailedDrinkCard: React.FC<DetailedDrinkCardProps> = ({ drink, onSelect, onQuickAdd, priority = false }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Optimization: Use smaller width for detailed view items
+  const getOptimizedUrl = (width: number) => {
+    if (!drink.imageUrl?.includes('unsplash.com')) return drink.imageUrl;
+    const separator = drink.imageUrl.includes('?') ? '&' : '?';
+    // Use slightly higher quality for detailed view but still optimized (70)
+    return `${drink.imageUrl}${separator}w=${width}&q=70&auto=format`;
+  };
+
+  const optimizedImage = getOptimizedUrl(400);
+  const srcSet = drink.imageUrl?.includes('unsplash.com') 
+    ? `${getOptimizedUrl(200)} 200w, ${getOptimizedUrl(400)} 400w, ${getOptimizedUrl(600)} 600w`
+    : undefined;
+
   const isUnavailable = drink.isAvailable === false;
 
   return (
@@ -20,14 +34,16 @@ const DetailedDrinkCard: React.FC<DetailedDrinkCardProps> = ({ drink, onSelect, 
     >
       {/* Image Section - Fixed width on mobile, flexible on larger screens */}
       <div className="w-[110px] sm:w-[180px] md:w-[240px] h-full relative overflow-hidden bg-stone-100 dark:bg-zinc-950 order-1 flex-shrink-0">
-        <SmartImage 
-          src={drink.imageUrl || ''}
-          alt={drink?.name || 'Drink'}
-          width={400}
-          quality={70}
-          containerClassName="w-full h-full"
-          className="w-full h-full object-cover group-hover:scale-110"
+        <img 
+          className={`w-full h-full object-cover transition-all duration-700 ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-110'} group-hover:scale-110`}
+          src={optimizedImage}
+          srcSet={srcSet}
+          sizes="(max-width: 640px) 110px, (max-width: 768px) 180px, 240px"
+          alt={drink?.name || 'Drink'} 
           loading={priority ? "eager" : "lazy"}
+          decoding="async"
+          onLoad={() => setImageLoaded(true)}
+          {...(priority ? { fetchPriority: "high" } : {})}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
       </div>
