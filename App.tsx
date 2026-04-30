@@ -1,4 +1,5 @@
-import * as React from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import ErrorBoundary from './components/shared/ErrorBoundary';
 import { AppProvider } from './context/AppContext';
 import { useApp } from './context/useApp';
@@ -10,11 +11,9 @@ import Modal from './components/shared/Modal';
 import SharePictureForm from './components/shared/SharePictureForm';
 import TellStoryForm from './components/shared/TellStoryForm';
 import { isFirebaseConfigured, auth } from './firebase/config';
-
-import CustomerView from './components/customer/CustomerView';
-
 import { lazyWithRetry } from './lib/utils';
 
+const CustomerView = lazyWithRetry(() => import('./components/customer/CustomerView'));
 const KDSView = lazyWithRetry(() => import('./components/kds/KDSView'));
 const AdminView = lazyWithRetry(() => import('./components/admin/AdminView'));
 const ProfileView = lazyWithRetry(() => import('./components/customer/ProfileView'));
@@ -157,19 +156,18 @@ const ViewErrorBoundary: React.FC<{ children: React.ReactNode; viewName: string 
   </ErrorBoundary>
 );
 
-import { motion, AnimatePresence } from 'framer-motion';
 
 const AppContent: React.FC = () => {
   const { state, dispatch, isInitializingAuth } = useApp();
   const { addToast } = useToast();
   const { currentUser, theme, permissionError, globalError } = state;
-  const [currentView, setCurrentView] = React.useState<View>(View.CUSTOMER);
-  const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
-  const [infoModalContent, setInfoModalContent] = React.useState<{ title: string; content: React.ReactNode } | null>(null);
-  const [localError, setLocalError] = React.useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<View>(View.CUSTOMER);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [infoModalContent, setInfoModalContent] = useState<{ title: string; content: React.ReactNode } | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   
   // Listen for global errors from context or other sources
-  React.useEffect(() => {
+  useEffect(() => {
     const handleGlobalError = (event: ErrorEvent) => {
         if (event.message.includes('Firebase')) return; // Handled by permissionError or context
         setLocalError(event.message);
@@ -178,7 +176,7 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('error', handleGlobalError);
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const root = window.document.documentElement;
     if (theme === 'dark') {
         root.classList.add('dark');
@@ -245,47 +243,49 @@ const AppContent: React.FC = () => {
               case View.CUSTOMER:
                 return (
                   <ViewErrorBoundary viewName="Menu">
-                    <CustomerView />
+                    <Suspense fallback={<LoadingSpinner />}>
+                        <CustomerView />
+                    </Suspense>
                   </ViewErrorBoundary>
                 );
               case View.KDS:
                 return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? (
                   <ViewErrorBoundary viewName="KDS">
-                    <React.Suspense fallback={<LoadingSpinner />}>
+                    <Suspense fallback={<LoadingSpinner />}>
                       <KDSView />
-                    </React.Suspense>
+                    </Suspense>
                   </ViewErrorBoundary>
                 ) : <AccessDenied />;
               case View.ADMIN:
                 return currentUser?.role === UserRole.ADMIN ? (
                   <ViewErrorBoundary viewName="Admin Dashboard">
-                    <React.Suspense fallback={<LoadingSpinner />}>
+                    <Suspense fallback={<LoadingSpinner />}>
                       <AdminView />
-                    </React.Suspense>
+                    </Suspense>
                   </ViewErrorBoundary>
                 ) : <AccessDenied />;
               case View.PROFILE:
                 return currentUser ? (
                   <ViewErrorBoundary viewName="Profile">
-                    <React.Suspense fallback={<LoadingSpinner />}>
+                    <Suspense fallback={<LoadingSpinner />}>
                       <ProfileView />
-                    </React.Suspense>
+                    </Suspense>
                   </ViewErrorBoundary>
                 ) : <AccessDenied />;
               case View.BIRTHDAYS:
                 return currentUser?.role === UserRole.KITCHEN || currentUser?.role === UserRole.ADMIN ? (
                   <ViewErrorBoundary viewName="Calendar">
-                    <React.Suspense fallback={<LoadingSpinner />}>
+                    <Suspense fallback={<LoadingSpinner />}>
                       <CalendarView />
-                    </React.Suspense>
+                    </Suspense>
                   </ViewErrorBoundary>
                 ) : <AccessDenied />;
               case View.DEV_MODE:
                 return currentUser?.role === UserRole.ADMIN ? (
                   <ViewErrorBoundary viewName="Dev Mode">
-                    <React.Suspense fallback={<LoadingSpinner />}>
+                    <Suspense fallback={<LoadingSpinner />}>
                       <DevMode />
-                    </React.Suspense>
+                    </Suspense>
                   </ViewErrorBoundary>
                 ) : <AccessDenied />;
               default:
@@ -309,19 +309,25 @@ const AppContent: React.FC = () => {
   if (isInitializingAuth && !currentUser) {
     return (
         <div className="fixed inset-0 bg-[#F5F3EF] dark:bg-zinc-950 flex flex-col items-center justify-center p-6 z-[100]">
-            <div className="relative mb-8 w-48 h-48 flex items-center justify-center">
+            <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="relative mb-6 w-24 h-24 flex items-center justify-center overflow-hidden rounded-full shadow-2xl shadow-stone-200 dark:shadow-none"
+                style={{ aspectRatio: '1/1' }}
+            >
                 <video 
                     src="https://cdn.shopify.com/videos/c/o/v/7e104c320f774533ba628ee4655a5d86.webm"
                     autoPlay 
                     loop 
                     muted 
                     playsInline
-                    className="w-full h-full object-contain"
+                    preload="auto"
+                    className="w-full h-full object-cover"
                 />
-            </div>
+            </motion.div>
             <div className="text-center">
-                <h1 className="text-2xl font-bold text-stone-800 dark:text-stone-200 mb-2 font-serif">Realife Cafe</h1>
-                <p className="text-stone-500 dark:text-stone-400 text-sm tracking-widest uppercase font-semibold">Initialising Secure Session...</p>
+                <h1 className="text-xl font-bold text-stone-800 dark:text-stone-200 mb-2 font-serif uppercase tracking-tighter">Realife Cafe</h1>
+                <p className="text-stone-400 dark:text-stone-500 text-[10px] tracking-[0.2em] uppercase font-bold animate-pulse">Initialising Secure Session</p>
             </div>
         </div>
     );
@@ -356,9 +362,9 @@ const AppContent: React.FC = () => {
         {renderCurrentView()}
       </main>
       <Feedback />
-      <React.Suspense fallback={null}>
+      <Suspense fallback={null}>
         <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
-      </React.Suspense>
+      </Suspense>
       {infoModalContent && (
         <Modal 
             isOpen={!!infoModalContent} 

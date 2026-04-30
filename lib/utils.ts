@@ -1,4 +1,26 @@
 import React from 'react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+/**
+ * Combine tailwind classes safely
+ */
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+/**
+ * Optimize Unsplash URLs with performance parameters
+ */
+export const getOptimizedUnsplashUrl = (url: string, width: number = 800, quality: number = 80) => {
+  if (!url || typeof url !== 'string' || !url.includes('images.unsplash.com')) return url;
+  
+  // Remove existing parameters if any
+  const baseUrl = url.split('?')[0];
+  
+  // Add performance parameters
+  return `${baseUrl}?q=${quality}&w=${width}&auto=format&fit=crop`;
+};
 
 /**
  * Helper to handle flaky dynamic imports (e.g. network blips or stale cache)

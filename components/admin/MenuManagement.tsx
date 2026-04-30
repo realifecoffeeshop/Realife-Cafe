@@ -6,6 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import { Drink, ModifierGroup, ModifierOption, Category } from '../../types';
 import Modal from '../shared/Modal';
 import { saveMenu } from '../../firebase/firestoreService';
+import { Loader2 } from 'lucide-react';
 
 // A sub-component for the Modifier Group form to keep the main component cleaner
 const ModifierGroupForm: React.FC<{
@@ -187,8 +188,9 @@ const ModifierGroupForm: React.FC<{
                 <button 
                     type="submit" 
                     disabled={isSaving}
-                    className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
+                    {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                     {isSaving ? 'Saving...' : 'Save Group'}
                 </button>
             </div>
@@ -361,17 +363,21 @@ const MenuManagement: React.FC = () => {
     };
 
     const confirmDeleteDrink = async () => {
-        if (!showDeleteConfirm) return;
+        if (!showDeleteConfirm || isSaving) return;
+        setIsSaving(true);
         const id = showDeleteConfirm.id;
-        dispatch({ type: 'DELETE_DRINK', payload: id });
         try {
             const updatedDrinks = state.drinks.filter(d => d.id !== id);
             await saveMenu({ drinks: updatedDrinks, categories: state.categories, modifierGroups: state.modifierGroups });
+            dispatch({ type: 'DELETE_DRINK', payload: id });
             addToast('Drink deleted.', 'success');
+            setShowDeleteConfirm(null);
         } catch (error) {
+            console.error("Failed to delete drink:", error);
             addToast('Failed to delete from database.', 'error');
+        } finally {
+            setIsSaving(false);
         }
-        setShowDeleteConfirm(null);
     };
 
     const handleSaveModifierGroup = async (group: ModifierGroup) => {
@@ -405,17 +411,21 @@ const MenuManagement: React.FC = () => {
     };
 
     const confirmDeleteModifierGroup = async () => {
-        if (!showDeleteConfirm) return;
+        if (!showDeleteConfirm || isSaving) return;
+        setIsSaving(true);
         const id = showDeleteConfirm.id;
-        dispatch({ type: 'DELETE_MODIFIER_GROUP', payload: id });
         try {
             const updatedGroups = state.modifierGroups.filter(g => g.id !== id);
             await saveMenu({ drinks: state.drinks, categories: state.categories, modifierGroups: updatedGroups });
+            dispatch({ type: 'DELETE_MODIFIER_GROUP', payload: id });
             addToast('Modifier group deleted.', 'success');
+            setShowDeleteConfirm(null);
         } catch (error) {
+            console.error("Failed to delete modifier group:", error);
             addToast('Failed to delete from database.', 'error');
+        } finally {
+            setIsSaving(false);
         }
-        setShowDeleteConfirm(null);
     };
     
     const handleSaveCategory = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -468,17 +478,21 @@ const MenuManagement: React.FC = () => {
     };
 
     const confirmDeleteCategory = async () => {
-        if (!showDeleteConfirm) return;
+        if (!showDeleteConfirm || isSaving) return;
+        setIsSaving(true);
         const id = showDeleteConfirm.id;
-        dispatch({ type: 'DELETE_CATEGORY', payload: id });
         try {
             const updatedCategories = state.categories.filter(c => c.id !== id);
             await saveMenu({ drinks: state.drinks, categories: updatedCategories, modifierGroups: state.modifierGroups });
+            dispatch({ type: 'DELETE_CATEGORY', payload: id });
             addToast('Category deleted.', 'success');
+            setShowDeleteConfirm(null);
         } catch (error) {
+            console.error("Failed to delete category:", error);
             addToast('Failed to delete category from database.', 'error');
+        } finally {
+            setIsSaving(false);
         }
-        setShowDeleteConfirm(null);
     };
 
     const handleSyncDescriptions = async () => {
@@ -1061,8 +1075,9 @@ const MenuManagement: React.FC = () => {
                             <button 
                                 type="submit" 
                                 disabled={isSaving}
-                                className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
+                                {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                                 {isSaving ? 'Saving...' : (editingDrink?.id ? 'Update Product' : 'Save Product')}
                             </button>
                         </div>
@@ -1094,8 +1109,9 @@ const MenuManagement: React.FC = () => {
                         <button 
                             type="submit" 
                             disabled={isSaving}
-                            className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="bg-stone-900 text-white dark:bg-white dark:text-stone-900 px-10 py-3 rounded-2xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all shadow-2xl hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-95 font-serif italic disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
+                            {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                             {isSaving ? 'Saving...' : (editingCategory?.id ? 'Update Category' : 'Save Category')}
                         </button>
                     </div>
@@ -1117,6 +1133,7 @@ const MenuManagement: React.FC = () => {
             {showDeleteConfirm?.type === 'category' && (
                 <ConfirmationModal
                     isOpen={true}
+                    isLoading={isSaving}
                     onClose={() => setShowDeleteConfirm(null)}
                     onConfirm={confirmDeleteCategory}
                     title="Delete Category"
@@ -1126,6 +1143,7 @@ const MenuManagement: React.FC = () => {
             {showDeleteConfirm?.type === 'drink' && (
                 <ConfirmationModal
                     isOpen={true}
+                    isLoading={isSaving}
                     onClose={() => setShowDeleteConfirm(null)}
                     onConfirm={confirmDeleteDrink}
                     title="Delete Drink"
@@ -1135,6 +1153,7 @@ const MenuManagement: React.FC = () => {
             {showDeleteConfirm?.type === 'modifier' && (
                 <ConfirmationModal
                     isOpen={true}
+                    isLoading={isSaving}
                     onClose={() => setShowDeleteConfirm(null)}
                     onConfirm={confirmDeleteModifierGroup}
                     title="Delete Modifier Group"

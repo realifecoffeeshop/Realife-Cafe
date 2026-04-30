@@ -1,10 +1,10 @@
 import React, { useReducer, useEffect, ReactNode, Dispatch, useState, useRef, useContext } from 'react';
 import { AppState, Action, Order, User, UserRole, Feedback, Category, Customer, PaymentMethod } from '../types';
-import { INITIAL_DISCOUNTS, INITIAL_DRINKS, INITIAL_CATEGORIES, INITIAL_MODIFIERS } from '../constants';
+import { INITIAL_DISCOUNTS } from '../constants';
 import { updateOrder, deleteOrder, onOrdersUpdate, onActiveOrdersUpdate, fetchOrderHistory, onMenuUpdate, saveMenu, seedInitialMenu, onUsersUpdate, onUserUpdate, updateUser, saveUser, seedInitialUsers, isPermissionError, submitFeedback, onFeedbackUpdate, onCustomersUpdate, saveCustomer, deleteCustomer, deleteUser, onAvailabilitiesUpdate, saveAvailability, onRostersUpdate, saveRoster, deleteRoster, onCalendarNotesUpdate } from '../firebase/firestoreService';
 import { database, auth, isFirebaseConfigured } from '../firebase/config';
 import { useToast } from './ToastContext';
-import { AppContext, useApp } from './useApp';
+import { AppContext } from './useApp';
 
 const initialState: AppState = {
   drinks: [],
@@ -257,6 +257,7 @@ export const appReducer = (state: AppState, action: Action): AppState => {
         return state; // Purely DB driven
     }
     case 'ADD_CUSTOMER': {
+        if (state.customers.some(c => c.id === action.payload.id)) return state;
         const newCustomer = { ...action.payload, loyaltyPoints: action.payload.loyaltyPoints || 0 };
         return { ...state, customers: [...state.customers, newCustomer] };
     }

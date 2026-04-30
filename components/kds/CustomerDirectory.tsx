@@ -18,6 +18,7 @@ const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ onSelectCustomer 
   const { addToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddingCustomer, setIsAddingCustomer] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
   
   // States for OrderModal (adding/editing favorites)
@@ -37,7 +38,8 @@ const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ onSelectCustomer 
   );
 
   const handleAddCustomer = async () => {
-    if (!newCustomerName.trim()) return;
+    if (!newCustomerName.trim() || isSaving) return;
+    setIsSaving(true);
     const newCustomer: Customer = {
       id: `cust-${Date.now()}`,
       name: newCustomerName,
@@ -47,13 +49,15 @@ const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ onSelectCustomer 
     };
     try {
         await saveCustomer(newCustomer);
-        dispatch({ type: 'ADD_CUSTOMER', payload: newCustomer });
+        // dispatch({ type: 'ADD_CUSTOMER', payload: newCustomer }); // Removed to prevent double entries (handled by real-time listener)
         setNewCustomerName('');
         setIsAddingCustomer(false);
         addToast(`Customer ${newCustomerName} added to directory`, 'success');
     } catch (err) {
         console.error("Failed to add customer:", err);
         addToast('Failed to add customer', 'error');
+    } finally {
+        setIsSaving(false);
     }
   };
 
@@ -72,7 +76,7 @@ const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ onSelectCustomer 
     try {
         const updatedCustomer = { ...customer, notes };
         await saveCustomer(updatedCustomer);
-        dispatch({ type: 'UPDATE_CUSTOMER', payload: updatedCustomer });
+        // dispatch({ type: 'UPDATE_CUSTOMER', payload: updatedCustomer }); // Removed to prevent double entries
     } catch (err) {
         console.error("Failed to update notes:", err);
         addToast('Failed to update notes', 'error');
@@ -92,7 +96,7 @@ const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ onSelectCustomer 
     try {
         const updatedCustomer = { ...customer, favouriteDrinks: updatedFavourites };
         await saveCustomer(updatedCustomer);
-        dispatch({ type: 'UPDATE_CUSTOMER', payload: updatedCustomer });
+        // dispatch({ type: 'UPDATE_CUSTOMER', payload: updatedCustomer }); // Removed to prevent double entries
         addToast('Favourite removed', 'info');
     } catch (err) {
         console.error("Failed to remove favorite:", err);
@@ -136,7 +140,7 @@ const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ onSelectCustomer 
     try {
         const updatedCustomer = { ...activeCustomerForFav, favouriteDrinks: updatedFavourites };
         await saveCustomer(updatedCustomer);
-        dispatch({ type: 'UPDATE_CUSTOMER', payload: updatedCustomer });
+        // dispatch({ type: 'UPDATE_CUSTOMER', payload: updatedCustomer }); // Removed to prevent double entries
         setIsOrderModalOpen(false);
         setActiveCustomerForFav(null);
         setCartItemToEdit(null);
@@ -217,7 +221,13 @@ const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ onSelectCustomer 
             className="flex-grow px-3 py-2 border rounded dark:bg-zinc-900 dark:border-zinc-600"
             autoFocus
           />
-          <button onClick={handleAddCustomer} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Save</button>
+          <button 
+            disabled={isSaving}
+            onClick={handleAddCustomer} 
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+          >
+            {isSaving ? 'Saving...' : 'Save'}
+          </button>
           <button onClick={() => setIsAddingCustomer(false)} className="bg-stone-300 text-stone-700 px-4 py-2 rounded hover:bg-stone-400">Cancel</button>
         </div>
       )}

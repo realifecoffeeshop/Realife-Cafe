@@ -725,7 +725,7 @@ const KDSView: React.FC = () => {
         const updatedCustomer = { ...existingCustomer, favouriteDrinks: newFavs };
         saveCustomer(updatedCustomer)
             .then(() => {
-                dispatch({ type: 'UPDATE_CUSTOMER', payload: updatedCustomer });
+                // dispatch({ type: 'UPDATE_CUSTOMER', payload: updatedCustomer }); // Removed to prevent double entries
                 addToast(`Updated favourites for ${order.customerName}`, 'success');
             })
             .catch(err => {
@@ -743,7 +743,7 @@ const KDSView: React.FC = () => {
         };
         saveCustomer(newCustomer)
             .then(() => {
-                dispatch({ type: 'ADD_CUSTOMER', payload: newCustomer });
+                // dispatch({ type: 'ADD_CUSTOMER', payload: newCustomer }); // Removed to prevent double entries
                 addToast(`Added ${order.customerName} to directory with ${order.items.length} favourite(s)`, 'success');
             })
             .catch(err => {

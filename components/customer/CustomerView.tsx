@@ -6,6 +6,7 @@ import { Drink, CartItem, PaymentMethod, Discount, UserRole, Order, ModifierOpti
 import DrinkCard from './DrinkCard';
 import DetailedDrinkCard from './DetailedDrinkCard';
 import MenuSkeleton from './MenuSkeleton';
+import SmartImage from '../shared/SmartImage';
 import Logo from '../shared/Logo';
 import { Users } from 'lucide-react';
 
@@ -28,7 +29,7 @@ const getWeekNumber = (d: Date): number => {
 };
 
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 const CategoryButton: React.FC<{ 
     id: string; 
@@ -37,11 +38,6 @@ const CategoryButton: React.FC<{
     isSelected: boolean; 
     onClick: (id: string) => void 
 }> = memo(({ id, name, imageUrl, isSelected, onClick }) => {
-    // Optimization: Use smaller width for category icons if they are from Unsplash
-    const optimizedIcon = imageUrl?.includes('unsplash.com') 
-        ? `${imageUrl}${imageUrl.includes('?') ? '&' : '?' }w=100&q=40`
-        : imageUrl;
-
     return (
         <motion.button
             whileHover={{ scale: 1.05 }}
@@ -53,13 +49,14 @@ const CategoryButton: React.FC<{
                 : 'bg-white dark:bg-zinc-800 text-stone-600 dark:text-zinc-400 border-stone-100 dark:border-zinc-700 hover:border-stone-300 dark:hover:border-zinc-500 hover:bg-stone-50 dark:hover:bg-zinc-700/50 shadow-sm'
             }`}
         >
-            {optimizedIcon && (
-                <img 
-                    src={optimizedIcon} 
+            {imageUrl && (
+                <SmartImage 
+                    src={imageUrl} 
                     alt="" 
-                    className="w-6 h-6 rounded-lg object-cover shadow-sm" 
-                    loading="lazy"
-                    decoding="async"
+                    width={50}
+                    quality={40}
+                    containerClassName="w-6 h-6 rounded-lg"
+                    className="w-full h-full object-cover" 
                 />
             )}
             <span className="font-serif tracking-tight">{name}</span>

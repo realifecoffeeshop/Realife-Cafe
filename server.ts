@@ -51,7 +51,7 @@ async function startServer() {
       if (!key || !key.startsWith('sk_')) {
         console.error('Missing or invalid STRIPE_SECRET_KEY');
         return res.status(500).json({ 
-          error: 'Stripe is not correctly configured on the server. Please add a valid STRIPE_SECRET_KEY (starting with sk_) to your environment variables in AI Studio Settings.' 
+          error: 'Stripe is not correctly configured on the server. Please add a valid STRIPE_SECRET_KEY (starting with sk_) to your environment variables in AI Studio Settings (local) or Netlify Dashboard (production).' 
         });
       }
 
@@ -83,8 +83,16 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    // Serve static assets with an efficient cache policy (1 year for hashed files)
+    app.use(express.static(distPath, {
+      maxAge: '1y',
+      immutable: true,
+      index: false // Don't serve index.html with long cache
+    }));
+    
     app.get('*all', (req, res) => {
+      // Don't cache index.html to ensure users always get the latest version
+      res.setHeader('Cache-Control', 'no-cache');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

@@ -21,16 +21,41 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+          'react': path.resolve(__dirname, 'node_modules/react'),
+          'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
         }
       },
       build: {
-        target: 'es2015',
+        target: 'esnext',
+        minify: 'esbuild',
+        cssMinify: true,
         rollupOptions: {
           output: {
-            manualChunks: {
-              'vendor-react': ['react', 'react-dom'],
-              'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/database'],
-              'vendor-ui': ['motion', 'lucide-react', 'recharts'],
+            manualChunks(id) {
+              if (id.includes('node_modules')) {
+                if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
+                  return 'vendor-react';
+                }
+                if (id.includes('firebase')) {
+                  return 'vendor-firebase';
+                }
+                if (id.includes('recharts') || id.includes('d3')) {
+                  return 'vendor-charts';
+                }
+                if (id.includes('motion') || id.includes('framer-motion')) {
+                  return 'vendor-animation';
+                }
+                if (id.includes('lucide-react')) {
+                  return 'vendor-icons';
+                }
+                if (id.includes('@dnd-kit')) {
+                  return 'vendor-dnd';
+                }
+                if (id.includes('stripe')) {
+                  return 'vendor-stripe';
+                }
+                return 'vendor-others';
+              }
             }
           }
         },

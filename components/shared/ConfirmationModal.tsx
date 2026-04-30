@@ -10,6 +10,7 @@ interface ConfirmationModalProps {
   confirmButtonText?: string;
   cancelButtonText?: string;
   variant?: 'primary' | 'danger';
+  isLoading?: boolean;
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -21,12 +22,12 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   confirmButtonText = 'Confirm',
   cancelButtonText = 'Cancel',
   variant = 'primary',
+  isLoading = false,
 }) => {
   if (!isOpen) return null;
 
-  const handleConfirm = () => {
-    onConfirm();
-    onClose();
+  const handleConfirm = async () => {
+    await onConfirm();
   };
 
   const confirmButtonClass = variant === 'danger'
@@ -42,15 +43,17 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         <div className="flex justify-end gap-4">
           <button
             onClick={onClose}
-            className="px-8 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all"
+            disabled={isLoading}
+            className="px-8 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
             {cancelButtonText}
           </button>
           <button
             onClick={handleConfirm}
-            className={`px-10 py-3 rounded-2xl text-sm font-bold transition-all active:scale-95 font-serif italic ${confirmButtonClass}`}
+            disabled={isLoading}
+            className={`px-10 py-3 rounded-2xl text-sm font-bold transition-all active:scale-95 font-serif italic disabled:opacity-50 disabled:cursor-not-allowed ${confirmButtonClass}`}
           >
-            {confirmButtonText}
+            {isLoading ? 'Processing...' : confirmButtonText}
           </button>
         </div>
       </div>
